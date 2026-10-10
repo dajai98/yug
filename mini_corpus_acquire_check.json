@@ -1,0 +1,177 @@
+{
+  "acquisition": {
+    "english": {
+      "acquired_before_bounds": 60,
+      "acquisition_report": {
+        "compressed_bytes_read": 262174,
+        "dataset_id": "common-pile/wikimedia_filtered",
+        "dataset_revision": "0641bb84bd9b7162bcddf8be7836822161a9a342",
+        "main_namespace_only": true,
+        "max_documents": 60,
+        "records_scanned": 91,
+        "records_selected": 60,
+        "shard_files": [
+          "wikimedia-0000.json.gz"
+        ],
+        "skipped": {
+          "wrong_namespace": 31
+        }
+      },
+      "kept": 55,
+      "original_source_ids": [
+        "wiki/dump/wikibooks.com"
+      ],
+      "skipped_over_max_doc_chars": 5,
+      "total_chars_kept": 158118
+    },
+    "errors": [],
+    "github": {
+      "documents": 100,
+      "files_failed": 0,
+      "provenance_document_count": 100
+    },
+    "missing_required_categories": [],
+    "nepali": {
+      "devanagari_fraction_median": 0.9707112970711297,
+      "devanagari_fraction_min": 0.6813397129186602,
+      "documents_kept": 23,
+      "num_rows_total_reported_by_api": 32885,
+      "provenance_document_count": 23,
+      "requests_made": 20,
+      "rows_scanned": 2000,
+      "skipped": {
+        "below_min_doc_chars": 857,
+        "over_max_doc_chars": 92,
+        "would_exceed_budget": 1028
+      },
+      "total_chars_kept": 59719
+    }
+  },
+  "category_distribution": {
+    "code": {
+      "accepted": 45,
+      "accepted_content_hash": "6716c3235434760d16ed5124dd1b07d7ffa5c0583ca67c5f29356e5fe878b92f",
+      "content_type": "code",
+      "duplicates": 0,
+      "input": 45,
+      "rejected": 0,
+      "rejection_reasons": {},
+      "review": 0,
+      "train": 36,
+      "validation": 9
+    },
+    "csharp_gamedev": {
+      "accepted": 30,
+      "accepted_content_hash": "86aac0fd6cf1cc78b776e6a9b2760352ed91beb7311917138080d0b248727110",
+      "content_type": "code",
+      "duplicates": 0,
+      "input": 30,
+      "rejected": 0,
+      "rejection_reasons": {},
+      "review": 0,
+      "train": 24,
+      "validation": 6
+    },
+    "general_english": {
+      "accepted": 55,
+      "accepted_content_hash": "408d8320b0a716efa209185faa888445dfdb238404b568834dd1c5d1ad8dcaef",
+      "content_type": "prose",
+      "duplicates": 0,
+      "input": 55,
+      "rejected": 0,
+      "rejection_reasons": {},
+      "review": 0,
+      "train": 44,
+      "validation": 11
+    },
+    "nepali": {
+      "accepted": 23,
+      "accepted_content_hash": "48f49c2e31b7258b81b5739ee352f60006d38539a52d7ea3a2f781d0c4cc9e1a",
+      "content_type": "nepali_prose",
+      "duplicates": 0,
+      "input": 23,
+      "rejected": 0,
+      "rejection_reasons": {},
+      "review": 0,
+      "train": 19,
+      "validation": 4
+    },
+    "nepali_english_codeswitch": {
+      "accepted": 0,
+      "accepted_content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "content_type": "code_switched_text",
+      "duplicates": 0,
+      "input": 0,
+      "rejected": 0,
+      "rejection_reasons": {},
+      "review": 0,
+      "train": 0,
+      "validation": 0
+    },
+    "software_docs": {
+      "accepted": 25,
+      "accepted_content_hash": "517ffac0a37f00ad708e5a0e246d3e5df2c388c52d58178d1c4a774e3b1217d2",
+      "content_type": "technical_documentation",
+      "duplicates": 0,
+      "input": 25,
+      "rejected": 0,
+      "rejection_reasons": {},
+      "review": 0,
+      "train": 20,
+      "validation": 5
+    }
+  },
+  "corpus_prep_manifest": {
+    "accepted_content_hash": "b33acefd2cb4683cbe74d8adf857eb4963bda1b9329da52cbd15c3eb1e28719b",
+    "accepted_count": 178,
+    "config": {
+      "min_length": 20,
+      "min_repeated_tokens_for_pathological": 6,
+      "seed": 1234,
+      "val_fraction": 0.2
+    },
+    "domain_distribution": {
+      "code": 45,
+      "csharp_gamedev": 30,
+      "general_english": 55,
+      "nepali": 23,
+      "software_docs": 25
+    },
+    "duplicate_count": 0,
+    "input_count": 178,
+    "language_distribution": {
+      "en": 80,
+      "ne": 23,
+      "zxx": 75
+    },
+    "license_distribution": {
+      "Apache-2.0": 9,
+      "CC-BY-3.0": 11,
+      "CC-BY-4.0": 6,
+      "CC-BY-SA-3.0": 23,
+      "CC-BY-SA-4.0": 55,
+      "MIT": 64,
+      "MS-PL": 10
+    },
+    "rejected_count": 0,
+    "rejection_reason_counts": {},
+    "review_count": 0,
+    "schema_version": "corpus-prep-prototype-v1",
+    "source_distribution": {
+      "gh-burntsushi-ripgrep": 12,
+      "gh-cysharp-unitask": 10,
+      "gh-expressjs-express": 12,
+      "gh-gin-gonic-gin": 12,
+      "gh-google-eng-practices": 11,
+      "gh-microsoft-api-guidelines": 6,
+      "gh-mirrornetworking-mirror": 10,
+      "gh-monogame-monogame": 10,
+      "gh-psf-requests": 9,
+      "gh-rust-lang-book": 8,
+      "hf-wikipedia-ne-20231101": 23,
+      "wiki/dump/wikibooks.com": 55
+    },
+    "train_count": 143,
+    "validation_count": 35
+  }
+}

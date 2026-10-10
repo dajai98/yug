@@ -1,0 +1,122 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+.env.*
+*.key
+*.pem
+secrets/
+credentials/
+
+# IDE / OS
+.vscode/
+.idea/
+.vs/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs / temp
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Model checkpoints / weights
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+checkpoints/
+checkpoint/
+models/
+weights/
+
+# Large corpus and downloaded datasets
+data/
+datasets/
+corpus/
+corpora/
+downloads/
+downloaded/
+raw_data/
+processed_data/
+prepared_data/
+token_cache/
+tokenized/
+shards/
+spool/
+
+# Production acquisition / review working directories
+production/downloads/
+production/review/
+production/raw/
+production/normalized/
+production/token_cache/
+production/spool/
+production/shards/
+
+review_downloads/
+review_cache/
+acquisition_cache/
+
+# Large database/state files generated during corpus processing
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# Numpy / tensor artifacts
+*.npy
+*.npz
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+
+# Training outputs
+runs/
+outputs/
+wandb/
+tensorboard/
+lightning_logs/
+
+# Build / package artifacts
+build/
+dist/
+*.egg-info/
+
+# Large local artifacts directory
+artifacts/**/*.bin
+artifacts/**/*.pt
+artifacts/**/*.pth
+artifacts/**/*.ckpt
+artifacts/**/*.safetensors
+artifacts/**/*.sqlite
+artifacts/**/*.db
+# Generated YUG experiment/acquisition artifacts
+artifacts/
+
+# Historical/local source snapshot
+SOURCE/

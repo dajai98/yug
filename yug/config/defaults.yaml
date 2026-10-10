@@ -1,0 +1,43 @@
+# YUG default configuration.
+#
+# Sections for security are intentionally absent: they will be added
+# when that subsystem is implemented, per the "no speculative
+# abstractions" rule in the Chief Implementation Directive. memory was
+# added in Phase 2, tools in Phase 3.
+
+logging:
+  level: INFO
+
+paths:
+  data_dir: ./data
+  logs_dir: ./data/logs
+
+# No model is bundled or assumed. model_path is null until the user
+# points it at a real .gguf file; adapters must not fabricate a
+# default location ("no hardcoded user-specific paths").
+brain:
+  backend: llama_cpp
+  model_id: unconfigured
+  model_path: null
+  context_length: 4096
+  n_threads: null
+  # Consumed only by backend: yug_native (NB-10's YugNativeAdapter);
+  # llama_cpp and mock ignore these, same as they ignore each other's
+  # backend-specific fields above.
+  checkpoint_dir: null
+  tokenizer_path: null
+
+memory:
+  storage_path: ./data/memory.json
+
+tools:
+  enabled:
+    - calculator
+    - python_exec
+    - file_read
+    - file_search
+  file_root: ./data/tool_files
+  file_read_max_bytes: 1048576
+  file_search_max_results: 100
+  file_search_max_file_bytes: 1048576
+  python_exec_timeout_seconds: 5.0

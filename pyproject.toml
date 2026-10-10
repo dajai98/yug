@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yug"
+version = "0.1.0"
+description = "YUG - Personal Agentic AI System (M1 Foundation)"
+requires-python = ">=3.10"
+readme = { text = "YUG M1 - Phase 0 Foundation. See implementation directive for scope.", content-type = "text/plain" }
+
+# Runtime dependency footprint is kept minimal and justified:
+# - PyYAML: the approved configuration architecture (Chief Implementation
+#   Directive, Section 16 / Section 29) specifies YAML configuration files.
+#   YAML parsing is not available in the Python standard library, so this
+#   is a concrete requirement rather than a convenience addition.
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "ruff>=0.4",
+]
+# PyTorch is authorized (NB-04) as the numerical/autograd substrate for
+# yug.native.model. Kept as an OPTIONAL extra, not a core dependency:
+# the base package (Phase 0 CLI, BrainInterface, MockBrainAdapter,
+# LlamaCppAdapter baseline, tokenizer, model *configuration*) has no
+# need for a ~700MB+ dependency unless the native model is actually
+# used. `yug/native/config.py` (NB-03) has zero PyTorch dependency and
+# stays that way; only `yug/native/model.py` (NB-04) requires it, and
+# only importing that specific submodule pulls PyTorch in. Install
+# with `pip install -e ".[native]"`.
+native = [
+    "torch>=2.0",
+]
+
+[project.scripts]
+yug = "yug.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["yug*"]
+
+[tool.setuptools.package-data]
+# The Phase 1 "shipped manifest" (test_brain_manifest.py's own name and
+# docstring: "the shipped manifest file must be a valid, empty
+# registry") must actually be included in real (non-editable)
+# installs and built wheels, not just reachable via an editable
+# install's live source tree. Without this, setuptools silently drops
+# non-.py files from the package.
+"yug.brain.model_zoo" = ["*.json"]
+
+[tool.pytest.ini_options]
+minversion = "7.4"
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

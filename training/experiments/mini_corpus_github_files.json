@@ -1,0 +1,576 @@
+{
+ "schema": "mini-corpus-github-file-manifest-v1",
+ "note": "Explicit file list at pinned commits; git_blob_sha1 lets the runner verify fetched bytes. Selection rule: sorted path candidates within prefix/extension/size bounds, evenly strided.",
+ "sources": [
+  {
+   "source_id": "gh-psf-requests",
+   "repo_url": "https://github.com/psf/requests",
+   "commit": "611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60",
+   "files": [
+    {
+     "path": "src/requests/__init__.py",
+     "git_blob_sha1": "1093ff8bf67184ecb0f83d7015026b624a583d3d",
+     "size_bytes": 5637
+    },
+    {
+     "path": "src/requests/_internal_utils.py",
+     "git_blob_sha1": "0466a7d347db4ed34a37db51b75fc8e80bc06055",
+     "size_bytes": 1542
+    },
+    {
+     "path": "src/requests/_types.py",
+     "git_blob_sha1": "6c2f59d0282c35dbe290d24b8e1abcfa6f519983",
+     "size_bytes": 6041
+    },
+    {
+     "path": "src/requests/api.py",
+     "git_blob_sha1": "eeb3b54d7f27e2c843080dfe81dfdb0d460c2b31",
+     "size_bytes": 7152
+    },
+    {
+     "path": "src/requests/compat.py",
+     "git_blob_sha1": "6f5b0dd239ba8ed4d31b8f994ace59b8548a0388",
+     "size_bytes": 2494
+    },
+    {
+     "path": "src/requests/exceptions.py",
+     "git_blob_sha1": "cb5e9510e3b1cf4804ac6091fd7fdb55e9f2745b",
+     "size_bytes": 4564
+    },
+    {
+     "path": "src/requests/help.py",
+     "git_blob_sha1": "f0fced253420c6de85d2332fa206c2dd550cd028",
+     "size_bytes": 4068
+    },
+    {
+     "path": "src/requests/status_codes.py",
+     "git_blob_sha1": "6c59d6baec83bd82055106a5d2cea08fa1195274",
+     "size_bytes": 4351
+    },
+    {
+     "path": "src/requests/structures.py",
+     "git_blob_sha1": "7675eaf15a181dada66c02bb0468dc00d6f523b3",
+     "size_bytes": 4134
+    }
+   ]
+  },
+  {
+   "source_id": "gh-expressjs-express",
+   "repo_url": "https://github.com/expressjs/express",
+   "commit": "7ef98448f8b38099ab1ded55e458538ad47a51e7",
+   "files": [
+    {
+     "path": "examples/auth/index.js",
+     "git_blob_sha1": "7c4a572f9d31346cf2a6b2ca2269561a69089f13",
+     "size_bytes": 3570
+    },
+    {
+     "path": "examples/error-pages/index.js",
+     "git_blob_sha1": "0863120bc8f89c616b02c252d1f4d24a14c84b65",
+     "size_bytes": 2665
+    },
+    {
+     "path": "examples/mvc/index.js",
+     "git_blob_sha1": "1d8aa0e3c313efbcd8b9427e5cc31cd6733d84a5",
+     "size_bytes": 2320
+    },
+    {
+     "path": "examples/mvc/lib/boot.js",
+     "git_blob_sha1": "fc2ab0fad9974e9f8916cedd85b08cb20b77dcb8",
+     "size_bytes": 2263
+    },
+    {
+     "path": "examples/resource/index.js",
+     "git_blob_sha1": "627ab24c5a289d5fc8f225b41db104df6b17e24b",
+     "size_bytes": 2295
+    },
+    {
+     "path": "examples/route-middleware/index.js",
+     "git_blob_sha1": "66df511347b53e741fb608a9f9c20813f0d38543",
+     "size_bytes": 2399
+    },
+    {
+     "path": "examples/search/index.js",
+     "git_blob_sha1": "b995b8fab16183241999d6b5aa90712a3cecdf71",
+     "size_bytes": 1577
+    },
+    {
+     "path": "examples/view-locals/index.js",
+     "git_blob_sha1": "e6355602d4e7c133fdbb97cc2face01be8542bf5",
+     "size_bytes": 3127
+    },
+    {
+     "path": "examples/web-service/index.js",
+     "git_blob_sha1": "d1a9036215368f5c16f8a73127924fb087642420",
+     "size_bytes": 3044
+    },
+    {
+     "path": "lib/express.js",
+     "git_blob_sha1": "2d502eb54e4d7e2f2374494e32071d9416d56418",
+     "size_bytes": 1636
+    },
+    {
+     "path": "lib/utils.js",
+     "git_blob_sha1": "4f21e7ef1e3d2ed8da18a9671f983b012e45198b",
+     "size_bytes": 5293
+    },
+    {
+     "path": "lib/view.js",
+     "git_blob_sha1": "d66b4a2d89cda638ca1dcbba3da090e631175fc1",
+     "size_bytes": 3809
+    }
+   ]
+  },
+  {
+   "source_id": "gh-gin-gonic-gin",
+   "repo_url": "https://github.com/gin-gonic/gin",
+   "commit": "1bd0ecf2d3e08da37efa270bb7be20c1eddb0d68",
+   "files": [
+    {
+     "path": "auth.go",
+     "git_blob_sha1": "5d3222d566d1ad50f2111a234bd7e0a7c8dabf6c",
+     "size_bytes": 3838
+    },
+    {
+     "path": "binding/binding.go",
+     "git_blob_sha1": "eced0ae203e505903e0285ba1b65e7148ea6af73",
+     "size_bytes": 4294
+    },
+    {
+     "path": "binding/default_validator.go",
+     "git_blob_sha1": "f27d437bcc607857a7c0f335e7a724c80a3eda84",
+     "size_bytes": 2342
+    },
+    {
+     "path": "binding/multipart_form_mapping.go",
+     "git_blob_sha1": "4ebe83263ceca365e6fe2a82051b24c82eae4dd1",
+     "size_bytes": 2244
+    },
+    {
+     "path": "debug.go",
+     "git_blob_sha1": "753c12857b76be0f9b6f96ee5117db487016e0e1",
+     "size_bytes": 3000
+    },
+    {
+     "path": "errors.go",
+     "git_blob_sha1": "c0d907b958271f1a788b8baac6a2d49e7c59de5a",
+     "size_bytes": 3944
+    },
+    {
+     "path": "logger.go",
+     "git_blob_sha1": "cf92553ac2ba19646681d6314030d488e6b9eb83",
+     "size_bytes": 8070
+    },
+    {
+     "path": "path.go",
+     "git_blob_sha1": "672213d114d1b7d0198149228e5035001e0ecb22",
+     "size_bytes": 4853
+    },
+    {
+     "path": "render/html.go",
+     "git_blob_sha1": "36c8f07992cd2c8c5aeaeada921329381459c3bc",
+     "size_bytes": 3032
+    },
+    {
+     "path": "render/json.go",
+     "git_blob_sha1": "2f98676cfff579a528e8b7953f67bf694a384073",
+     "size_bytes": 5013
+    },
+    {
+     "path": "routergroup.go",
+     "git_blob_sha1": "d85a8baf4d4c167a3711b84158a451baa1e6cd84",
+     "size_bytes": 10951
+    },
+    {
+     "path": "testdata/protoexample/test.pb.go",
+     "git_blob_sha1": "6687aae2be60cb8ada776a9682ed4d0a2c2e05e6",
+     "size_bytes": 8374
+    }
+   ]
+  },
+  {
+   "source_id": "gh-burntsushi-ripgrep",
+   "repo_url": "https://github.com/BurntSushi/ripgrep",
+   "commit": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
+   "files": [
+    {
+     "path": "crates/cli/src/escape.rs",
+     "git_blob_sha1": "d14b81d12aa093aae38af8acf2d98ad9f4bb8b39",
+     "size_bytes": 4264
+    },
+    {
+     "path": "crates/cli/src/lib.rs",
+     "git_blob_sha1": "86d0a46eb689f8b4cc9b5df8ee49c49ed6b3eda4",
+     "size_bytes": 11698
+    },
+    {
+     "path": "crates/cli/src/wtr.rs",
+     "git_blob_sha1": "e9cfb3b760799b33ddbfcfa0d451860d46a47e71",
+     "size_bytes": 4871
+    },
+    {
+     "path": "crates/core/flags/complete/powershell.rs",
+     "git_blob_sha1": "bcd0e6f36a3aaa142e771ef970db36282214558e",
+     "size_bytes": 2707
+    },
+    {
+     "path": "crates/core/flags/doc/version.rs",
+     "git_blob_sha1": "bf15622ef941a2d1cbdebf1ec8264eef9eee70d9",
+     "size_bytes": 5534
+    },
+    {
+     "path": "crates/core/messages.rs",
+     "git_blob_sha1": "333e7076ce7d741277ec7e38996fd632e64f5062",
+     "size_bytes": 5043
+    },
+    {
+     "path": "crates/globset/src/serde_impl.rs",
+     "git_blob_sha1": "88b1574d78fd76185f2ee20b4fe093e1ac168756",
+     "size_bytes": 3180
+    },
+    {
+     "path": "crates/ignore/src/overrides.rs",
+     "git_blob_sha1": "005cae8f2d4a881601a94bc2711238ff282d56b8",
+     "size_bytes": 10043
+    },
+    {
+     "path": "crates/printer/src/counter.rs",
+     "git_blob_sha1": "3f74d935008dc321bc222a35800fc6614102469b",
+     "size_bytes": 2267
+    },
+    {
+     "path": "crates/printer/src/lib.rs",
+     "git_blob_sha1": "9675c6424510d7807fa6f06c5898b23c0d90dd2a",
+     "size_bytes": 3552
+    },
+    {
+     "path": "crates/regex/src/ast.rs",
+     "git_blob_sha1": "a5a0573ac8e286296ea3dfd779635d775296a834",
+     "size_bytes": 6305
+    },
+    {
+     "path": "crates/regex/src/non_matching.rs",
+     "git_blob_sha1": "f93ed13b837cf4eb93fa21645fa552b033301f5a",
+     "size_bytes": 5255
+    }
+   ]
+  },
+  {
+   "source_id": "gh-cysharp-unitask",
+   "repo_url": "https://github.com/Cysharp/UniTask",
+   "commit": "ceac8d6946b1125fe782cd171fbcb245b567dbf9",
+   "files": [
+    {
+     "path": "src/UniTask/Assets/Plugins/UniTask/Runtime/AsyncLazy.cs",
+     "git_blob_sha1": "51bfadc79a63efa75d1cd28cf7b8d7433082ed6a",
+     "size_bytes": 6630
+    },
+    {
+     "path": "src/UniTask/Assets/Plugins/UniTask/Runtime/IUniTaskSource.cs",
+     "git_blob_sha1": "ad758f1c662c07a985fbd9bc60fc697bdd5d3c8f",
+     "size_bytes": 4279
+    },
+    {
+     "path": "src/UniTask/Assets/Plugins/UniTask/Runtime/Internal/RuntimeHelpersAbstraction.cs",
+     "git_blob_sha1": "cbabdab1a3faccc4f66ac19f852ada0a2f4e8a95",
+     "size_bytes": 2201
+    },
+    {
+     "path": "src/UniTask/Assets/Plugins/UniTask/Runtime/Linq/Buffer.cs",
+     "git_blob_sha1": "be395b686b60c9f51112e91d37c9086d9a67eea7",
+     "size_bytes": 11546
+    },
+    {
+     "path": "src/UniTask/Assets/Plugins/UniTask/Runtime/Linq/ElementAt.cs",
+     "git_blob_sha1": "930675e5f1c6e31e4fbd9f9ad955ddde2f6ea007",
+     "size_bytes": 1873
+    },
+    {
+     "path": "src/UniTask/Assets/Plugins/UniTask/Runtime/Linq/OfType.cs",
+     "git_blob_sha1": "fea8069f5ec15944b987147f8c2ff576e989f924",
+     "size_bytes": 1802
+    },
+    {
+     "path": "src/UniTask/Assets/Plugins/UniTask/Runtime/Linq/Single.cs",
+     "git_blob_sha1": "30df1b3dd83a28891410a05588a52e617191048f",
+     "size_bytes": 8662
+    },
+    {
+     "path": "src/UniTask/Assets/Plugins/UniTask/Runtime/Linq/Throw.cs",
+     "git_blob_sha1": "b6994c46437667f2f584073638057f13527b4e53",
+     "size_bytes": 1506
+    },
+    {
+     "path": "src/UniTask/Assets/Plugins/UniTask/Runtime/Progress.cs",
+     "git_blob_sha1": "ed112902f84dc2831e9018fb22678767e9995372",
+     "size_bytes": 2385
+    },
+    {
+     "path": "src/UniTask/Assets/Plugins/UniTask/Runtime/UniTask.WhenAll.cs",
+     "git_blob_sha1": "39f6a9ad1381b8687a80f2eef64313bd17c19ca7",
+     "size_bytes": 7568
+    }
+   ]
+  },
+  {
+   "source_id": "gh-mirrornetworking-mirror",
+   "repo_url": "https://github.com/MirrorNetworking/Mirror",
+   "commit": "c4f3739966e151f405be1762d33502794fd034ff",
+   "files": [
+    {
+     "path": "Assets/Mirror/Components/Discovery/NetworkDiscovery.cs",
+     "git_blob_sha1": "5fa939728c14a23dc35ea069a38d6d43177b863a",
+     "size_bytes": 3504
+    },
+    {
+     "path": "Assets/Mirror/Components/InterestManagement/SpatialHashing/Grid2D.cs",
+     "git_blob_sha1": "d55771357de4434f362dc78ceafa621d3246e0b2",
+     "size_bytes": 4090
+    },
+    {
+     "path": "Assets/Mirror/Components/LagCompensation/LagCompensator.cs",
+     "git_blob_sha1": "63669c0ed5098134ea9a50251300c1d286ae4ebb",
+     "size_bytes": 8301
+    },
+    {
+     "path": "Assets/Mirror/Components/NetworkStatistics.cs",
+     "git_blob_sha1": "3962b31a884bbc0a7e085ecd7204eb369295f714",
+     "size_bytes": 7450
+    },
+    {
+     "path": "Assets/Mirror/Core/Batching/Batcher.cs",
+     "git_blob_sha1": "6f7cad9605f37387173a7645890e8f4f3b9a10a7",
+     "size_bytes": 8613
+    },
+    {
+     "path": "Assets/Mirror/Core/LagCompensation/MinMaxBounds.cs",
+     "git_blob_sha1": "b1b487416a4ab79f9c20bd28e1e4b15d28b13c3a",
+     "size_bytes": 2379
+    },
+    {
+     "path": "Assets/Mirror/Core/NetworkConnectionToClient.cs",
+     "git_blob_sha1": "7114d95c291519c312d54b38a86e22101a07ddad",
+     "size_bytes": 10210
+    },
+    {
+     "path": "Assets/Mirror/Core/Prediction/Prediction.cs",
+     "git_blob_sha1": "d66994527d3a0e7f8fa952aea4f4f280fb97064b",
+     "size_bytes": 8481
+    },
+    {
+     "path": "Assets/Mirror/Core/Threading/WorkerThread.cs",
+     "git_blob_sha1": "93962fadae9971fee2d63682d04823839c2404c1",
+     "size_bytes": 6328
+    },
+    {
+     "path": "Assets/Mirror/Core/Tools/CustomStructs/Vector4Long.cs",
+     "git_blob_sha1": "0eba99a32df0ceace9d2fadbbfe96a9c1b327012",
+     "size_bytes": 5015
+    }
+   ]
+  },
+  {
+   "source_id": "gh-monogame-monogame",
+   "repo_url": "https://github.com/MonoGame/MonoGame",
+   "commit": "9cce5c73ad5869a8abe54dad9ed201d0678fa8fe",
+   "files": [
+    {
+     "path": "MonoGame.Framework/Audio/AudioEmitter.cs",
+     "git_blob_sha1": "135962d3e92b65f4b1bc92e3e79ffc25e5c7fa31",
+     "size_bytes": 2621
+    },
+    {
+     "path": "MonoGame.Framework/Design/Byte4TypeConverter.cs",
+     "git_blob_sha1": "c62deb30ef992dc7110655185e11941dbf4eabed",
+     "size_bytes": 2909
+    },
+    {
+     "path": "MonoGame.Framework/GameWindow.cs",
+     "git_blob_sha1": "89155efa686462ff88bdc3667f7c4bb3b51d21ad",
+     "size_bytes": 9902
+    },
+    {
+     "path": "MonoGame.Framework/Graphics/ModelMesh.cs",
+     "git_blob_sha1": "5b54c3d1c3f7588c69db5e0f67c7a2c3c20f9f22",
+     "size_bytes": 3324
+    },
+    {
+     "path": "MonoGame.Framework/Graphics/PackedVector/NormalizedByte4.cs",
+     "git_blob_sha1": "589f4ce262a912fe0508ec455ff45392a0796db2",
+     "size_bytes": 4673
+    },
+    {
+     "path": "MonoGame.Framework/Graphics/Shader/ConstantBufferCollection.cs",
+     "git_blob_sha1": "efe1a27161b05d9db3308d5a9fcea24a966d9c5a",
+     "size_bytes": 2356
+    },
+    {
+     "path": "MonoGame.Framework/Graphics/Vertices/DynamicVertexBuffer.cs",
+     "git_blob_sha1": "ba78abb548635051d3b1aa6a7732c8416f538fcb",
+     "size_bytes": 8204
+    },
+    {
+     "path": "MonoGame.Framework/Graphics/Viewport.cs",
+     "git_blob_sha1": "470a749b43773449f41fd7504761433b2429562f",
+     "size_bytes": 9103
+    },
+    {
+     "path": "MonoGame.Framework/Input/Touch/GestureSample.cs",
+     "git_blob_sha1": "480d78ed625c3dd315bb3e8b10b96453f772516f",
+     "size_bytes": 2879
+    },
+    {
+     "path": "MonoGame.Framework/Media/SongCollection.cs",
+     "git_blob_sha1": "c84abb74db3010992e6a432b9e42461823844378",
+     "size_bytes": 6236
+    }
+   ]
+  },
+  {
+   "source_id": "gh-google-eng-practices",
+   "repo_url": "https://github.com/google/eng-practices",
+   "commit": "3bb3ec25b3b0199f4940b1aa75f0ac5c5753301c",
+   "files": [
+    {
+     "path": "review/developer/cl-descriptions.md",
+     "git_blob_sha1": "37e7064ca855b95cba8bb26da46a67972e74d3ad",
+     "size_bytes": 8007
+    },
+    {
+     "path": "review/developer/handling-comments.md",
+     "git_blob_sha1": "cb43fb98cd636c155eafb0ca42e4f99a8f546d81",
+     "size_bytes": 4367
+    },
+    {
+     "path": "review/developer/small-cls.md",
+     "git_blob_sha1": "0501c55016c0ef06308d0147700a895be28e5c45",
+     "size_bytes": 12289
+    },
+    {
+     "path": "review/emergencies.md",
+     "git_blob_sha1": "82353f591e065eb3d67b1f7e00275b24336477c7",
+     "size_bytes": 3157
+    },
+    {
+     "path": "review/index.md",
+     "git_blob_sha1": "1a7cbee27163229a3545c70e791bd15b24b85d8d",
+     "size_bytes": 2767
+    },
+    {
+     "path": "review/reviewer/comments.md",
+     "git_blob_sha1": "f9ba6fbab815530644e7cb7e2f144f15248c9420",
+     "size_bytes": 4432
+    },
+    {
+     "path": "review/reviewer/looking-for.md",
+     "git_blob_sha1": "c27e26edbf0f42603a16dd719c825f6801226191",
+     "size_bytes": 11330
+    },
+    {
+     "path": "review/reviewer/navigate.md",
+     "git_blob_sha1": "4517a16df38902135268c6cd7a8939f51ade1492",
+     "size_bytes": 4157
+    },
+    {
+     "path": "review/reviewer/pushback.md",
+     "git_blob_sha1": "54aa6ad40ebb1fea637b5f3f450a68a1b6282114",
+     "size_bytes": 4369
+    },
+    {
+     "path": "review/reviewer/speed.md",
+     "git_blob_sha1": "d3b989189dd8ddd42ed54e5077bd6ce62e29b888",
+     "size_bytes": 7154
+    },
+    {
+     "path": "review/reviewer/standard.md",
+     "git_blob_sha1": "081822f3999b33c59277ad7d1c3360d027492850",
+     "size_bytes": 5745
+    }
+   ]
+  },
+  {
+   "source_id": "gh-microsoft-api-guidelines",
+   "repo_url": "https://github.com/microsoft/api-guidelines",
+   "commit": "a7022a299442a8352431874e63ec4dff548a1b81",
+   "files": [
+    {
+     "path": "Guidelines.md",
+     "git_blob_sha1": "71c9a69d929afe541981461de64843ad878a4c5a",
+     "size_bytes": 1039
+    },
+    {
+     "path": "graph/articles/errorResponses.md",
+     "git_blob_sha1": "ea573925fabe89ec3d3c6f3b82dec821d7d70117",
+     "size_bytes": 7188
+    },
+    {
+     "path": "graph/patterns/alternate-key.md",
+     "git_blob_sha1": "2ca507fd03ad9ac16f8583da4eb9c4794d33cea4",
+     "size_bytes": 6240
+    },
+    {
+     "path": "graph/patterns/dictionary.md",
+     "git_blob_sha1": "234aebc372eb7be607598cd573909ad7045f609e",
+     "size_bytes": 8082
+    },
+    {
+     "path": "graph/patterns/flat-bag.md",
+     "git_blob_sha1": "5dedbeef5b4f2f79e2a03cde09bd452463527b34",
+     "size_bytes": 3294
+    },
+    {
+     "path": "graph/patterns/operations.md",
+     "git_blob_sha1": "ec7d48898270cc1e13e95a7a3e97cabe380e3301",
+     "size_bytes": 6650
+    }
+   ]
+  },
+  {
+   "source_id": "gh-rust-lang-book",
+   "repo_url": "https://github.com/rust-lang/book",
+   "commit": "1500248d8f230566e4ec9f27fcbb8fe9e2898ab1",
+   "files": [
+    {
+     "path": "src/ch01-01-installation.md",
+     "git_blob_sha1": "a9e03f534aec9791f6b8200068376fa5678a576c",
+     "size_bytes": 6660
+    },
+    {
+     "path": "src/ch06-03-if-let.md",
+     "git_blob_sha1": "06b517e2ae2b72e5c9e40c5ff9aae85d6dfa84d4",
+     "size_bytes": 6634
+    },
+    {
+     "path": "src/ch07-05-separating-modules-into-different-files.md",
+     "git_blob_sha1": "ed3f49f7b3246fdd3d3eb528c11cfe4152832c1d",
+     "size_bytes": 6077
+    },
+    {
+     "path": "src/ch12-00-an-io-project.md",
+     "git_blob_sha1": "67650f12de313c935c88f08b649d5e41f078c0fa",
+     "size_bytes": 2497
+    },
+    {
+     "path": "src/ch12-05-working-with-environment-variables.md",
+     "git_blob_sha1": "39c3dade8ac1624c43ad1afb8291445480d70efc",
+     "size_bytes": 9541
+    },
+    {
+     "path": "src/ch14-01-release-profiles.md",
+     "git_blob_sha1": "4bbb2d390a26d858bdaf0baaa77463216559dac5",
+     "size_bytes": 3018
+    },
+    {
+     "path": "src/ch16-00-concurrency.md",
+     "git_blob_sha1": "95b1562f1df7247d415a7a98b147f1675fe0c478",
+     "size_bytes": 3010
+    },
+    {
+     "path": "src/ch17-06-futures-tasks-threads.md",
+     "git_blob_sha1": "a2d801c0f32c382613cee30fb8b4d5ab692a49cd",
+     "size_bytes": 5828
+    }
+   ]
+  }
+ ]
+}

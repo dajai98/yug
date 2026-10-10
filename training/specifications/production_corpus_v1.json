@@ -1,0 +1,848 @@
+{
+  "schema": "yug-production-corpus-spec-v1",
+  "registry_identity": "sha256:dceee5214397b5729e21860957f6928abdcd9f16d2fd042630f7a498b383f88c",
+  "tokenizer_identity": "sha256:0b9b2bb9efe58902e3cf3dcb359cf174a25f3d7bf603b14bd3fe8e2d7fec0507",
+  "vocab_size": 4096,
+  "total_clean_train_tokens": 2000000000,
+  "routing": "Source category is a planning default. Every cleared manifest file fixes exactly one owner among allowed_categories; tags never add quota credit.",
+  "categories": [
+    {
+      "id": "code",
+      "target_tokens": 440000000,
+      "subcategories": [
+        "blender_python_procedural",
+        "c_cpp",
+        "cpp",
+        "csharp",
+        "curated_subset",
+        "dart_game",
+        "go",
+        "java",
+        "javascript",
+        "javascript_typescript",
+        "python",
+        "rust"
+      ],
+      "non_3d_target_tokens": 430000000
+    },
+    {
+      "id": "csharp_gamedev",
+      "target_tokens": 260000000,
+      "subcategories": [
+        "animation_ik_fk_retarget",
+        "build_debug",
+        "csharp",
+        "curated_subset",
+        "engine_architecture",
+        "general_csharp_dotnet",
+        "modeling_workflows",
+        "networking",
+        "oss_game_framework",
+        "rigging_skeleton_skin_weights",
+        "unity_authored",
+        "unity_ecosystem",
+        "unity_ecosystem_third_party"
+      ],
+      "non_3d_target_tokens": 210000000
+    },
+    {
+      "id": "software_engineering",
+      "target_tokens": 240000000,
+      "subcategories": [
+        "build_integration",
+        "curated_subset",
+        "debugging",
+        "performance_budgets",
+        "serialization_state",
+        "specification_verification",
+        "testing"
+      ],
+      "non_3d_target_tokens": 240000000
+    },
+    {
+      "id": "general_english",
+      "target_tokens": 240000000,
+      "subcategories": [
+        "curated_subset",
+        "encyclopedia",
+        "explanatory",
+        "long_form",
+        "mixed",
+        "public_domain",
+        "reference_prose",
+        "wikibooks (the only wiki observed in shard 0)"
+      ],
+      "non_3d_target_tokens": 240000000
+    },
+    {
+      "id": "educational_reference",
+      "target_tokens": 160000000,
+      "subcategories": [
+        "curated_subset",
+        "handbooks",
+        "instructional_prose",
+        "reference"
+      ],
+      "non_3d_target_tokens": 160000000
+    },
+    {
+      "id": "nepali",
+      "target_tokens": 160000000,
+      "subcategories": [
+        "curated_subset",
+        "native_nepali",
+        "natural_codeswitch",
+        "news_gov_books",
+        "other_wikimedia",
+        "parallel",
+        "romanized_limited",
+        "technical_transfer",
+        "web_crawl",
+        "wikipedia"
+      ],
+      "non_3d_target_tokens": 160000000
+    },
+    {
+      "id": "software_docs",
+      "target_tokens": 120000000,
+      "subcategories": [
+        "api",
+        "api_design",
+        "asset_interchange",
+        "build",
+        "containers",
+        "curated_subset",
+        "dotnet",
+        "engineering_practices",
+        "kubernetes",
+        "python",
+        "rust",
+        "specifications",
+        "web_platform"
+      ],
+      "non_3d_target_tokens": 110000000
+    },
+    {
+      "id": "graphics",
+      "target_tokens": 100000000,
+      "subcategories": [
+        "curated_subset",
+        "gpu",
+        "lod_optimization",
+        "shaders",
+        "uv_material_pbr"
+      ],
+      "non_3d_target_tokens": 85000000
+    },
+    {
+      "id": "math_science",
+      "target_tokens": 80000000,
+      "subcategories": [
+        "curated_subset",
+        "geometry",
+        "math",
+        "physics",
+        "topology_mesh_retopology"
+      ],
+      "non_3d_target_tokens": 65000000
+    },
+    {
+      "id": "algorithms",
+      "target_tokens": 60000000,
+      "subcategories": [
+        "algorithms",
+        "complexity",
+        "curated_subset",
+        "data_structures"
+      ],
+      "non_3d_target_tokens": 60000000
+    },
+    {
+      "id": "linux_systems",
+      "target_tokens": 40000000,
+      "subcategories": [
+        "build_tools",
+        "cli",
+        "containers",
+        "curated_subset",
+        "linux"
+      ],
+      "non_3d_target_tokens": 40000000
+    },
+    {
+      "id": "security",
+      "target_tokens": 20000000,
+      "subcategories": [
+        "curated_subset",
+        "defensive_analysis",
+        "secure_development",
+        "supply_chain"
+      ],
+      "non_3d_target_tokens": 20000000
+    },
+    {
+      "id": "instruction",
+      "target_tokens": 30000000,
+      "subcategories": [
+        "curated_subset",
+        "natural_instructions",
+        "qa"
+      ],
+      "non_3d_target_tokens": 30000000
+    },
+    {
+      "id": "reasoning",
+      "target_tokens": 20000000,
+      "subcategories": [
+        "curated_subset",
+        "debug_reasoning",
+        "math_reasoning"
+      ],
+      "non_3d_target_tokens": 20000000
+    },
+    {
+      "id": "tool_use",
+      "target_tokens": 10000000,
+      "subcategories": [
+        "curated_subset",
+        "game_dev_tools",
+        "owned_tool_traces"
+      ],
+      "non_3d_target_tokens": 10000000
+    },
+    {
+      "id": "conversation",
+      "target_tokens": 20000000,
+      "subcategories": [
+        "clarification",
+        "curated_subset",
+        "dialogue"
+      ],
+      "non_3d_target_tokens": 20000000
+    }
+  ],
+  "checkpoints": [
+    100000000,
+    250000000,
+    500000000,
+    1000000000,
+    1500000000,
+    2000000000
+  ],
+  "group_caps": {
+    "repository_group": {
+      "gh-burntsushi-ripgrep": 44000000,
+      "gh-encode-httpx": 44000000,
+      "gh-expressjs-express": 44000000,
+      "gh-flame-engine-flame": 44000000,
+      "gh-gin-gonic-gin": 44000000,
+      "gh-google-guava": 44000000,
+      "gh-lodash-lodash": 44000000,
+      "gh-nlohmann-json": 44000000,
+      "gh-pallets-flask": 44000000,
+      "gh-psf-requests": 44000000,
+      "gh-serde-rs-serde": 44000000,
+      "gh-spf13-cobra": 44000000,
+      "gh-tokio-rs-tokio": 44000000,
+      "gh-cysharp-unitask": 26000000,
+      "gh-dotnet-roslyn": 26000000,
+      "gh-dotnet-runtime": 26000000,
+      "gh-fna-xna-fna": 26000000,
+      "gh-messagepack-csharp": 26000000,
+      "gh-mirrornetworking-mirror": 26000000,
+      "gh-monogame-monogame": 26000000,
+      "gh-neuecc-unirx": 26000000,
+      "gh-stride3d-stride": 26000000,
+      "gh-unity-csreference": 0,
+      "gh-unity-ml-agents": 26000000,
+      "unity-asset-store-academy": 0,
+      "unity-docs": 0,
+      "unity-learn": 0,
+      "common-corpus": 24000000,
+      "cp-other-subsets": 24000000,
+      "cp-wikimedia-filtered": 24000000,
+      "hf-wikipedia-en-20231101": 24000000,
+      "public-domain-books": 24000000,
+      "docker-docs": 12000000,
+      "gh-dotnet-docs": 12000000,
+      "gh-google-eng-practices": 12000000,
+      "gh-kubernetes-website": 12000000,
+      "gh-microsoft-api-guidelines": 12000000,
+      "gh-rust-lang-book": 12000000,
+      "gh-rust-lang-reference": 12000000,
+      "gh-rust-lang-rust-by-example": 12000000,
+      "gh-rust-lang-rustc-dev-guide": 12000000,
+      "mdn-content": 12000000,
+      "candidate-cpython-selected-core": 44000000,
+      "hf-wikipedia-ne-20231101": 16000000,
+      "ne-news-gov-books": 16000000,
+      "ne-wikimedia-other-projects": 16000000,
+      "web-crawl-nepali": 16000000,
+      "natural-codeswitch-none": 16000000,
+      "synthetic-codeswitch-diagnostic": 0,
+      "candidate-django": 44000000,
+      "candidate-go-core-and-toolchain": 44000000,
+      "candidate-rust-core-std-compiler": 44000000,
+      "candidate-llvm-clang-libc": 44000000,
+      "candidate-typescript": 44000000,
+      "candidate-node-js-core": 44000000,
+      "candidate-react": 44000000,
+      "candidate-godot-core": 44000000,
+      "candidate-gltf-blender-io": 44000000,
+      "candidate-opensubdiv": 44000000,
+      "candidate-meshoptimizer": 44000000,
+      "candidate-assimp-code-docs": 44000000,
+      "candidate-o3de-core": 26000000,
+      "candidate-sdl": 26000000,
+      "candidate-gamenetworkingsockets": 26000000,
+      "candidate-enet": 26000000,
+      "candidate-unreal-compatible-open-c": 26000000,
+      "candidate-engine-architecture-game-ai-editor-networking": 26000000,
+      "candidate-individually-cleared-unity-open-repos": 26000000,
+      "candidate-khronos-vulkan-docs": 10000000,
+      "candidate-khronos-vulkan-samples": 10000000,
+      "candidate-spirv-tools": 10000000,
+      "candidate-spirv-headers": 10000000,
+      "candidate-glsl": 10000000,
+      "candidate-glslang": 10000000,
+      "candidate-wgpu": 10000000,
+      "candidate-dawn-tint": 10000000,
+      "candidate-filament": 10000000,
+      "candidate-bgfx": 10000000,
+      "candidate-angle": 10000000,
+      "candidate-vulkan-validation-layers": 10000000,
+      "candidate-vulkan-memory-allocator": 10000000,
+      "candidate-the-forge": 10000000,
+      "candidate-raylib-shaders": 10000000,
+      "candidate-mesa-selected-files": 10000000,
+      "candidate-thealgorithms-python": 6000000,
+      "candidate-thealgorithms-c-code": 6000000,
+      "candidate-williamfiset-algorithms": 6000000,
+      "candidate-keon-algorithms": 6000000,
+      "candidate-javascript-algorithms": 6000000,
+      "candidate-cp-algorithms": 6000000,
+      "candidate-jeff-erickson-algorithms": 6000000,
+      "candidate-networkx-algorithms": 6000000,
+      "candidate-boost-algorithms-graph-containers": 6000000,
+      "candidate-petgraph": 6000000,
+      "candidate-apache-commons-collections": 6000000,
+      "candidate-glm": 8000000,
+      "candidate-joml": 8000000,
+      "candidate-eigen": 8000000,
+      "candidate-nalgebra": 8000000,
+      "candidate-glam": 8000000,
+      "candidate-numpy-math": 8000000,
+      "candidate-scipy-numerical": 8000000,
+      "candidate-sympy": 8000000,
+      "candidate-libigl": 8000000,
+      "candidate-box2d": 8000000,
+      "candidate-bullet-physics-core": 8000000,
+      "candidate-box2d-lite": 8000000,
+      "candidate-docker-cli": 4000000,
+      "candidate-podman": 4000000,
+      "candidate-cmake": 4000000,
+      "candidate-meson": 4000000,
+      "candidate-ninja": 4000000,
+      "candidate-systemd": 4000000,
+      "candidate-linux-kernel-selected-docs": 4000000,
+      "candidate-mitre-cwe": 2000000,
+      "candidate-openssf-secure-development": 2000000,
+      "candidate-owasp-cheat-sheet-series": 2000000,
+      "candidate-owasp-wstg": 2000000,
+      "candidate-google-oss-fuzz": 2000000,
+      "candidate-pip-audit": 2000000,
+      "candidate-openssf-supply-chain": 2000000,
+      "candidate-safe-cryptography-examples": 2000000,
+      "candidate-defensive-static-analysis": 2000000,
+      "candidate-oasst1": 3000000,
+      "candidate-dolly-15k": 3000000,
+      "candidate-natural-instructions-cleared-components": 3000000,
+      "candidate-flan-cleared-components": 3000000,
+      "candidate-math": 2000000,
+      "candidate-gsm8k": 2000000,
+      "candidate-selected-reasoning-tasks": 2000000,
+      "candidate-yug-owned-conversations": 2000000,
+      "candidate-toolbench-cleared-components": 1000000,
+      "candidate-bfcl-benchmark-only": 1000000,
+      "candidate-yug-owned-game-dev-debugging-tool-use": 10000000,
+      "candidate-fineweb-edu-high-score": 24000000,
+      "candidate-curated-explanatory-text": 24000000,
+      "candidate-wikibooks": 16000000,
+      "candidate-wikiversity": 16000000,
+      "candidate-nist-works": 16000000,
+      "candidate-nasa-government-works": 16000000,
+      "candidate-open-reference-handbooks": 16000000,
+      "candidate-ai4bharat-sangraha-nepali": 16000000,
+      "candidate-indiccorp-v2-nepali": 16000000,
+      "candidate-indictrans2-bpcc-cleared-components": 16000000,
+      "candidate-titung-nepali-english": 16000000,
+      "candidate-yug-owned-technical-nepali-english": 16000000,
+      "candidate-opentelemetry-docs": 12000000,
+      "candidate-prometheus-docs": 12000000,
+      "candidate-open-standards-explicit-reuse": 12000000,
+      "candidate-blender-manual": 12000000,
+      "candidate-khronos-gltf-specification": 12000000,
+      "candidate-openassetio": 12000000,
+      "candidate-curated-project-tests-debugging-build-reviews": 24000000,
+      "candidate-yug-owned-debugging-explanations": 24000000,
+      "excluded-proprietary-unreal-engine-bulk-source": 0,
+      "excluded-unknown-license-scraped-data": 0,
+      "excluded-random-social-media-scraping": 0,
+      "excluded-exploit-malware-payload-collections": 0,
+      "excluded-non-commercial-only-sources": 0,
+      "excluded-ai-training-prohibited-sources": 0,
+      "excluded-uncleared-vendored-third-party-content": 0,
+      "excluded-mit-ocw-default": 0,
+      "excluded-openstax-default": 0,
+      "excluded-ck-12-default": 0,
+      "excluded-microsoft-learn-broad-generic-terms-scrape": 0
+    },
+    "domain_group": {
+      "gh-burntsushi-ripgrep": 110000000,
+      "gh-encode-httpx": 110000000,
+      "gh-expressjs-express": 110000000,
+      "gh-flame-engine-flame": 110000000,
+      "gh-gin-gonic-gin": 110000000,
+      "gh-google-guava": 110000000,
+      "gh-lodash-lodash": 110000000,
+      "gh-nlohmann-json": 110000000,
+      "gh-pallets-flask": 110000000,
+      "gh-psf-requests": 110000000,
+      "gh-serde-rs-serde": 110000000,
+      "gh-spf13-cobra": 110000000,
+      "gh-tokio-rs-tokio": 110000000,
+      "gh-cysharp-unitask": 65000000,
+      "gh-dotnet-roslyn": 65000000,
+      "gh-dotnet-runtime": 65000000,
+      "gh-fna-xna-fna": 65000000,
+      "gh-messagepack-csharp": 65000000,
+      "gh-mirrornetworking-mirror": 65000000,
+      "gh-monogame-monogame": 65000000,
+      "gh-neuecc-unirx": 65000000,
+      "gh-stride3d-stride": 65000000,
+      "gh-unity-csreference": 0,
+      "gh-unity-ml-agents": 65000000,
+      "unity-asset-store-academy": 0,
+      "unity-docs": 0,
+      "unity-learn": 0,
+      "common-corpus": 60000000,
+      "cp-other-subsets": 60000000,
+      "wikimedia-origin": 60000000,
+      "public-domain-books": 60000000,
+      "docker-docs": 30000000,
+      "gh-dotnet-docs": 30000000,
+      "gh-google-eng-practices": 30000000,
+      "gh-kubernetes-website": 30000000,
+      "gh-microsoft-api-guidelines": 30000000,
+      "gh-rust-lang-book": 30000000,
+      "gh-rust-lang-reference": 30000000,
+      "gh-rust-lang-rust-by-example": 30000000,
+      "gh-rust-lang-rustc-dev-guide": 30000000,
+      "mdn-content": 30000000,
+      "candidate-cpython-selected-core": 110000000,
+      "ne-news-gov-books": 40000000,
+      "web-crawl-nepali": 40000000,
+      "natural-codeswitch-none": 40000000,
+      "synthetic-codeswitch-diagnostic": 0,
+      "candidate-django": 110000000,
+      "candidate-go-core-and-toolchain": 110000000,
+      "candidate-rust-core-std-compiler": 110000000,
+      "candidate-llvm-clang-libc": 110000000,
+      "candidate-typescript": 110000000,
+      "candidate-node-js-core": 110000000,
+      "candidate-react": 110000000,
+      "candidate-godot-core": 110000000,
+      "candidate-gltf-blender-io": 110000000,
+      "candidate-opensubdiv": 110000000,
+      "candidate-meshoptimizer": 110000000,
+      "candidate-assimp-code-docs": 110000000,
+      "candidate-o3de-core": 65000000,
+      "candidate-sdl": 65000000,
+      "candidate-gamenetworkingsockets": 65000000,
+      "candidate-enet": 65000000,
+      "candidate-unreal-compatible-open-c": 65000000,
+      "candidate-engine-architecture-game-ai-editor-networking": 65000000,
+      "candidate-individually-cleared-unity-open-repos": 65000000,
+      "candidate-khronos-vulkan-docs": 25000000,
+      "candidate-khronos-vulkan-samples": 25000000,
+      "candidate-spirv-tools": 25000000,
+      "candidate-spirv-headers": 25000000,
+      "candidate-glsl": 25000000,
+      "candidate-glslang": 25000000,
+      "candidate-wgpu": 25000000,
+      "candidate-dawn-tint": 25000000,
+      "candidate-filament": 25000000,
+      "candidate-bgfx": 25000000,
+      "candidate-angle": 25000000,
+      "candidate-vulkan-validation-layers": 25000000,
+      "candidate-vulkan-memory-allocator": 25000000,
+      "candidate-the-forge": 25000000,
+      "candidate-raylib-shaders": 25000000,
+      "candidate-mesa-selected-files": 25000000,
+      "candidate-thealgorithms-python": 15000000,
+      "candidate-thealgorithms-c-code": 15000000,
+      "candidate-williamfiset-algorithms": 15000000,
+      "candidate-keon-algorithms": 15000000,
+      "candidate-javascript-algorithms": 15000000,
+      "candidate-cp-algorithms": 15000000,
+      "candidate-jeff-erickson-algorithms": 15000000,
+      "candidate-networkx-algorithms": 15000000,
+      "candidate-boost-algorithms-graph-containers": 15000000,
+      "candidate-petgraph": 15000000,
+      "candidate-apache-commons-collections": 15000000,
+      "candidate-glm": 20000000,
+      "candidate-joml": 20000000,
+      "candidate-eigen": 20000000,
+      "candidate-nalgebra": 20000000,
+      "candidate-glam": 20000000,
+      "candidate-numpy-math": 20000000,
+      "candidate-scipy-numerical": 20000000,
+      "candidate-sympy": 20000000,
+      "candidate-libigl": 20000000,
+      "candidate-box2d": 20000000,
+      "candidate-bullet-physics-core": 20000000,
+      "candidate-box2d-lite": 20000000,
+      "candidate-docker-cli": 10000000,
+      "candidate-podman": 10000000,
+      "candidate-cmake": 10000000,
+      "candidate-meson": 10000000,
+      "candidate-ninja": 10000000,
+      "candidate-systemd": 10000000,
+      "candidate-linux-kernel-selected-docs": 10000000,
+      "candidate-mitre-cwe": 5000000,
+      "candidate-openssf-secure-development": 5000000,
+      "candidate-owasp-cheat-sheet-series": 5000000,
+      "candidate-owasp-wstg": 5000000,
+      "candidate-google-oss-fuzz": 5000000,
+      "candidate-pip-audit": 5000000,
+      "candidate-openssf-supply-chain": 5000000,
+      "candidate-safe-cryptography-examples": 5000000,
+      "candidate-defensive-static-analysis": 5000000,
+      "candidate-oasst1": 7500000,
+      "candidate-dolly-15k": 7500000,
+      "candidate-natural-instructions-cleared-components": 7500000,
+      "candidate-flan-cleared-components": 7500000,
+      "candidate-math": 5000000,
+      "candidate-gsm8k": 5000000,
+      "candidate-selected-reasoning-tasks": 5000000,
+      "candidate-yug-owned-conversations": 5000000,
+      "candidate-toolbench-cleared-components": 2500000,
+      "candidate-bfcl-benchmark-only": 2500000,
+      "candidate-yug-owned-game-dev-debugging-tool-use": 10000000,
+      "candidate-fineweb-edu-high-score": 60000000,
+      "candidate-curated-explanatory-text": 60000000,
+      "candidate-nist-works": 40000000,
+      "candidate-nasa-government-works": 40000000,
+      "candidate-open-reference-handbooks": 40000000,
+      "candidate-ai4bharat-sangraha-nepali": 40000000,
+      "candidate-indiccorp-v2-nepali": 40000000,
+      "candidate-indictrans2-bpcc-cleared-components": 40000000,
+      "candidate-titung-nepali-english": 40000000,
+      "candidate-yug-owned-technical-nepali-english": 40000000,
+      "candidate-opentelemetry-docs": 30000000,
+      "candidate-prometheus-docs": 30000000,
+      "candidate-open-standards-explicit-reuse": 30000000,
+      "candidate-blender-manual": 30000000,
+      "candidate-khronos-gltf-specification": 30000000,
+      "candidate-openassetio": 30000000,
+      "candidate-curated-project-tests-debugging-build-reviews": 60000000,
+      "candidate-yug-owned-debugging-explanations": 60000000,
+      "excluded-proprietary-unreal-engine-bulk-source": 0,
+      "excluded-unknown-license-scraped-data": 0,
+      "excluded-random-social-media-scraping": 0,
+      "excluded-exploit-malware-payload-collections": 0,
+      "excluded-non-commercial-only-sources": 0,
+      "excluded-ai-training-prohibited-sources": 0,
+      "excluded-uncleared-vendored-third-party-content": 0,
+      "excluded-mit-ocw-default": 0,
+      "excluded-openstax-default": 0,
+      "excluded-ck-12-default": 0,
+      "excluded-microsoft-learn-broad-generic-terms-scrape": 0
+    }
+  },
+  "cap_policy": "Source 10% of owner target; repository max member source cap; domain max member 25% owner target. YUG-owned tool-use has a documented full-bucket cap exception to permit required majority. Planning ceilings, not yield. Resolve canonical origins before clearance.",
+  "three_d": {
+    "total_tokens": 100000000,
+    "topics": [
+      {
+        "id": "modeling_workflows",
+        "owner": "csharp_gamedev",
+        "target_tokens": 20000000
+      },
+      {
+        "id": "topology_mesh_retopology",
+        "owner": "math_science",
+        "target_tokens": 15000000
+      },
+      {
+        "id": "rigging_skeleton_skin_weights",
+        "owner": "csharp_gamedev",
+        "target_tokens": 15000000
+      },
+      {
+        "id": "animation_ik_fk_retarget",
+        "owner": "csharp_gamedev",
+        "target_tokens": 15000000
+      },
+      {
+        "id": "uv_material_pbr",
+        "owner": "graphics",
+        "target_tokens": 10000000
+      },
+      {
+        "id": "blender_python_procedural",
+        "owner": "code",
+        "target_tokens": 10000000
+      },
+      {
+        "id": "asset_interchange",
+        "owner": "software_docs",
+        "target_tokens": 10000000
+      },
+      {
+        "id": "lod_optimization",
+        "owner": "graphics",
+        "target_tokens": 5000000
+      }
+    ],
+    "form_targets": {
+      "authoritative": 30000000,
+      "implementation": 25000000,
+      "workflow": 20000000,
+      "troubleshooting": 10000000,
+      "procedural_tasks": 10000000,
+      "instruction_qa": 5000000
+    },
+    "accounting": "One primary topic and form per document; two views of the same 100M, never additive.",
+    "purpose": "education reasoning scripting troubleshooting future tool-control; not native 3D generation"
+  },
+  "accounting": {
+    "one_budget_owner": true,
+    "validation_counts_toward_2b": false,
+    "unit": "frozen-tokenizer clean accepted unique training tokens; raw downloads, validation and repeated epochs do not fill quotas",
+    "tags": [
+      "domain",
+      "language",
+      "format",
+      "difficulty",
+      "3d_topic",
+      "3d_form"
+    ],
+    "boundary": "whole documents; no silent truncation or duplication to force exact quota; residual deficits must be reported",
+    "tokenization": "per-document-concat-no-separators-v1"
+  },
+  "fallback": {
+    "cross_category_transfer": "forbidden",
+    "within_category": "Only cleared sources of same owner and coverage need, under all caps; journal before acquisition.",
+    "unavailable": "Keep deficit; no repeated documents, synthetic filler, auto-promotion or cap expansion."
+  },
+  "source_policy": {
+    "preferred": [
+      "MIT",
+      "Apache-2.0",
+      "BSD",
+      "CC0",
+      "CC BY"
+    ],
+    "conditional": [
+      "CC BY-SA",
+      "MPL",
+      "LLVM exception",
+      "mixed licenses",
+      "government works",
+      "other historically allowed licenses"
+    ],
+    "default": "REVIEW; status alone is not acquisition clearance",
+    "exclusion_rules": [
+      "proprietary Unreal Engine bulk source",
+      "unknown-license scraped data",
+      "random social-media scraping",
+      "exploit malware payload collections",
+      "non-commercial-only sources",
+      "AI-training-prohibited sources",
+      "uncleared vendored third-party content",
+      "MIT OCW default",
+      "OpenStax default",
+      "CK-12 default",
+      "Microsoft Learn broad generic-terms scrape"
+    ],
+    "tool_use_ownership": "YUG-owned game-dev/debugging/tool examples must be a strict majority of clean tool-use training tokens at release",
+    "benchmark_contamination": "BFCL validation-only by default; benchmark/task upstream groups excluded from training"
+  },
+  "filters": {
+    "deny_paths": [
+      "**/vendor/**",
+      "**/node_modules/**",
+      "**/third_party/**",
+      "**/ThirdParty/**",
+      "**/target/**",
+      "**/*.min.js",
+      "**/*.min.css",
+      "**/package-lock.json",
+      "**/yarn.lock",
+      "**/Cargo.lock",
+      "**/go.sum",
+      "**/*.pb.go",
+      "**/*_pb2.py",
+      "**/*_pb2_grpc.py",
+      "**/*.g.cs",
+      "**/*.g.i.cs",
+      "**/*.Designer.cs",
+      "**/*.generated.*",
+      "**/*.Generated.*",
+      "**/.git/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/*.dll",
+      "**/*.exe",
+      "**/*.bin",
+      "**/*.fbx",
+      "**/*.blend",
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.glb",
+      "**/*.obj"
+    ],
+    "generated_markers": [
+      "Code generated",
+      "DO NOT EDIT",
+      "<auto-generated",
+      "@generated",
+      "This file was generated"
+    ],
+    "manual_quality": [
+      "boilerplate",
+      "generated enum dumps",
+      "SEO",
+      "AI-generated junk",
+      "outdated workflow",
+      "irrelevant assets",
+      "duplicate examples"
+    ],
+    "quality_proof": "Retain reviewed samples and reasons; heuristics do not prove authorship or detect all junk."
+  },
+  "dedup": {
+    "exact": "Global normalized UTF-8 SHA256 across sources/categories/splits; one canonical owner.",
+    "near": "Global lexical 5-word shingles; flag Jaccard >=0.5 or containment >=0.8; review clusters and shared boilerplate before release.",
+    "heldout": "Source origins and duplicate clusters cannot cross splits; exclude prior held-out fit/transfer/evaluation material from train."
+  },
+  "split": {
+    "unit": "canonical source group plus duplicate clusters",
+    "seed": 1234,
+    "validation_fraction": null,
+    "state": "Explicit assignment before acquisition; owner has not specified production validation budget. Do not silently copy mini-corpus 20%."
+  },
+  "resume": {
+    "acquisition": "Immutable request + cursor + completed payload SHA256/size; verify before retry; no mutable HEAD.",
+    "preparation": "Existing prepare_stream is not resumable on incomplete directories.",
+    "tokenization": "Existing build_token_shards verifies request identity, committed spool and manifest-last publication."
+  },
+  "checkpoint_metrics": [
+    "accepted_clean_train_tokens",
+    "raw_tokens",
+    "rejected_tokens",
+    "category_progress",
+    "source_progress",
+    "duplication_rate",
+    "license_status",
+    "filter_counts",
+    "source_diversity",
+    "tokenizer_statistics",
+    "validation_split_status",
+    "remaining_deficits"
+  ],
+  "runtime_obligations": [
+    "Clear immutable source/file manifests, canonical origins and per-path rights; sample acceptance is not production clearance.",
+    "Assign source-disjoint validation groups and separate budget; prepare_stream currently splits documents.",
+    "Implement resumable acquisition/preparation coordinator with global disk-backed ownership/dedup and quota enforcement; token-shard resume exists.",
+    "Implement and size global near-duplicate/boilerplate index before production release; current prepare_stream does exact dedup only.",
+    "Route expanded categories through the existing structure-preserving normalizer explicitly; legacy normalize_document recognizes legacy categories only.",
+    "Prove cleared natural 3D workflow/rigging/animation/troubleshooting yield, not documentation volume alone."
+  ],
+  "evidence": [
+    {
+      "path": "artifacts/rep_corpus_10m_v1/01_source_policy.json",
+      "sha256": "sha256:bf15648f3d20013653b7cabcc83f541b4a23ad22a048acdbbdb5ac07f26704d1"
+    },
+    {
+      "path": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json",
+      "sha256": "sha256:efe647647dae64f1f984554c9536d381537c769c9c11ef5da277b090fe5d6432"
+    },
+    {
+      "path": "artifacts/tokenizer_fit_sample_gate_v1/source_registry.json",
+      "sha256": "sha256:d25b802d213d61de9feb32e717712e81df9205599dc2c9951fa061a9f51f16e9"
+    },
+    {
+      "path": "artifacts/tokenizer_fit_sample_gate_v1/acquisition.json",
+      "sha256": "sha256:69e3fdf1998f52d386b199841d165bbfaccd85ca2675542d2d9a5f995014a1cb"
+    },
+    {
+      "path": "artifacts/model_initialization_gate_v1/model_config.json",
+      "sha256": "sha256:ab615c9ea66c5c49fed8b1f7cfe8964afc30441c559c624756b32ef30149fa69"
+    },
+    {
+      "path": "artifacts/model_initialization_gate_v1/freeze.json",
+      "sha256": "sha256:2813ecb9e0807e8ea27caa7efb4191876e69dedd8eea7a5991bfa67f3639b8d6"
+    },
+    {
+      "path": "artifacts/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json",
+      "sha256": "sha256:5d20407935f25f6ddf21f8ef370d06ecf14c827f67a819adc4d71ca2558fbc86"
+    },
+    {
+      "path": "training/production_corpus.py",
+      "sha256": "sha256:b137424817dcf04126f36ec3a7450ed6157391b8e843050da8368280898ba2ac"
+    },
+    {
+      "path": "training/token_shards.py",
+      "sha256": "sha256:4ce2ad1bd722d3797c91c5539285f09ebde1ec9d34bda7b643d25f916e058eec"
+    },
+    {
+      "path": "training/corpus_prep.py",
+      "sha256": "sha256:85895150e0ac38c819d8463a3c8c7d541339b99e33972ff8e76664068a1eba5c"
+    },
+    {
+      "path": "training/experiments/representative_mini_corpus.py",
+      "sha256": "sha256:e7447b1f52ec60a53794e3fe89708a9b26207852019fe4320ad6e5fa2f96de78"
+    },
+    {
+      "path": "training/experiments/rep_corpus_policy.py",
+      "sha256": "sha256:68e047ebd63c09cfdbd0aaac4bd3a5df98427c7ac6c1fb8b425d4dbac2c461f9"
+    },
+    {
+      "path": "training/experiments/rep_corpus_sources.py",
+      "sha256": "sha256:63aa6bb153e7ad9140ac1c742b872683af4fdace05927e025f0b2a9583dd7621"
+    },
+    {
+      "path": "training/checkpoint.py",
+      "sha256": "sha256:4408510cca1f010247440e354a51f86d9dc857c417b325300402f1f5b0d257ea"
+    },
+    {
+      "path": "training/loss.py",
+      "sha256": "sha256:0e4858969c2217ec973db89fa021ba17ad0fe97e367708924bcec7827dc16909"
+    },
+    {
+      "path": "training/loop.py",
+      "sha256": "sha256:559adfe12883d53131635a58970d9b4b3e7d6efce9596b384f9f95d040e7364f"
+    },
+    {
+      "path": "training/evaluate.py",
+      "sha256": "sha256:2f024e8aacb25306e6676f1f41cedac53387cf81044dc5a2499bfb14bdf42c1c"
+    },
+    {
+      "path": "yug/native/model.py",
+      "sha256": "sha256:e4071a7960166b4978e1c6d02ee234c633f31e2b87fe71f2bfcc46b5310db3fe"
+    },
+    {
+      "path": "yug/native/config.py",
+      "sha256": "sha256:a17ab8285e1ba2daefb385301ac093c24ebc32c5f396c85206b21578c85c508a"
+    },
+    {
+      "path": "yug/tokenizer/bpe.py",
+      "sha256": "sha256:0d93928c81db7e986a6be9d70dc404d00230802db73535003b0646850969a879"
+    }
+  ],
+  "training_readiness": "CLOSED per latest owner instruction; external T4 evidence not re-adjudicated here",
+  "acquisition_started": false,
+  "training_authorized": false,
+  "identity": "sha256:c7f63e99258825236700b8c1ec26f9b26fc7c6892317db6f435e3458d9a166ef"
+}

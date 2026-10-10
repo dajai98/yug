@@ -1,0 +1,3272 @@
+===== FILE: yug\native\config.py =====
+"""YUG native model configuration.
+
+This module describes a model's architecture as data -- it does NOT
+implement any of the architecture (no layers, attention, embeddings,
+forward pass; that is NB-04/NB-05). Its job is:
+
+1. Give every architectural knob a named, validated, serializable field
+   (:class:`ModelConfig`).
+2. Bind a config to a specific tokenizer via ``tokenizer_identity``, so
+   a future checkpoint can detect a model/tokenizer mismatch (NB-1x).
+3. Estimate parameter count from the config alone, deterministically,
+   under explicitly documented architectural assumptions (see
+   :func:`estimate_parameter_count`) -- this is arithmetic on the
+   config, not a measurement of real weights (none exist yet).
+
+No field here freezes a production hyperparameter choice. Values used
+in tests/examples are illustrative, not authoritative -- see
+``docs/architecture/NATIVE_BRAIN_ARCHITECTURE.md`` Open Decisions for
+what remains genuinely undecided.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
+from yug.native.errors import ModelConfigSerializationError, ModelConfigValidationError
+
+_CONFIG_FORMAT_VERSION = "1"
+_ARCHITECTURE = "yug_decoder_transformer"
+
+_VALID_NORMALIZATION = frozenset({"layernorm", "rmsnorm"})
+_VALID_POSITIONAL_ENCODING = frozenset({"rope", "learned", "none"})
+_VALID_ACTIVATION = frozenset({"gelu", "relu", "silu", "swiglu"})
+
+# Matches the identity format produced by yug.tokenizer.ByteLevelBpeTokenizer
+# ("sha256:" + 64 hex chars). This is a format check only -- verifying that
+# the referenced tokenizer actually exists/matches is a future checkpoint-
+# loading concern (NB-12), out of scope here.
+_IDENTITY_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+
+
+@dataclass(frozen=True)
+class ModelConfig:
+    """Describes a YUG native model's architecture, without implementing it.
+
+    Every field is independently justified in the accompanying NB-03
+    report (table: field / purpose / checkpoint-critical?). Nothing
+    here is a hardcoded production choice -- construct via
+    :meth:`from_tokenizer` or the constructor directly, always
+    supplying real values, never relying on a "default architecture."
+    """
+
+    vocab_size: int
+    tokenizer_identity: str
+    hidden_size: int
+    num_layers: int
+    num_heads: int
+    ffn_size: int
+    context_length: int
+    dropout: float = 0.0
+    normalization: str = "rmsnorm"
+    positional_encoding: str = "rope"
+    activation: str = "silu"
+    bias: bool = False
+    tie_embeddings: bool = True
+    architecture: str = _ARCHITECTURE
+
+    # -- construction ---------------------------------------------------
+
+    @classmethod
+    def from_tokenizer(cls, tokenizer, **architecture_kwargs) -> "ModelConfig":
+        """Build a config bound to a real, already-trained tokenizer.
+
+        Pulls ``vocab_size`` and ``tokenizer_identity`` directly from
+        the tokenizer instance (must expose ``.vocab_size`` and
+        ``.identity``, as ``yug.tokenizer.ByteLevelBpeTokenizer`` does)
+        rather than requiring the caller to copy them by hand -- this
+        is the mechanism that prevents silently inventing a vocab size
+        disconnected from the tokenizer actually used.
+
+        All other architecture fields must be supplied explicitly via
+        ``architecture_kwargs`` (e.g. ``hidden_size=256, num_layers=6,
+        ...``) -- there is no implicit default architecture.
+        """
+        return cls(
+            vocab_size=tokenizer.vocab_size,
+            tokenizer_identity=tokenizer.identity,
+            **architecture_kwargs,
+        )
+
+    def __post_init__(self) -> None:
+        validate(self)
+
+    # -- identity ---------------------------------------------------------
+
+    @property
+    def identity(self) -> str:
+        """A stable content hash over this config's semantic fields.
+
+        Computed the same way as
+        ``yug.tokenizer.ByteLevelBpeTokenizer.identity``: ``"sha256:" +``
+        hexdigest of canonical (sorted-key, compact) JSON. Excludes
+        nothing except the serialization format version (analogous to
+        the tokenizer's own hash excluding
+        ``yug_tokenizer_format_version``) -- every architectural field,
+        including ``tokenizer_identity``, contributes, since changing
+        any of them changes what checkpoint this config is compatible
+        with.
+        """
+        return _compute_identity(self._semantic_payload())
+
+    def _semantic_payload(self) -> dict:
+        payload = asdict(self)
+        return payload
+
+    # -- serialization ------------------------------------------------
+
+    def to_dict(self) -> dict:
+        data = self._semantic_payload()
+        data["yug_model_config_format_version"] = _CONFIG_FORMAT_VERSION
+        data["identity"] = self.identity
+        return data
+
+    def save(self, path: str | Path) -> None:
+        """Serialize to a JSON file (never pickle, matching the same
+        reasoning as the tokenizer's and the checkpoint proposal's
+        rejection of pickle: it can execute arbitrary code on load)."""
+        Path(path).write_text(json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "ModelConfig":
+        """Load a config previously written by :meth:`save`.
+
+        Raises:
+            ModelConfigSerializationError: file missing, invalid JSON,
+                not an object, wrong/missing format version, missing a
+                required field, or its stored identity hash does not
+                match a hash recomputed from its own contents.
+        """
+        file_path = Path(path)
+        try:
+            raw_text = file_path.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise ModelConfigSerializationError(f"Model config file not found: {file_path}") from exc
+
+        try:
+            data = json.loads(raw_text)
+        except json.JSONDecodeError as exc:
+            raise ModelConfigSerializationError(
+                f"Invalid JSON in model config file {file_path}: {exc}"
+            ) from exc
+
+        if not isinstance(data, dict):
+            raise ModelConfigSerializationError(f"Model config file {file_path} must contain a JSON object")
+
+        version = data.get("yug_model_config_format_version")
+        if version != _CONFIG_FORMAT_VERSION:
+            raise ModelConfigSerializationError(
+                f"Unsupported model config format version {version!r} in {file_path}; "
+                f"expected {_CONFIG_FORMAT_VERSION!r}."
+            )
+
+        field_names = {f for f in cls.__dataclass_fields__}
+        missing = field_names - data.keys()
+        if missing:
+            raise ModelConfigSerializationError(
+                f"Model config file {file_path} is missing required field(s): {sorted(missing)}"
+            )
+
+        stored_identity = data.get("identity")
+        if stored_identity is None:
+            raise ModelConfigSerializationError(
+                f"Model config file {file_path} is missing required field: 'identity'"
+            )
+
+        try:
+            instance = cls(**{name: data[name] for name in field_names})
+        except ModelConfigValidationError:
+            raise
+        except (TypeError, ValueError) as exc:
+            raise ModelConfigSerializationError(
+                f"Malformed model config field(s) in {file_path}: {exc}"
+            ) from exc
+
+        if instance.identity != stored_identity:
+            raise ModelConfigSerializationError(
+                f"Identity hash mismatch in {file_path}: file claims "
+                f"{stored_identity!r} but recomputes to {instance.identity!r}. "
+                f"The file may be corrupted or hand-edited."
+            )
+
+        return instance
+
+
+def _compute_identity(payload: dict) -> str:
+    import hashlib
+
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
+
+
+def validate(config: ModelConfig) -> None:
+    """Validate a :class:`ModelConfig`'s fields and field combinations.
+
+    Called automatically from ``__post_init__`` -- a :class:`ModelConfig`
+    can never exist in an invalid state; this function is also exposed
+    directly for callers who want to validate a config assembled some
+    other way (e.g. after mutation via ``dataclasses.replace``).
+
+    Raises:
+        ModelConfigValidationError: on the first invariant violated.
+    """
+    if config.architecture != _ARCHITECTURE:
+        raise ModelConfigValidationError(
+            f"architecture must be {_ARCHITECTURE!r}, got {config.architecture!r}"
+        )
+
+    if not isinstance(config.vocab_size, int) or config.vocab_size <= 0:
+        raise ModelConfigValidationError(f"vocab_size must be a positive integer, got {config.vocab_size!r}")
+
+    if not isinstance(config.tokenizer_identity, str) or not _IDENTITY_PATTERN.match(config.tokenizer_identity):
+        raise ModelConfigValidationError(
+            f"tokenizer_identity must look like 'sha256:<64 hex chars>' "
+            f"(the identity format produced by ByteLevelBpeTokenizer), "
+            f"got {config.tokenizer_identity!r}"
+        )
+
+    if not isinstance(config.hidden_size, int) or config.hidden_size <= 0:
+        raise ModelConfigValidationError(f"hidden_size must be a positive integer, got {config.hidden_size!r}")
+
+    if not isinstance(config.num_layers, int) or config.num_layers <= 0:
+        raise ModelConfigValidationError(f"num_layers must be a positive integer, got {config.num_layers!r}")
+
+    if not isinstance(config.num_heads, int) or config.num_heads <= 0:
+        raise ModelConfigValidationError(f"num_heads must be a positive integer, got {config.num_heads!r}")
+
+    if config.hidden_size % config.num_heads != 0:
+        raise ModelConfigValidationError(
+            f"hidden_size ({config.hidden_size}) must be divisible by "
+            f"num_heads ({config.num_heads})"
+        )
+
+    if not isinstance(config.ffn_size, int) or config.ffn_size <= 0:
+        raise ModelConfigValidationError(f"ffn_size must be a positive integer, got {config.ffn_size!r}")
+
+    if not isinstance(config.context_length, int) or config.context_length <= 0:
+        raise ModelConfigValidationError(
+            f"context_length must be a positive integer, got {config.context_length!r}"
+        )
+
+    if not isinstance(config.dropout, (int, float)) or not (0.0 <= config.dropout < 1.0):
+        raise ModelConfigValidationError(f"dropout must be in [0, 1), got {config.dropout!r}")
+
+    if config.normalization not in _VALID_NORMALIZATION:
+        raise ModelConfigValidationError(
+            f"normalization must be one of {sorted(_VALID_NORMALIZATION)}, got {config.normalization!r}"
+        )
+
+    if config.positional_encoding not in _VALID_POSITIONAL_ENCODING:
+        raise ModelConfigValidationError(
+            f"positional_encoding must be one of {sorted(_VALID_POSITIONAL_ENCODING)}, "
+            f"got {config.positional_encoding!r}"
+        )
+
+    if config.activation not in _VALID_ACTIVATION:
+        raise ModelConfigValidationError(
+            f"activation must be one of {sorted(_VALID_ACTIVATION)}, got {config.activation!r}"
+        )
+
+    if not isinstance(config.bias, bool):
+        raise ModelConfigValidationError(f"bias must be a bool, got {config.bias!r}")
+
+    if not isinstance(config.tie_embeddings, bool):
+        raise ModelConfigValidationError(f"tie_embeddings must be a bool, got {config.tie_embeddings!r}")
+
+
+@dataclass(frozen=True)
+class ParameterEstimate:
+    """Result of :func:`estimate_parameter_count`.
+
+    ``total`` and every entry in ``breakdown`` are exact arithmetic
+    given ``basis`` (the stated architectural assumptions) -- they are
+    not a measurement of real weights, since no architecture
+    implementation exists yet (NB-04/05). Whether ``basis`` matches
+    what NB-04/05 eventually implement is not yet knowable; treat
+    ``total`` as [EXACT given basis] / [ESTIMATE relative to the real
+    future implementation], not as a verified parameter count.
+    """
+
+    total: int
+    breakdown: dict
+    basis: str
+
+
+def estimate_parameter_count(config: ModelConfig) -> ParameterEstimate:
+    """Compute parameter count from ``config`` alone, deterministically.
+
+    Assumptions (the "basis" -- see :class:`ParameterEstimate`), all
+    standard for a pre-norm decoder-only Transformer:
+
+    - Token embedding: ``vocab_size x hidden_size``.
+    - Positional embedding: ``context_length x hidden_size`` if
+      ``positional_encoding == "learned"``, else 0 (RoPE and "none"
+      both add zero learned positional parameters).
+    - Per layer, attention: 4 projections (Q, K, V, O), each
+      ``hidden_size x hidden_size``, i.e. ``4 * hidden_size**2``
+      (+ ``4 * hidden_size`` if ``bias``). Note: this total does NOT
+      depend on ``num_heads`` -- splitting the same
+      ``hidden_size``-dimensional projections into more or fewer heads
+      changes head width, not total parameter count. ``num_heads`` is
+      validated for shape compatibility, not used in this formula.
+    - Per layer, feed-forward: standard 2-projection FFN
+      (``activation`` in gelu/relu/silu) costs
+      ``2 * hidden_size * ffn_size`` (+ ``ffn_size + hidden_size`` if
+      ``bias``); a gated FFN (``activation == "swiglu"``) costs a third
+      projection, ``3 * hidden_size * ffn_size`` (+
+      ``2 * ffn_size + hidden_size`` if ``bias``).
+    - Per layer, normalization: 2 instances (pre-attention,
+      pre-feed-forward). ``rmsnorm`` costs ``hidden_size`` per instance
+      (scale only); ``layernorm`` costs ``2 * hidden_size`` per
+      instance (scale + shift).
+    - One final normalization instance before the output projection.
+    - Output projection: 0 if ``tie_embeddings`` (shares the token
+      embedding matrix), else ``hidden_size x vocab_size``
+      (+ ``vocab_size`` if ``bias``).
+    """
+    h = config.hidden_size
+    v = config.vocab_size
+    ffn = config.ffn_size
+    L = config.num_layers
+    bias = config.bias
+
+    embedding = v * h
+    positional = (config.context_length * h) if config.positional_encoding == "learned" else 0
+
+    attn_per_layer = 4 * h * h + (4 * h if bias else 0)
+
+    if config.activation == "swiglu":
+        ffn_per_layer = 3 * h * ffn + ((2 * ffn + h) if bias else 0)
+    else:
+        ffn_per_layer = 2 * h * ffn + ((ffn + h) if bias else 0)
+
+    norm_per_instance = h if config.normalization == "rmsnorm" else 2 * h
+    norm_per_layer = 2 * norm_per_instance
+
+    per_layer_total = attn_per_layer + ffn_per_layer + norm_per_layer
+    all_layers = L * per_layer_total
+
+    final_norm = norm_per_instance
+
+    if config.tie_embeddings:
+        output_projection = 0
+    else:
+        output_projection = h * v + (v if bias else 0)
+
+    total = embedding + positional + all_layers + final_norm + output_projection
+
+    breakdown = {
+        "embedding": embedding,
+        "positional": positional,
+        "attention_all_layers": L * attn_per_layer,
+        "ffn_all_layers": L * ffn_per_layer,
+        "normalization_all_layers_plus_final": L * norm_per_layer + final_norm,
+        "output_projection": output_projection,
+    }
+
+    basis = (
+        "Standard pre-norm decoder-only Transformer: 4 hidden x hidden "
+        "attention projections per layer (num_heads affects head width, "
+        "not parameter count); "
+        f"{'gated (swiglu) 3-projection' if config.activation == 'swiglu' else 'standard 2-projection'} "
+        "FFN; 2 normalization instances per layer + 1 final; "
+        f"{'tied' if config.tie_embeddings else 'untied'} input/output embeddings; "
+        f"{'with' if bias else 'without'} linear-layer biases; "
+        f"positional encoding = {config.positional_encoding!r} "
+        f"({'contributes learned params' if config.positional_encoding == 'learned' else 'contributes zero learned params'})."
+    )
+
+    return ParameterEstimate(total=total, breakdown=breakdown, basis=basis)
+
+===== FILE: yug\native\model.py =====
+"""YUG's own decoder-only, causal, pre-norm Transformer.
+
+Requires PyTorch (`pip install -e ".[native]"`) -- this is the one
+module in `yug.native` that does. See package `__init__.py` for why
+this is not re-exported there (keeps `yug.native.config` usable
+without PyTorch installed).
+
+Every architectural knob (layer count, hidden size, head count, FFN
+size, vocab size, context length, normalization variant, positional
+encoding, activation, bias, embedding tying) comes from a
+:class:`yug.native.config.ModelConfig` instance -- nothing here is
+hardcoded. The module structure is written to mirror
+``yug.native.config.estimate_parameter_count()``'s documented formula
+component-for-component, so the two can be directly compared (see the
+NB-04 report's "Parameter Count Verification" section).
+
+IMPORTANT VERIFICATION STATUS: this module was written without a
+PyTorch installation available in the development environment (no
+network access to install it). It has NOT been executed. Every design
+choice below is justified by careful manual derivation against the
+NB-03 parameter formula and standard, well-established Transformer
+mechanics -- but "carefully reasoned" is not "verified". Do not treat
+any claim about this module's runtime correctness as confirmed until
+it has actually been run (see NB-04 report).
+"""
+
+from __future__ import annotations
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from yug.native.config import ModelConfig
+from yug.native.errors import NativeError
+
+
+class RMSNorm(nn.Module):
+    """Root-mean-square normalization: a single learnable scale vector,
+    no bias -- contributes exactly ``hidden_size`` parameters, matching
+    the ``normalization == "rmsnorm"`` branch of
+    ``estimate_parameter_count()``.
+    """
+
+    def __init__(self, hidden_size: int, eps: float = 1e-6) -> None:
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(hidden_size))
+        self.eps = eps
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        variance = x.pow(2).mean(dim=-1, keepdim=True)
+        normalized = x * torch.rsqrt(variance + self.eps)
+        return normalized * self.weight
+
+
+def build_normalization(config: ModelConfig) -> nn.Module:
+    """Return the normalization module for ``config.normalization``.
+
+    ``"layernorm"`` uses ``nn.LayerNorm`` with its default
+    ``elementwise_affine=True`` (weight + bias), contributing
+    ``2 * hidden_size`` parameters -- matching the ``"layernorm"``
+    branch of ``estimate_parameter_count()`` exactly.
+    """
+    if config.normalization == "rmsnorm":
+        return RMSNorm(config.hidden_size)
+    return nn.LayerNorm(config.hidden_size)
+
+
+def build_rope_cache(seq_len: int, head_dim: int, base: float = 10000.0) -> tuple[torch.Tensor, torch.Tensor]:
+    """Precompute RoPE cos/sin tables for positions ``0..seq_len-1``.
+
+    Deterministic, parameter-free (no learned weights -- matches
+    ``estimate_parameter_count()``'s assumption that
+    ``positional_encoding == "rope"`` contributes zero learned
+    positional parameters). Requires an even ``head_dim`` (rotation
+    operates on adjacent coordinate pairs); this is validated at model
+    construction time, not here.
+    """
+    inv_freq = 1.0 / (base ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim))
+    positions = torch.arange(seq_len, dtype=torch.float32)
+    freqs = torch.outer(positions, inv_freq)  # [seq_len, head_dim // 2]
+    return freqs.cos(), freqs.sin()
+
+
+def apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
+    """Apply rotary position embedding to ``x``.
+
+    Args:
+        x: ``[batch, num_heads, seq_len, head_dim]``.
+        cos, sin: ``[seq_len, head_dim // 2]``, from :func:`build_rope_cache`.
+    """
+    x1 = x[..., 0::2]
+    x2 = x[..., 1::2]
+    cos_ = cos[None, None, :, :]
+    sin_ = sin[None, None, :, :]
+    rotated_1 = x1 * cos_ - x2 * sin_
+    rotated_2 = x1 * sin_ + x2 * cos_
+    return torch.stack([rotated_1, rotated_2], dim=-1).flatten(start_dim=-2)
+
+
+class CausalSelfAttention(nn.Module):
+    """Standard multi-head causal self-attention.
+
+    Four ``hidden_size x hidden_size`` projections (Q, K, V, O) --
+    parameter count is independent of ``num_heads`` (it only changes
+    how the ``hidden_size`` dimension is split into heads), matching
+    ``estimate_parameter_count()``'s documented assumption exactly.
+    Uses ``torch.nn.functional.scaled_dot_product_attention`` for the
+    actual masked-softmax-matmul mechanics: that primitive is exactly
+    the kind of mature numerical infrastructure PyTorch is authorized
+    to provide (Directive Section 5) -- the architecture (which
+    projections exist, how heads are formed, RoPE) is YUG's own.
+    """
+
+    def __init__(self, config: ModelConfig) -> None:
+        super().__init__()
+        if config.hidden_size % config.num_heads != 0:
+            # Already guaranteed by ModelConfig.validate(), re-asserted
+            # here since this module must not trust an un-validated
+            # config from elsewhere.
+            raise NativeError(
+                f"hidden_size ({config.hidden_size}) must be divisible by "
+                f"num_heads ({config.num_heads})"
+            )
+
+        self.num_heads = config.num_heads
+        self.head_dim = config.hidden_size // config.num_heads
+        self.positional_encoding = config.positional_encoding
+
+        if self.positional_encoding == "rope" and self.head_dim % 2 != 0:
+            raise NativeError(
+                f"RoPE requires an even head_dim (hidden_size / num_heads); "
+                f"got head_dim={self.head_dim} (hidden_size={config.hidden_size}, "
+                f"num_heads={config.num_heads}). This is an additional "
+                f"constraint discovered during NB-04 that ModelConfig's NB-03 "
+                f"validation does not check -- see NB-04 report."
+            )
+
+        h = config.hidden_size
+        self.q_proj = nn.Linear(h, h, bias=config.bias)
+        self.k_proj = nn.Linear(h, h, bias=config.bias)
+        self.v_proj = nn.Linear(h, h, bias=config.bias)
+        self.o_proj = nn.Linear(h, h, bias=config.bias)
+        # Attention-weight dropout, passed to scaled_dot_product_attention
+        # directly rather than a separate nn.Dropout module -- it has no
+        # learnable parameters either way, so this does not affect the
+        # parameter-count formula. Respects train()/eval() automatically
+        # via self.training (an nn.Module attribute).
+        self.dropout_p = config.dropout
+
+    def forward(self, x: torch.Tensor, rope_cache: tuple[torch.Tensor, torch.Tensor] | None) -> torch.Tensor:
+        batch, seq_len, hidden = x.shape
+
+        q = self.q_proj(x).view(batch, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(x).view(batch, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(x).view(batch, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+
+        if self.positional_encoding == "rope":
+            if rope_cache is None:
+                raise NativeError("positional_encoding is 'rope' but no rope_cache was provided")
+            cos, sin = rope_cache
+            q = apply_rope(q, cos, sin)
+            k = apply_rope(k, cos, sin)
+
+        attn_out = F.scaled_dot_product_attention(
+            q, k, v, is_causal=True, dropout_p=(self.dropout_p if self.training else 0.0)
+        )
+        attn_out = attn_out.transpose(1, 2).reshape(batch, seq_len, hidden)
+        return self.o_proj(attn_out)
+
+
+class FeedForward(nn.Module):
+    """Position-wise feed-forward block.
+
+    ``activation == "swiglu"`` uses a gated, 3-projection variant
+    (gate, up, down) -- ``3 * hidden_size * ffn_size`` weight
+    parameters. Every other supported activation (gelu/relu/silu) uses
+    the standard 2-projection variant (up, down) -- ``2 * hidden_size *
+    ffn_size``. Both match ``estimate_parameter_count()``'s branches
+    exactly, including the bias-term counts.
+    """
+
+    _ELEMENTWISE_ACTIVATIONS = {"gelu": F.gelu, "relu": F.relu, "silu": F.silu}
+
+    def __init__(self, config: ModelConfig) -> None:
+        super().__init__()
+        self.is_gated = config.activation == "swiglu"
+        h, ffn = config.hidden_size, config.ffn_size
+
+        if self.is_gated:
+            self.gate_proj = nn.Linear(h, ffn, bias=config.bias)
+            self.up_proj = nn.Linear(h, ffn, bias=config.bias)
+            self.down_proj = nn.Linear(ffn, h, bias=config.bias)
+        else:
+            self.up_proj = nn.Linear(h, ffn, bias=config.bias)
+            self.down_proj = nn.Linear(ffn, h, bias=config.bias)
+            self.activation = self._ELEMENTWISE_ACTIVATIONS[config.activation]
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self.is_gated:
+            return self.down_proj(F.silu(self.gate_proj(x)) * self.up_proj(x))
+        return self.down_proj(self.activation(self.up_proj(x)))
+
+
+class TransformerBlock(nn.Module):
+    """One pre-norm decoder block: ``x + Attn(Norm(x))``, then
+    ``x + FFN(Norm(x))``. Two normalization instances per block,
+    matching ``estimate_parameter_count()``'s ``norm_per_layer = 2 *
+    norm_per_instance`` assumption."""
+
+    def __init__(self, config: ModelConfig) -> None:
+        super().__init__()
+        self.norm1 = build_normalization(config)
+        self.attn = CausalSelfAttention(config)
+        self.norm2 = build_normalization(config)
+        self.ffn = FeedForward(config)
+
+    def forward(self, x: torch.Tensor, rope_cache: tuple[torch.Tensor, torch.Tensor] | None) -> torch.Tensor:
+        x = x + self.attn(self.norm1(x), rope_cache)
+        x = x + self.ffn(self.norm2(x))
+        return x
+
+
+class YugTransformer(nn.Module):
+    """The full model: embeddings, a stack of :class:`TransformerBlock`,
+    a final normalization, and a vocabulary projection.
+
+    Forward interface (Directive Section 14): ``forward(input_ids)``
+    where ``input_ids`` is ``[batch, seq_len]`` (integer token ids) and
+    the return value is ``[batch, seq_len, vocab_size]`` (float
+    logits). No training-specific outputs, no hidden-state API.
+    """
+
+    def __init__(self, config: ModelConfig) -> None:
+        super().__init__()
+        self.config = config
+
+        self.token_embedding = nn.Embedding(config.vocab_size, config.hidden_size)
+
+        self.position_embedding: nn.Embedding | None
+        if config.positional_encoding == "learned":
+            self.position_embedding = nn.Embedding(config.context_length, config.hidden_size)
+        else:
+            self.position_embedding = None
+
+        self.blocks = nn.ModuleList(TransformerBlock(config) for _ in range(config.num_layers))
+        self.final_norm = build_normalization(config)
+
+        # Output bias is deliberately suppressed when tied: the
+        # parameter-count formula counts tied embeddings as
+        # contributing exactly zero *additional* parameters (weight is
+        # literally shared; there is no separate untied bias term
+        # either in that case). See estimate_parameter_count()'s
+        # `output_projection` branch.
+        output_bias = config.bias and not config.tie_embeddings
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=output_bias)
+        if config.tie_embeddings:
+            self.lm_head.weight = self.token_embedding.weight
+
+        self._uses_rope = config.positional_encoding == "rope"
+        if self._uses_rope:
+            head_dim = config.hidden_size // config.num_heads
+            if head_dim % 2 != 0:
+                raise NativeError(
+                    f"RoPE requires an even head_dim (hidden_size / num_heads); "
+                    f"got head_dim={head_dim}."
+                )
+            cos, sin = build_rope_cache(config.context_length, head_dim)
+            self.register_buffer("_rope_cos", cos, persistent=False)
+            self.register_buffer("_rope_sin", sin, persistent=False)
+
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        if input_ids.dim() != 2:
+            raise NativeError(f"input_ids must be 2D [batch, seq_len], got shape {tuple(input_ids.shape)}")
+
+        batch, seq_len = input_ids.shape
+
+        if seq_len > self.config.context_length:
+            raise NativeError(
+                f"sequence length {seq_len} exceeds context_length {self.config.context_length}"
+            )
+
+        if seq_len > 0:
+            min_id = int(input_ids.min())
+            max_id = int(input_ids.max())
+            if min_id < 0 or max_id >= self.config.vocab_size:
+                raise NativeError(
+                    f"token id out of range: found id(s) in [{min_id}, {max_id}], "
+                    f"valid range is [0, {self.config.vocab_size - 1}]"
+                )
+
+        x = self.token_embedding(input_ids)
+
+        if self.position_embedding is not None:
+            positions = torch.arange(seq_len, device=input_ids.device)
+            x = x + self.position_embedding(positions)[None, :, :]
+
+        rope_cache = None
+        if self._uses_rope:
+            rope_cache = (self._rope_cos[:seq_len], self._rope_sin[:seq_len])
+
+        for block in self.blocks:
+            x = block(x, rope_cache)
+
+        x = self.final_norm(x)
+        logits = self.lm_head(x)
+        return logits
+
+    def count_parameters(self) -> int:
+        """Actual instantiated parameter count (deduplicated: a tied
+        weight shared by two modules is counted once, matching
+        ``estimate_parameter_count()``'s intent)."""
+        seen = set()
+        total = 0
+        for p in self.parameters():
+            if id(p) in seen:
+                continue
+            seen.add(id(p))
+            total += p.numel()
+        return total
+
+===== FILE: yug\native\checkpoint_io.py =====
+"""NB-10: the single, authoritative reader of the *model-state* portion
+of a YUG checkpoint's ``state.pt`` file.
+
+Why this module exists (not "why checkpoints exist" -- that remains
+``training/checkpoint.py``'s docstring): ``YugNativeAdapter``
+(``yug/brain/adapters/yug_native.py``) needs real model weights for
+inference, and the only existing code that read ``state.pt`` was
+``training.checkpoint.load_checkpoint()`` -- but that lives in
+``training/``, and ``yug/`` must never import ``training/`` (the
+frozen dependency boundary; see ``ARCHITECTURE/POST_NB07_ROADMAP.md``
+and ``ARCHITECTURE/NB10_NATIVE_ADAPTER_PLAN.md`` Section 9, Risk 1,
+Option A -- this module IS that approved resolution).
+
+This module knows nothing about training. It deliberately contains:
+  - no optimizer restoration
+  - no training state
+  - no RNG restoration
+  - no training configuration handling
+  - no training resume logic
+  - no optimizer stepping
+  - no training abstractions of any kind
+
+It is the single, authoritative interpretation of what "the model
+portion of state.pt" means. ``training.checkpoint.load_checkpoint()``
+now calls :func:`load_model_state` instead of independently
+implementing that same interpretation a second time -- see this
+module and that module's docstrings for the shared contract.
+
+Checkpoint format (unchanged; ``training/checkpoint.py`` remains the
+authoritative description of the *whole* format -- restated here only
+to the extent this module's own contract needs it):
+
+    <dir>/state.pt   torch.save({"model": <state_dict>, ...}, ...)
+
+This module reads and returns ONLY the ``"model"`` entry. Any other
+entries in that file (e.g. ``"optimizer"``) are training-internal and
+this module does not look at them, require them, or validate their
+presence.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import torch
+
+from yug.native.errors import NativeError
+
+
+class NativeCheckpointError(NativeError):
+    """Raised when a checkpoint's ``state.pt`` file is missing,
+    unreadable, or does not contain a ``"model"`` entry.
+
+    Scope note: this covers only the model-state portion of a
+    checkpoint (this module's entire responsibility). It says nothing
+    about ``model_config.json`` (see
+    ``yug.native.errors.ModelConfigSerializationError`` for that) or
+    about the ``"optimizer"``/RNG/training-config portions of
+    ``state.pt``/``metadata.json``, which remain
+    ``training.errors.CheckpointError``'s responsibility.
+    """
+
+
+def load_model_state(
+    directory: str | Path,
+    *,
+    map_location: str = "cpu",
+) -> dict:
+    """Return the model ``state_dict`` from the checkpoint at
+    ``directory``, ready to pass to ``model.load_state_dict(...)``.
+
+    A pure, read-only, inference-safe operation: it does not construct
+    a model, does not touch any ``"optimizer"`` entry that may also be
+    present in the same file, does not restore RNG state, and does not
+    read ``metadata.json`` (that file is plain JSON with zero PyTorch
+    dependency -- callers needing it, such as an adapter reporting a
+    checkpoint's recorded step, can read it directly).
+
+    Args:
+        directory: a directory previously written by
+            ``training.checkpoint.save_checkpoint`` (or anything
+            producing the same ``state.pt`` layout).
+        map_location: passed through to ``torch.load``. Defaults to
+            ``"cpu"`` so this never silently requires a GPU to be
+            present, matching this project's "do not assume GPU
+            availability" convention -- callers that have already
+            moved a model to another device are still free to
+            ``model.to(device)`` themselves after
+            ``load_state_dict(...)``.
+
+    Raises:
+        NativeCheckpointError: ``state.pt`` does not exist under
+            ``directory``, cannot be read by ``torch.load``, or does
+            not contain a ``"model"`` entry.
+    """
+    directory = Path(directory)
+    state_path = directory / "state.pt"
+
+    if not state_path.exists():
+        raise NativeCheckpointError(f"Checkpoint state file not found: {state_path}")
+
+    try:
+        state = torch.load(state_path, map_location=map_location)
+    except Exception as exc:  # noqa: BLE001 - normalize any torch.load failure
+        raise NativeCheckpointError(
+            f"Failed to read checkpoint state file {state_path}: {exc}"
+        ) from exc
+
+    if not isinstance(state, dict) or "model" not in state:
+        raise NativeCheckpointError(
+            f"Checkpoint state file {state_path} does not contain a 'model' entry"
+        )
+
+    return state["model"]
+
+===== FILE: yug\tokenizer\bpe.py =====
+"""YUG's own byte-level BPE tokenizer.
+
+Design decisions made in this module (see accompanying NB-02 report and
+``docs/architecture/NATIVE_BRAIN_ARCHITECTURE.md`` for the formal
+record):
+
+- **Algorithm:** byte-level BPE. The base vocabulary is the 256
+  possible byte values (id == byte value). Every valid Unicode string
+  (any script -- Latin, Devanagari/Nepali, CJK, emoji, or otherwise) is
+  therefore representable at minimum as its raw UTF-8 bytes, even
+  before any merge applies. This is a structural guarantee, not a
+  best-effort one.
+- **No <unk> token.** Because every byte is already a valid base
+  token, there is no input that ``encode()`` can fail to represent.
+  An unknown-token fallback would be dead code. (Decision, not
+  deferred -- this is a property of the algorithm, independent of any
+  future model's vocabulary-size decision.)
+- **No word-level pre-tokenization** (unlike GPT-2-style tokenizers,
+  which first split text with a regex before applying BPE). Merges
+  here operate directly on the raw byte stream. This is simpler,
+  fully deterministic, and avoids reproducing a pretokenization scheme
+  designed for a different, external tokenizer. Trade-off: likely
+  somewhat less compression-efficient on e.g. whitespace-heavy text
+  than a word-aware scheme -- acceptable for a correctness-first
+  prototype (NB-02 does not require performance tuning).
+- **Vocabulary size is a training-time parameter, not a constant.**
+  Nothing in this module hardcodes a production vocabulary size; that
+  decision is explicitly deferred to when the model architecture's
+  parameter budget is fixed (see architecture doc, Open Decisions).
+- **Special tokens are a configurable, named set** passed to
+  :meth:`train`, not a fixed hardcoded list. ``bos``/``eos`` are used
+  as the default prototype set in this codebase's tests; a ``pad``
+  token is deliberately NOT included by default -- whether batched
+  training needs one is a training-pipeline decision (NB-08), not a
+  tokenizer one.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from collections import Counter
+from pathlib import Path
+from typing import Sequence
+
+from yug.tokenizer.errors import DecodeError, SerializationError, TokenizerError, VocabularyError
+
+_FORMAT_VERSION = "1"
+_ALGORITHM = "byte_level_bpe"
+_NUM_BASE_BYTES = 256
+
+
+def _get_adjacent_pairs(sequences: list[list[int]]) -> Counter:
+    counts: Counter = Counter()
+    for seq in sequences:
+        for a, b in zip(seq, seq[1:]):
+            counts[(a, b)] += 1
+    return counts
+
+
+def _apply_merge(seq: list[int], pair: tuple[int, int], new_id: int) -> list[int]:
+    """Replace every non-overlapping occurrence of ``pair`` in ``seq``
+    with ``new_id``, scanning left to right."""
+    out: list[int] = []
+    i = 0
+    n = len(seq)
+    while i < n:
+        if i < n - 1 and seq[i] == pair[0] and seq[i + 1] == pair[1]:
+            out.append(new_id)
+            i += 2
+        else:
+            out.append(seq[i])
+            i += 1
+    return out
+
+
+class ByteLevelBpeTokenizer:
+    """A YUG-owned byte-level BPE tokenizer.
+
+    Construct via :meth:`train` (learns merges from a corpus) or
+    :meth:`load` (restores a previously saved tokenizer). The
+    constructor itself is a low-level assembly point and is not the
+    primary public API.
+    """
+
+    def __init__(
+        self,
+        merges: Sequence[tuple[int, int]],
+        special_tokens: dict[str, int],
+    ) -> None:
+        self._merges: tuple[tuple[int, int], ...] = tuple(tuple(m) for m in merges)
+        self._special_tokens: dict[str, int] = dict(special_tokens)
+
+        # merge (pair) -> rank (earlier learned = lower rank = applied first)
+        self._pair_rank: dict[tuple[int, int], int] = {
+            pair: rank for rank, pair in enumerate(self._merges)
+        }
+        # merge (pair) -> resulting new token id
+        self._pair_to_id: dict[tuple[int, int], int] = {
+            pair: _NUM_BASE_BYTES + rank for rank, pair in enumerate(self._merges)
+        }
+        self._special_id_set: set[int] = set(self._special_tokens.values())
+
+        # Lazily populated: token id -> raw bytes it expands to.
+        self._expand_cache: dict[int, bytes] = {}
+
+    # -- construction -----------------------------------------------
+
+    @classmethod
+    def train(
+        cls,
+        corpus: Sequence[str],
+        vocab_size: int,
+        special_tokens: Sequence[str] = ("bos", "eos"),
+    ) -> "ByteLevelBpeTokenizer":
+        """Learn BPE merges from ``corpus`` up to (at most) ``vocab_size``
+        total tokens (256 base bytes + merges + ``len(special_tokens)``).
+
+        Training may stop before reaching ``vocab_size`` if the corpus
+        is exhausted (no adjacent pair repeats) -- the actual resulting
+        vocabulary size is never silently padded to match the request;
+        check :attr:`vocab_size` on the returned instance.
+
+        Determinism: for a fixed ``corpus`` (as an ordered sequence)
+        and ``vocab_size``, training always produces identical merges.
+        Ties between equally-frequent pairs are broken by first
+        occurrence in the corpus (a consequence of ``Counter`` iterating
+        pairs in first-seen order and ``most_common`` being a stable
+        sort), not by an arbitrary hash order.
+
+        Raises:
+            VocabularyError: if ``vocab_size`` is too small to hold the
+                256 base bytes plus the requested special tokens.
+        """
+        reserved = len(special_tokens)
+        minimum = _NUM_BASE_BYTES + reserved
+        if vocab_size < minimum:
+            raise VocabularyError(
+                f"vocab_size={vocab_size} is too small: need at least "
+                f"{minimum} ({_NUM_BASE_BYTES} base bytes + {reserved} "
+                f"special token(s))."
+            )
+
+        target_merges = vocab_size - minimum
+        sequences: list[list[int]] = [list(text.encode("utf-8")) for text in corpus]
+
+        merges: list[tuple[int, int]] = []
+        for i in range(target_merges):
+            pair_counts = _get_adjacent_pairs(sequences)
+            if not pair_counts:
+                break  # corpus has no more adjacent pairs at all
+            best_pair, count = pair_counts.most_common(1)[0]
+            if count < 2:
+                break  # merging a pair that occurs once isn't a real pattern
+            new_id = _NUM_BASE_BYTES + i
+            merges.append(best_pair)
+            sequences = [_apply_merge(seq, best_pair, new_id) for seq in sequences]
+
+        special_token_ids = {
+            name: _NUM_BASE_BYTES + len(merges) + idx
+            for idx, name in enumerate(special_tokens)
+        }
+        return cls(merges=merges, special_tokens=special_token_ids)
+
+    # -- properties ---------------------------------------------------
+
+    @property
+    def vocab_size(self) -> int:
+        """Actual total vocabulary size: base bytes + merges + specials."""
+        return _NUM_BASE_BYTES + len(self._merges) + len(self._special_tokens)
+
+    @property
+    def special_tokens(self) -> dict[str, int]:
+        """Mapping of special-token name -> token id (a copy)."""
+        return dict(self._special_tokens)
+
+    @property
+    def identity(self) -> str:
+        """A stable content hash identifying this exact vocabulary +
+        merge table + special-token set.
+
+        Computed as ``"sha256:" + hexdigest`` of the canonical JSON
+        (sorted keys, compact separators, no whitespace) of::
+
+            {"algorithm": ..., "vocab_size": ..., "merges": [...],
+             "special_tokens": {...}}
+
+        Two tokenizer instances with identical merges and special
+        tokens always produce the same identity, regardless of how
+        they were constructed (trained fresh vs. loaded from disk).
+        This is what a future checkpoint system would reference to
+        detect an incompatible tokenizer (see architecture doc,
+        "Tokenizer Identity").
+        """
+        return self._compute_identity(self._merges, self._special_tokens)
+
+    @staticmethod
+    def _compute_identity(
+        merges: Sequence[tuple[int, int]], special_tokens: dict[str, int]
+    ) -> str:
+        payload = {
+            "algorithm": _ALGORITHM,
+            "vocab_size": _NUM_BASE_BYTES + len(merges) + len(special_tokens),
+            "merges": [list(m) for m in merges],
+            "special_tokens": special_tokens,
+        }
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        return f"sha256:{digest}"
+
+    # -- encode / decode -----------------------------------------------
+
+    def encode(
+        self, text: str, add_bos: bool = False, add_eos: bool = False
+    ) -> list[int]:
+        """Encode ``text`` to a list of token IDs.
+
+        Never raises for any valid Python ``str`` input, including
+        empty strings, arbitrary Unicode, or emoji -- byte-level
+        coverage is unconditional (see module docstring).
+
+        Args:
+            add_bos: prepend the ``"bos"`` special token id.
+            add_eos: append the ``"eos"`` special token id.
+
+        Raises:
+            TypeError: if ``text`` is not a ``str``.
+            TokenizerError: if ``add_bos``/``add_eos`` is requested but
+                this tokenizer has no ``"bos"``/``"eos"`` special token.
+        """
+        if not isinstance(text, str):
+            raise TypeError(f"encode() requires str, got {type(text).__name__}")
+
+        ids = self._apply_merges(list(text.encode("utf-8")))
+
+        if add_bos:
+            ids = [self._require_special("bos")] + ids
+        if add_eos:
+            ids = ids + [self._require_special("eos")]
+        return ids
+
+    def _require_special(self, name: str) -> int:
+        if name not in self._special_tokens:
+            raise TokenizerError(
+                f"This tokenizer has no special token named {name!r}. "
+                f"Available: {sorted(self._special_tokens)}"
+            )
+        return self._special_tokens[name]
+
+    def _apply_merges(self, ids: list[int]) -> list[int]:
+        while True:
+            best_pair = None
+            best_rank = None
+            for a, b in zip(ids, ids[1:]):
+                rank = self._pair_rank.get((a, b))
+                if rank is not None and (best_rank is None or rank < best_rank):
+                    best_rank = rank
+                    best_pair = (a, b)
+            if best_pair is None:
+                return ids
+            new_id = self._pair_to_id[best_pair]
+            ids = _apply_merge(ids, best_pair, new_id)
+
+    def decode(self, ids: Sequence[int], skip_special_tokens: bool = True) -> str:
+        """Decode a sequence of token IDs back to text.
+
+        Args:
+            skip_special_tokens: if True (default), special-token IDs
+                (bos/eos/etc.) are silently omitted from the output
+                text. If False, encountering one raises
+                :class:`DecodeError` (they have no byte representation).
+
+        Raises:
+            TypeError: if ``ids`` is not a sequence of integers.
+            DecodeError: an id is outside this tokenizer's vocabulary,
+                a special-token id was found with
+                ``skip_special_tokens=False``, or the reassembled bytes
+                are not valid UTF-8 (e.g. a slice that cuts a
+                multi-byte character in half).
+        """
+        if isinstance(ids, (str, bytes)) or not hasattr(ids, "__iter__"):
+            raise TypeError(f"decode() requires a sequence of ints, got {type(ids).__name__}")
+
+        out = bytearray()
+        for token_id in ids:
+            if not isinstance(token_id, int):
+                raise TypeError(f"decode() requires a sequence of ints, got element of type {type(token_id).__name__}")
+
+            if token_id in self._special_id_set:
+                if skip_special_tokens:
+                    continue
+                raise DecodeError(
+                    f"Token id {token_id} is a special token and has no byte "
+                    f"representation; pass skip_special_tokens=True to ignore it."
+                )
+            out.extend(self._expand(token_id))
+
+        try:
+            return bytes(out).decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise DecodeError(
+                f"Decoded bytes are not valid UTF-8 (likely a token id slice "
+                f"that split a multi-byte character): {exc}"
+            ) from exc
+
+    def _expand(self, token_id: int) -> bytes:
+        """Recursively expand a token id to its raw bytes, memoized."""
+        if token_id in self._expand_cache:
+            return self._expand_cache[token_id]
+
+        if 0 <= token_id < _NUM_BASE_BYTES:
+            result = bytes([token_id])
+        else:
+            rank = token_id - _NUM_BASE_BYTES
+            if 0 <= rank < len(self._merges):
+                a, b = self._merges[rank]
+                result = self._expand(a) + self._expand(b)
+            else:
+                raise DecodeError(
+                    f"Token id {token_id} is outside this tokenizer's "
+                    f"vocabulary (vocab_size={self.vocab_size})."
+                )
+
+        self._expand_cache[token_id] = result
+        return result
+
+    # -- serialization -----------------------------------------------
+
+    def to_dict(self) -> dict:
+        """Return the canonical JSON-serializable representation."""
+        return {
+            "yug_tokenizer_format_version": _FORMAT_VERSION,
+            "algorithm": _ALGORITHM,
+            "vocab_size": self.vocab_size,
+            "num_base_bytes": _NUM_BASE_BYTES,
+            "merges": [list(m) for m in self._merges],
+            "special_tokens": dict(self._special_tokens),
+            "identity": self.identity,
+        }
+
+    def save(self, path: str | Path) -> None:
+        """Serialize to a JSON file (never pickle -- see architecture
+        doc's rejection of pickle-based formats for the same reason
+        applied there to model checkpoints: pickle can execute
+        arbitrary code on load)."""
+        data = self.to_dict()
+        Path(path).write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "ByteLevelBpeTokenizer":
+        """Load a tokenizer previously written by :meth:`save`.
+
+        Raises:
+            SerializationError: file missing, invalid JSON, wrong/
+                missing format version, structurally invalid, or its
+                stored identity hash does not match a hash recomputed
+                from its own contents (integrity check -- catches
+                corruption or hand-edited files).
+        """
+        file_path = Path(path)
+        try:
+            raw_text = file_path.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise SerializationError(f"Tokenizer file not found: {file_path}") from exc
+
+        try:
+            data = json.loads(raw_text)
+        except json.JSONDecodeError as exc:
+            raise SerializationError(f"Invalid JSON in tokenizer file {file_path}: {exc}") from exc
+
+        if not isinstance(data, dict):
+            raise SerializationError(f"Tokenizer file {file_path} must contain a JSON object")
+
+        version = data.get("yug_tokenizer_format_version")
+        if version != _FORMAT_VERSION:
+            raise SerializationError(
+                f"Unsupported tokenizer format version {version!r} in {file_path}; "
+                f"expected {_FORMAT_VERSION!r}."
+            )
+
+        required = {"algorithm", "merges", "special_tokens", "identity"}
+        missing = required - data.keys()
+        if missing:
+            raise SerializationError(
+                f"Tokenizer file {file_path} is missing required field(s): {sorted(missing)}"
+            )
+
+        if data["algorithm"] != _ALGORITHM:
+            raise SerializationError(
+                f"Tokenizer file {file_path} has algorithm={data['algorithm']!r}, "
+                f"this loader only supports {_ALGORITHM!r}."
+            )
+
+        try:
+            merges = [tuple(pair) for pair in data["merges"]]
+            special_tokens = dict(data["special_tokens"])
+        except (TypeError, ValueError) as exc:
+            raise SerializationError(f"Malformed merges/special_tokens in {file_path}: {exc}") from exc
+
+        expected_identity = cls._compute_identity(merges, special_tokens)
+        if data["identity"] != expected_identity:
+            raise SerializationError(
+                f"Identity hash mismatch in {file_path}: file claims "
+                f"{data['identity']!r} but recomputes to {expected_identity!r}. "
+                f"The file may be corrupted or hand-edited."
+            )
+
+        return cls(merges=merges, special_tokens=special_tokens)
+
+===== FILE: training\config.py =====
+"""NB-07: training configuration contract.
+
+VERIFICATION STATUS: not executed -- see ``training/__init__.py``.
+
+Mirrors ``yug.native.config.ModelConfig``'s own conventions
+deliberately: frozen dataclass, explicit fields (no implicit
+"default architecture"/"default training run" the caller didn't ask
+for), and a ``__post_init__`` that calls a standalone ``validate()``
+function rather than validating inline -- kept consistent with the
+project's existing pattern in that module so a reader who already
+knows ``ModelConfig`` recognizes this immediately.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from training.errors import TrainingConfigValidationError
+
+
+@dataclass(frozen=True)
+class TrainingConfig:
+    """Everything a training run needs, with no hidden defaults for
+    anything that affects reproducibility.
+
+    ``seed`` is required (not defaulted) deliberately -- an
+    accidentally-omitted seed silently producing "whatever the current
+    RNG state happens to be" is exactly the kind of non-determinism
+    this milestone exists to rule out.
+    """
+
+    seed: int
+    learning_rate: float
+    batch_size: int
+    sequence_length: int
+    max_steps: int
+    eval_interval: int
+    checkpoint_interval: int
+    grad_clip_norm: float | None = None
+    weight_decay: float = 0.0
+    device: str = "cpu"
+
+    def __post_init__(self) -> None:
+        validate(self)
+
+
+def validate(config: TrainingConfig) -> None:
+    """Raise :class:`TrainingConfigValidationError` for any field
+    combination that could not possibly produce a valid training run.
+
+    Deliberately narrow: this checks structural validity (positive
+    counts, non-negative rates), not training-quality heuristics (e.g.
+    "is this learning rate reasonable for this model size?") -- the
+    latter is a judgment call for whoever runs the training, not
+    something this function should silently override or block.
+    """
+    if config.batch_size < 1:
+        raise TrainingConfigValidationError(
+            f"batch_size must be >= 1, got {config.batch_size}"
+        )
+    if config.sequence_length < 1:
+        raise TrainingConfigValidationError(
+            f"sequence_length must be >= 1, got {config.sequence_length}"
+        )
+    if config.max_steps < 1:
+        raise TrainingConfigValidationError(
+            f"max_steps must be >= 1, got {config.max_steps}"
+        )
+    if config.eval_interval < 1:
+        raise TrainingConfigValidationError(
+            f"eval_interval must be >= 1, got {config.eval_interval}"
+        )
+    if config.checkpoint_interval < 1:
+        raise TrainingConfigValidationError(
+            f"checkpoint_interval must be >= 1, got {config.checkpoint_interval}"
+        )
+    if config.learning_rate <= 0:
+        raise TrainingConfigValidationError(
+            f"learning_rate must be > 0, got {config.learning_rate}"
+        )
+    if config.weight_decay < 0:
+        raise TrainingConfigValidationError(
+            f"weight_decay must be >= 0, got {config.weight_decay}"
+        )
+    if config.grad_clip_norm is not None and config.grad_clip_norm <= 0:
+        raise TrainingConfigValidationError(
+            f"grad_clip_norm must be > 0 if set, got {config.grad_clip_norm}"
+        )
+
+===== FILE: training\dataset.py =====
+"""NB-07: deterministic dataset pipeline -- text -> tokens -> (input, target)
+sequences -> batches.
+
+VERIFICATION STATUS: not executed -- see ``training/__init__.py``.
+
+Deliberately minimal: this is NOT a dataset framework (no sharding, no
+streaming, no multi-worker loading, no augmentation). It exists to
+answer exactly one question -- "can YUG's native Transformer learn a
+tiny deterministic dataset through a real training pipeline?" -- and
+nothing beyond that. A larger dataset system is explicitly out of
+scope for this milestone (see the NB-07 prompt's "HARD BOUNDARIES").
+"""
+
+from __future__ import annotations
+
+import torch
+
+from training.errors import DatasetError
+
+
+def encode_corpus(tokenizer, corpus: list[str]) -> list[int]:
+    """Encode every string in ``corpus`` and concatenate the resulting
+    token ids into one flat stream, in the order given.
+
+    No document-boundary special tokens are inserted between entries
+    unless ``corpus`` itself already contains them via
+    ``tokenizer.encode(..., add_bos=True, add_eos=True)`` upstream --
+    this function intentionally does not invent a document-separator
+    convention the tokenizer doesn't already define (per the parent
+    milestone's "Do not invent special tokens" rule).
+
+    Raises:
+        DatasetError: ``corpus`` is empty, or encodes to zero tokens.
+    """
+    if not corpus:
+        raise DatasetError("corpus must contain at least one string")
+
+    ids: list[int] = []
+    for text in corpus:
+        ids.extend(tokenizer.encode(text))
+
+    if not ids:
+        raise DatasetError("corpus encoded to zero tokens")
+
+    return ids
+
+
+def make_sequences(token_ids: list[int], sequence_length: int) -> list[list[int]]:
+    """Split a flat token-id stream into non-overlapping chunks of
+    length ``sequence_length + 1`` (the extra token gives each chunk
+    both its input positions ``[0:-1]`` and target positions ``[1:]``
+    once split by :func:`sequences_to_batch`).
+
+    A final partial chunk that cannot reach ``sequence_length + 1``
+    tokens is dropped rather than padded -- there is no padding
+    convention defined anywhere else in the tokenizer/model contract
+    for this milestone to invent one for (per "Do not invent ...
+    padding" implied by the parent prompt's silence on it -- padding
+    is listed only as a conditional "if introduced" concern for the
+    loss function, not a requirement here).
+
+    Raises:
+        DatasetError: fewer than ``sequence_length + 1`` tokens are
+            available, so zero sequences would be produced.
+    """
+    chunk_len = sequence_length + 1
+    sequences = [
+        token_ids[i : i + chunk_len]
+        for i in range(0, len(token_ids) - chunk_len + 1, chunk_len)
+    ]
+    if not sequences:
+        raise DatasetError(
+            f"token stream has {len(token_ids)} tokens, need at least "
+            f"{chunk_len} (sequence_length + 1) to build one training sequence"
+        )
+    return sequences
+
+
+def sequences_to_batch(sequences: list[list[int]]) -> tuple[torch.Tensor, torch.Tensor]:
+    """Convert a list of equal-length ``sequence_length + 1`` id lists
+    into ``(input_ids, target_ids)`` tensors of shape
+    ``(batch_size, sequence_length)`` each.
+
+    ``input_ids[i] = sequences[i][:-1]``, ``target_ids[i] = sequences[i][1:]``
+    -- the standard causal-LM shift, matching the ``t1 from t0, t2 from
+    t1, ...`` contract from the parent milestone's loss section
+    verbatim. Both tensors use ``dtype=torch.long`` (required by
+    :class:`torch.nn.Embedding` / :func:`torch.nn.functional.cross_entropy`).
+    """
+    inputs = torch.tensor([s[:-1] for s in sequences], dtype=torch.long)
+    targets = torch.tensor([s[1:] for s in sequences], dtype=torch.long)
+    return inputs, targets
+
+
+def iter_batches(
+    sequences: list[list[int]], batch_size: int
+) -> list[tuple[torch.Tensor, torch.Tensor]]:
+    """Group ``sequences`` (already ``sequence_length + 1``-length
+    chunks from :func:`make_sequences`) into batches of ``batch_size``,
+    in the given order -- deterministic, no shuffling, per the "no
+    giant dataset framework" scope limit. A caller wanting shuffled
+    epochs should shuffle ``sequences`` itself, deterministically,
+    before calling this (e.g. ``random.Random(seed).shuffle(sequences)``)
+    -- this function does not own randomness policy.
+
+    The final, possibly-short batch is included as-is (not dropped and
+    not padded) -- this is a batching convenience, not a modeling
+    decision, so there is nothing here for a caller relying on a fixed
+    batch size to be surprised by beyond ordinary short-last-batch
+    handling.
+    """
+    return [
+        sequences_to_batch(sequences[i : i + batch_size])
+        for i in range(0, len(sequences), batch_size)
+    ]
+
+===== FILE: training\determinism.py =====
+"""NB-07: deterministic seed handling.
+
+VERIFICATION STATUS: not executed -- see ``training/__init__.py``.
+
+Deliberately narrow, per the parent milestone's "Document what is
+deterministic and what is not" instruction (Section 19) rather than
+"falsely claim cross-hardware determinism": this seeds Python's
+``random``, PyTorch's CPU RNG, and (if available) PyTorch's CUDA RNG.
+It does NOT claim bit-identical results across different PyTorch
+versions, different hardware, or different CPU thread counts --
+``torch.use_deterministic_algorithms`` is intentionally not forced on
+here, since several of ``YugTransformer``'s existing operations may
+not have deterministic CUDA implementations, and enabling that flag
+would raise at runtime for such ops rather than silently doing
+nothing. A caller that needs that stronger guarantee should call
+``torch.use_deterministic_algorithms(True)`` itself and handle the
+resulting errors, with full knowledge of which ops in the actual model
+it's running against don't support it -- this module should not make
+that decision silently on the caller's behalf.
+"""
+
+from __future__ import annotations
+
+import random
+
+import torch
+
+
+def seed_everything(seed: int) -> None:
+    """Seed Python's ``random`` and PyTorch's RNGs (CPU, and CUDA if
+    available) with ``seed``.
+
+    Does not seed NumPy (this project has no NumPy dependency anywhere
+    in ``yug`` or ``training`` -- adding one merely for this would
+    violate the parent milestone's "Do not add unnecessary
+    dependencies" rule).
+    """
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+===== FILE: training\loss.py =====
+"""NB-07: next-token causal language-model loss.
+
+VERIFICATION STATUS: not executed -- see ``training/__init__.py``.
+"""
+
+from __future__ import annotations
+
+import torch
+import torch.nn.functional as F
+
+
+def causal_lm_loss(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    """Next-token cross-entropy loss.
+
+    Args:
+        logits: ``(batch_size, sequence_length, vocab_size)`` --
+            exactly :meth:`yug.native.model.YugTransformer.forward`'s
+            output shape and dtype (no reshaping/casting is done to
+            the caller's model output beyond what
+            :func:`torch.nn.functional.cross_entropy` itself requires
+            below).
+        targets: ``(batch_size, sequence_length)`` of ``torch.long``
+            token ids -- exactly :func:`training.dataset.sequences_to_batch`'s
+            ``target_ids`` output. The shift from raw token ids to
+            "target for position i is token i+1" already happened in
+            ``training.dataset``; this function does not shift
+            anything itself, it only computes cross-entropy over
+            already-aligned ``(logits, targets)`` pairs.
+
+    Returns:
+        A scalar tensor: mean cross-entropy over every
+        ``(batch, position)`` pair. No positions are ignored/masked --
+        this milestone's dataset pipeline (``training.dataset``) never
+        introduces padding, so there is nothing to mask; if a future
+        milestone adds padding, an ``ignore_index`` argument belongs
+        here at that point, not invented speculatively now.
+
+    ``F.cross_entropy`` expects class-dimension immediately after the
+    batch dimension for a >2D input, so ``logits`` is transposed from
+    ``(B, T, V)`` to ``(B, V, T)`` before the call -- this is the
+    standard, well-known reshape for this exact situation (not a
+    project-invented convention), documented in PyTorch's own
+    ``cross_entropy`` docs for the "K-dimensional loss" case.
+    """
+    # (B, T, V) -> (B, V, T), matching F.cross_entropy's expected layout
+    # for a loss with an extra (sequence) dimension.
+    return F.cross_entropy(logits.transpose(1, 2), targets, reduction="mean")
+
+===== FILE: training\loop.py =====
+"""NB-07: minimal training loop.
+
+VERIFICATION STATUS: not executed -- see ``training/__init__.py``.
+
+Deliberately a single small class, not a framework: no callback
+system, no experiment-tracking integration, no distributed strategy
+abstraction (per the parent milestone's explicit "no sophisticated
+experiment tracking", "no distributed training" scope limits). It
+supports exactly the sequence the milestone's "First Training Proof"
+section asks for: forward -> loss -> backward -> optimizer step ->
+zero_grad -> metrics, plus periodic evaluation and checkpointing.
+"""
+
+from __future__ import annotations
+
+import torch
+
+from training.checkpoint import save_checkpoint
+from training.config import TrainingConfig
+from training.dataset import iter_batches
+from training.loss import causal_lm_loss
+
+
+class Trainer:
+    """Runs a deterministic training loop over a fixed list of
+    pre-batched ``(input_ids, target_ids)`` tensor pairs.
+
+    Not responsible for constructing the model, optimizer, or
+    dataset -- all three are supplied already-built, matching the
+    same "this module is an integration boundary, not another
+    implementation" principle used throughout this milestone sequence
+    (see ``training/checkpoint.py``'s docstring for the same point
+    made about model construction).
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        config: TrainingConfig,
+        model_config,  # yug.native.config.ModelConfig
+        tokenizer_identity: str,
+    ) -> None:
+        self.model = model
+        self.optimizer = optimizer
+        self.config = config
+        self.model_config = model_config
+        self.tokenizer_identity = tokenizer_identity
+        self.step = 0
+        # The caller constructs and owns the model (see class docstring);
+        # this is the one exception -- moving it to the configured
+        # device here, once, at construction, is what makes
+        # config.device meaningful at all. Without this, config.device
+        # was a field nothing ever read (found during NB-07 Phase 2
+        # review: batches built by training.dataset are always plain
+        # CPU tensors, and nothing moved them or the model anywhere).
+        self.model.to(self.config.device)
+
+    def train_step(self, input_ids: torch.Tensor, target_ids: torch.Tensor) -> float:
+        """Run one forward/loss/backward/optimizer-step/zero_grad
+        cycle on a single batch. Returns the scalar loss value (a
+        plain Python ``float``, already detached from the graph).
+
+        ``input_ids``/``target_ids`` are moved to ``self.config.device``
+        here -- ``training.dataset`` deliberately never sets a device
+        on the tensors it builds (the standard dataset/DataLoader-vs-
+        training-loop split: dataset produces host tensors, the loop
+        moves them to the execution device), so this is the one place
+        that transfer needs to happen.
+        """
+        input_ids = input_ids.to(self.config.device)
+        target_ids = target_ids.to(self.config.device)
+
+        self.model.train()
+        logits = self.model(input_ids)
+        loss = causal_lm_loss(logits, target_ids)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        if self.config.grad_clip_norm is not None:
+            torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(), self.config.grad_clip_norm
+            )
+        self.optimizer.step()
+
+        self.step += 1
+        return loss.item()
+
+    def evaluate(self, batches: list[tuple[torch.Tensor, torch.Tensor]]) -> float:
+        """Mean loss over ``batches`` with no gradient computation.
+        Restores the model's prior ``training`` mode afterward, the
+        same convention ``yug.native.generation.generate`` already
+        uses for the same reason (a caller mid-training-loop should
+        not have their model silently left in eval mode)."""
+        was_training = self.model.training
+        self.model.eval()
+        total_loss = 0.0
+        try:
+            with torch.no_grad():
+                for input_ids, target_ids in batches:
+                    input_ids = input_ids.to(self.config.device)
+                    target_ids = target_ids.to(self.config.device)
+                    logits = self.model(input_ids)
+                    total_loss += causal_lm_loss(logits, target_ids).item()
+        finally:
+            self.model.train(was_training)
+        return total_loss / len(batches)
+
+    def fit(
+        self,
+        train_sequences: list[list[int]],
+        eval_sequences: list[list[int]],
+        checkpoint_dir: str,
+    ) -> list[float]:
+        """Run up to ``config.max_steps`` training steps over
+        ``train_sequences`` (repeating from the start if exhausted --
+        a tiny fixed dataset run to convergence, per this milestone's
+        "tiny overfit" proof, is expected to need multiple passes over
+        the same handful of sequences), evaluating and checkpointing
+        at their respective configured intervals.
+
+        Returns the list of per-step training losses, in order --
+        this is what a caller checks for the "loss decreases" /
+        "overfit" acceptance criteria; this method does not itself
+        assert anything about the trend, since judging convergence is
+        the caller's job (the milestone's own "do not hard-code an
+        arbitrary loss threshold without validating the numerical
+        behavior first").
+        """
+        train_batches = iter_batches(train_sequences, self.config.batch_size)
+        eval_batches = iter_batches(eval_sequences, self.config.batch_size)
+
+        losses: list[float] = []
+        batch_idx = 0
+        while self.step < self.config.max_steps:
+            input_ids, target_ids = train_batches[batch_idx % len(train_batches)]
+            losses.append(self.train_step(input_ids, target_ids))
+            batch_idx += 1
+
+            if self.step % self.config.eval_interval == 0:
+                self.evaluate(eval_batches)
+
+            if self.step % self.config.checkpoint_interval == 0:
+                save_checkpoint(
+                    checkpoint_dir,
+                    model=self.model,
+                    optimizer=self.optimizer,
+                    model_config=self.model_config,
+                    training_config=self.config,
+                    step=self.step,
+                    tokenizer_identity=self.tokenizer_identity,
+                )
+
+        return losses
+
+===== FILE: training\checkpoint.py =====
+"""NB-07: checkpoint save/load/resume.
+
+VERIFICATION STATUS: not executed -- see ``training/__init__.py``.
+
+Format (three files per checkpoint, all written under one directory):
+
+    <dir>/model_config.json   yug.native.config.ModelConfig.save() output --
+                               reused verbatim, not reinvented. Its own
+                               identity-hash integrity check already
+                               covers this file.
+    <dir>/metadata.json       step, TrainingConfig fields, tokenizer
+                               identity, and RNG state -- plain JSON,
+                               never pickle (matching ModelConfig.save()'s
+                               own stated reasoning: pickle can execute
+                               arbitrary code on load).
+                               ``random.getstate()`` is a nested tuple
+                               of plain ints, represented as nested
+                               JSON lists. PyTorch's RNG state is a 1-D
+                               ``uint8`` tensor, represented as a hex
+                               string of its raw bytes.
+    <dir>/state.pt            model and optimizer *state dicts* -- i.e.
+                               flat ``{name: tensor}`` mappings -- saved
+                               via ``torch.save``/``torch.load``.
+
+This is deliberately NOT "pickle as an ad hoc object dump": per
+PyTorch's own documented recommendation, ``torch.save`` on a
+``state_dict()`` (a flat dict of tensors, not an arbitrary live Python
+object graph) is the standard mechanism for this, and safetensors is
+not a project dependency (adding one merely for this would violate the
+parent milestone's "Do not add unnecessary dependencies" rule). Every
+field that is NOT a tensor (step, config, identities, RNG state) is
+deliberately kept out of ``state.pt`` and lives in the two JSON files
+instead, precisely so nothing here relies on unpickling arbitrary
+objects.
+"""
+
+from __future__ import annotations
+
+import json
+import random
+from dataclasses import asdict
+from pathlib import Path
+
+import torch
+
+from training.config import TrainingConfig
+from training.errors import CheckpointError
+from yug.native.checkpoint_io import NativeCheckpointError, load_model_state
+
+_METADATA_FORMAT_VERSION = 1
+
+
+def save_checkpoint(
+    directory: str | Path,
+    *,
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    model_config,  # yug.native.config.ModelConfig
+    training_config: TrainingConfig,
+    step: int,
+    tokenizer_identity: str,
+) -> None:
+    """Write a checkpoint to ``directory`` (created if it doesn't exist).
+
+    Raises:
+        CheckpointError: ``tokenizer_identity`` does not match
+            ``model_config.tokenizer_identity`` -- saving a checkpoint
+            whose own two identity fields already disagree would only
+            defer the inevitable failure to load time, where it would
+            be harder to diagnose.
+    """
+    if tokenizer_identity != model_config.tokenizer_identity:
+        raise CheckpointError(
+            f"tokenizer_identity {tokenizer_identity!r} does not match "
+            f"model_config.tokenizer_identity {model_config.tokenizer_identity!r}"
+        )
+
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+
+    model_config.save(directory / "model_config.json")
+
+    torch_rng_bytes = bytes(torch.get_rng_state().tolist())
+    metadata = {
+        "metadata_format_version": _METADATA_FORMAT_VERSION,
+        "step": step,
+        "tokenizer_identity": tokenizer_identity,
+        "training_config": asdict(training_config),
+        "random_state": _tuple_to_list(random.getstate()),
+        "torch_rng_state_hex": torch_rng_bytes.hex(),
+    }
+    (directory / "metadata.json").write_text(
+        json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8"
+    )
+
+    torch.save(
+        {"model": model.state_dict(), "optimizer": optimizer.state_dict()},
+        directory / "state.pt",
+    )
+
+
+def load_checkpoint(
+    directory: str | Path,
+    *,
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    restore_rng_state: bool = True,
+) -> dict:
+    """Load a checkpoint written by :func:`save_checkpoint` into an
+    already-constructed ``model``/``optimizer`` pair (in place, via
+    ``load_state_dict``) and return its metadata dict (``step``,
+    ``training_config`` as a plain dict, ``tokenizer_identity``).
+
+    The caller is responsible for constructing ``model`` from the
+    checkpoint's own ``model_config.json`` (via
+    ``yug.native.config.ModelConfig.load(directory / "model_config.json")``)
+    *before* calling this -- this function does not construct the
+    model itself, matching the same "adapter is an integration
+    boundary, not another model implementation" separation of concerns
+    established elsewhere in this milestone sequence.
+
+    Raises:
+        CheckpointError: the metadata or state file is missing, the
+            metadata format version is unsupported, ``state.pt`` does
+            not contain a ``"model"`` entry (surfaced via
+            :class:`yug.native.checkpoint_io.NativeCheckpointError`,
+            re-raised here as ``CheckpointError`` so callers of this
+            function see a single, training-subsystem-rooted exception
+            type as before -- NB-10 changed *how* the model entry is
+            read, not what this function raises for it), or
+            ``state.pt`` does not contain an ``"optimizer"`` entry.
+    """
+    directory = Path(directory)
+    metadata_path = directory / "metadata.json"
+    state_path = directory / "state.pt"
+
+    if not metadata_path.exists():
+        raise CheckpointError(f"Checkpoint metadata file not found: {metadata_path}")
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+
+    if metadata.get("metadata_format_version") != _METADATA_FORMAT_VERSION:
+        raise CheckpointError(
+            f"Unsupported checkpoint metadata format version "
+            f"{metadata.get('metadata_format_version')!r} in {metadata_path}"
+        )
+
+    # NB-10: the "model" entry is now read via the shared,
+    # inference-safe reader under yug/ (yug.native.checkpoint_io) --
+    # the single authoritative interpretation of that portion of
+    # state.pt, also used by YugNativeAdapter. This function remains
+    # the authority on everything else in the file (optimizer state,
+    # RNG restoration) -- those are training-only concepts the shared
+    # reader deliberately knows nothing about, so they are still read
+    # directly here, same as before.
+    try:
+        model_state = load_model_state(directory, map_location="cpu")
+    except NativeCheckpointError as exc:
+        raise CheckpointError(str(exc)) from exc
+    model.load_state_dict(model_state)
+
+    state = torch.load(state_path, map_location="cpu")
+    if "optimizer" not in state:
+        raise CheckpointError(f"Checkpoint state file {state_path} is missing an 'optimizer' entry")
+    optimizer.load_state_dict(state["optimizer"])
+
+    if restore_rng_state:
+        random.setstate(_list_to_tuple(metadata["random_state"]))
+        torch_rng_bytes = bytes.fromhex(metadata["torch_rng_state_hex"])
+        torch.set_rng_state(torch.tensor(list(torch_rng_bytes), dtype=torch.uint8))
+
+    return {
+        "step": metadata["step"],
+        "tokenizer_identity": metadata["tokenizer_identity"],
+        "training_config": metadata["training_config"],
+    }
+
+
+def _tuple_to_list(value):
+    """Recursively convert a (possibly nested) tuple to a (possibly
+    nested) list, so it round-trips through ``json.dumps``/``json.loads``
+    with :func:`_list_to_tuple` restoring the original tuple structure
+    that :func:`random.setstate` requires."""
+    if isinstance(value, tuple):
+        return [_tuple_to_list(item) for item in value]
+    return value
+
+
+def _list_to_tuple(value):
+    """Inverse of :func:`_tuple_to_list`."""
+    if isinstance(value, list):
+        return tuple(_list_to_tuple(item) for item in value)
+    return value
+
+===== FILE: training\evaluate.py =====
+"""NB-09: minimal, standalone checkpoint evaluation harness.
+
+VERIFICATION STATUS: written without a PyTorch installation available
+in this sandbox (no network access to install it) -- the same
+constraint documented since NB-04 in this project. Not executed by
+this assistant. See ARCHITECTURE/NB09_MINIMAL_EVALUATION_HARNESS.md
+for exactly what has and hasn't been genuinely verified.
+
+Objective (per ARCHITECTURE/POST_NB07_ROADMAP.md, NB-09): a standalone
+way to measure a checkpoint's language-modeling quality (loss,
+perplexity) independent of any specific training run in progress.
+``training.loop.Trainer.evaluate()`` only computes eval loss *during*
+a training run; this module answers "is this checkpoint, sitting on
+disk, any good?" after the fact, with no training loop involved.
+
+This is deliberately NOT a benchmark framework: no accuracy/top-k/BLEU/
+ROUGE, no leaderboard, no model-comparison tooling, no generation
+quality scoring. Loss + perplexity + identity + deterministic
+reporting is the complete scope for this milestone.
+
+Reuses, rather than duplicates, existing infrastructure:
+  - training.checkpoint.load_checkpoint    (checkpoint reading)
+  - training.dataset.{encode_corpus, make_sequences, iter_batches}
+                                            (corpus -> batches)
+  - training.loss.causal_lm_loss           (the loss itself)
+  - yug.native.config.ModelConfig          (model/tokenizer identity)
+  - yug.native.model.YugTransformer        (model construction,
+                                             parameter counting)
+No new checkpoint format, no new identity scheme, no new split logic.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
+import torch
+
+from training.checkpoint import load_checkpoint
+from training.dataset import encode_corpus, iter_batches, make_sequences
+from training.errors import TrainingError
+from training.loss import causal_lm_loss
+from yug.native.config import ModelConfig
+from yug.native.model import YugTransformer
+
+
+class EvaluationError(TrainingError):
+    """Raised for an evaluation-specific problem this module itself
+    detects -- currently, only a tokenizer-identity mismatch between
+    the checkpoint and the tokenizer supplied to evaluate it with.
+
+    Checkpoint-file-level errors (missing/corrupt/wrong-version files)
+    are raised by the existing, unmodified
+    ``yug.native.config.ModelConfig.load`` /
+    ``training.checkpoint.load_checkpoint`` machinery this module
+    calls, and are deliberately NOT caught or re-wrapped here (Directive
+    Section 10: reuse existing infrastructure, don't duplicate it) --
+    callers see ``ModelConfigSerializationError`` / ``CheckpointError``
+    directly, exactly as they would from those modules on their own.
+    """
+
+
+@dataclass(frozen=True)
+class EvaluationReport:
+    """Machine- and human-readable result of :func:`evaluate_checkpoint`.
+
+    Every field is either read directly from an existing repository
+    identity mechanism (``ModelConfig.identity``, ``tokenizer.identity``,
+    ``YugTransformer.count_parameters()``, the checkpoint's own recorded
+    ``step``) or computed by this module (``loss``, ``perplexity``,
+    token/sequence counts). No new identity scheme is invented
+    (Directive Section 5).
+    """
+
+    checkpoint_dir: str
+    checkpoint_step: int
+    model_identity: str
+    model_parameter_count: int
+    tokenizer_identity: str
+    eval_token_count: int
+    eval_sequence_count: int
+    sequence_length: int
+    batch_size: int
+    seed: int
+    loss: float
+    perplexity: float
+
+    def to_dict(self) -> dict:
+        """Machine-readable, JSON-compatible representation (Directive
+        Section 6)."""
+        return asdict(self)
+
+    def to_json(self, *, indent: int = 2) -> str:
+        return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
+
+    def to_human_readable(self) -> str:
+        """Concise human-readable report (Directive Section 6) --
+        suitable for terminal output or pasting into the NB-09
+        architecture record."""
+        return (
+            "NB-09 Evaluation Report\n"
+            f"  checkpoint_dir        = {self.checkpoint_dir}\n"
+            f"  checkpoint_step       = {self.checkpoint_step}\n"
+            f"  model_identity        = {self.model_identity}\n"
+            f"  model_parameter_count = {self.model_parameter_count:,}\n"
+            f"  tokenizer_identity    = {self.tokenizer_identity}\n"
+            f"  eval_token_count      = {self.eval_token_count}\n"
+            f"  eval_sequence_count   = {self.eval_sequence_count}\n"
+            f"  sequence_length       = {self.sequence_length}\n"
+            f"  batch_size            = {self.batch_size}\n"
+            f"  seed                  = {self.seed}\n"
+            f"  loss                  = {self.loss:.6f}\n"
+            f"  perplexity            = {self.perplexity:.6f}\n"
+        )
+
+
+def perplexity_from_loss(loss: float) -> float:
+    """``perplexity = exp(loss)`` (Directive Section 7), kept as its
+    own function specifically so it has one place to be tested against
+    a known synthetic loss in isolation from model/checkpoint
+    machinery -- "test it against a known synthetic loss, do not
+    merely test that the evaluator returns a number."
+    """
+    return math.exp(loss)
+
+
+def evaluate_checkpoint(
+    checkpoint_dir: str | Path,
+    tokenizer,
+    eval_sentences: list[str],
+    *,
+    sequence_length: int,
+    batch_size: int,
+    seed: int = 0,
+) -> EvaluationReport:
+    """Load the checkpoint at ``checkpoint_dir`` and report its loss/
+    perplexity on ``eval_sentences``. Does not train. Does not modify
+    the checkpoint. Runs entirely under ``model.eval()`` +
+    ``torch.no_grad()`` (Directive Section 4).
+
+    Args:
+        checkpoint_dir: a directory previously written by
+            ``training.checkpoint.save_checkpoint`` (contains
+            ``model_config.json``, ``metadata.json``, ``state.pt``).
+        tokenizer: an already-loaded ``yug.tokenizer.ByteLevelBpeTokenizer``
+            (or anything exposing the same ``.identity`` and
+            ``.encode()``) -- the caller's responsibility to supply the
+            correct one; this function verifies it matches the
+            checkpoint's own recorded ``tokenizer_identity`` and raises
+            :class:`EvaluationError` if not, rather than silently
+            evaluating with a mismatched tokenizer.
+        eval_sentences: held-out text, split at the sentence level
+            (e.g. via ``training.split.split_sentences``) before this
+            function is called -- this function does not perform or
+            verify any train/eval split itself.
+        sequence_length: as in ``training.dataset.make_sequences`` --
+            must not exceed the checkpoint's own ``context_length``
+            (enforced by ``YugTransformer.forward`` itself, which
+            raises ``yug.native.errors.NativeError`` if violated).
+        batch_size: as in ``training.dataset.iter_batches``.
+        seed: recorded on the returned report for reproducibility
+            bookkeeping, consistent with this project's existing
+            ``TrainingConfig.seed`` convention. It does not itself
+            affect this function's behavior: evaluation runs under
+            ``model.eval()``, which disables ``YugTransformer``'s only
+            source of randomness (attention dropout -- see
+            ``yug/native/model.py``'s ``dropout_p`` handling, gated on
+            ``self.training``), so the forward pass here is already
+            deterministic without seeding anything.
+
+    Raises:
+        ModelConfigSerializationError: the checkpoint's
+            ``model_config.json`` is missing or corrupt (raised by
+            ``ModelConfig.load``, not by this function).
+        CheckpointError: the checkpoint's ``metadata.json``/``state.pt``
+            is missing or corrupt (raised by
+            ``training.checkpoint.load_checkpoint``, not by this
+            function).
+        EvaluationError: the checkpoint's recorded
+            ``tokenizer_identity`` does not match ``tokenizer.identity``.
+        DatasetError: ``eval_sentences`` is empty, encodes to zero
+            tokens, or yields fewer than ``sequence_length + 1`` tokens
+            (raised by ``training.dataset``, not by this function).
+
+    Known, deliberately-unaddressed side effect: constructing
+    ``YugTransformer(model_config)`` draws initial random weights from
+    the global PyTorch RNG before ``load_checkpoint`` immediately
+    overwrites them via ``load_state_dict`` -- this is an existing
+    pattern already present in ``tests/test_training_checkpoint.py``
+    (not something this module introduces), and does not affect the
+    final loaded weights or this function's own determinism, but a
+    caller who cares about the global RNG state should be aware this
+    function does not leave it untouched. ``restore_rng_state=False``
+    is passed to ``load_checkpoint`` below deliberately: restoring a
+    checkpoint's saved *training-time* RNG snapshot has no meaning for
+    a read-only evaluation call, and would itself be a second,
+    unrelated mutation of the caller's global RNG state.
+    """
+    checkpoint_dir = Path(checkpoint_dir)
+
+    model_config = ModelConfig.load(checkpoint_dir / "model_config.json")
+
+    if model_config.tokenizer_identity != tokenizer.identity:
+        raise EvaluationError(
+            f"Checkpoint's tokenizer_identity {model_config.tokenizer_identity!r} "
+            f"does not match the supplied tokenizer's identity "
+            f"{tokenizer.identity!r}. Evaluating with the wrong tokenizer "
+            f"would silently produce meaningless numbers."
+        )
+
+    model = YugTransformer(model_config)
+    # load_checkpoint's existing (NB-07) contract restores optimizer
+    # state alongside model state and requires an already-constructed
+    # optimizer to do so, even though this harness never calls
+    # optimizer.step(). A throwaway AdamW is the smallest correct way
+    # to satisfy that unmodified contract -- see NB-09 architecture
+    # doc, "Checkpoint Loading Behavior", for why a second/parallel
+    # checkpoint-reading path was rejected instead (Directive Section 8).
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+
+    metadata = load_checkpoint(
+        checkpoint_dir, model=model, optimizer=optimizer, restore_rng_state=False
+    )
+
+    token_ids = encode_corpus(tokenizer, eval_sentences)
+    sequences = make_sequences(token_ids, sequence_length=sequence_length)
+    batches = iter_batches(sequences, batch_size=batch_size)
+
+    # Mirrors training.loop.Trainer.evaluate()'s exact pattern (mode
+    # save/restore, no_grad, mean loss over batches) -- this module
+    # does not reimplement a different evaluation convention.
+    was_training = model.training
+    model.eval()
+    total_loss = 0.0
+    try:
+        with torch.no_grad():
+            for input_ids, target_ids in batches:
+                logits = model(input_ids)
+                total_loss += causal_lm_loss(logits, target_ids).item()
+    finally:
+        model.train(was_training)
+    mean_loss = total_loss / len(batches)
+
+    return EvaluationReport(
+        checkpoint_dir=str(checkpoint_dir),
+        checkpoint_step=metadata["step"],
+        model_identity=model_config.identity,
+        model_parameter_count=model.count_parameters(),
+        tokenizer_identity=tokenizer.identity,
+        eval_token_count=len(token_ids),
+        eval_sequence_count=len(sequences),
+        sequence_length=sequence_length,
+        batch_size=batch_size,
+        seed=seed,
+        loss=mean_loss,
+        perplexity=perplexity_from_loss(mean_loss),
+    )
+
+===== FILE: training\experiments\representative_mini_corpus.py =====
+"""Representative Mini-Corpus Investigation.
+
+NOT a milestone: no NB-13 (or any numbered milestone) is assigned. This
+is a tokenizer/data diagnostic. It trains NO Transformer and selects NO
+final tokenizer vocabulary size or winner.
+
+QUESTION: how do candidate tokenizer vocabulary sizes behave, PER
+CATEGORY and globally, across English prose, source code, C#/Unity-
+ecosystem code, technical documentation, Nepali, and English-Nepali
+code-switching?
+
+Category is carried in the existing ``RawDocument.primary_domain``
+field (no schema change). See ``CATEGORIES``.
+
+SOURCES (every source has an explicit :class:`SourceSpec`; see
+``SOURCE_REGISTRY``; BLOCKED/REVIEW/not-yet-verified entries are
+reported, never silently dropped or accepted):
+  - general_english: Common Pile ``wikimedia_filtered`` via the EXISTING
+    ``acquire_common_pile_wikimedia_sample`` (pinned revision).
+  - code / csharp_gamedev / software_docs: an explicit list of files at
+    PINNED COMMITS of permissively licensed GitHub repositories
+    (``mini_corpus_github_files.json``), fetched from
+    ``raw.githubusercontent.com`` and verified against each file's git
+    blob SHA-1 (tamper/drift evidence). No crawling, no API key.
+  - nepali: Nepali Wikipedia (``wikimedia/wikipedia``, config
+    ``20231101.ne``) through the public Hugging Face dataset-viewer
+    ``/rows`` API (bounded, deterministic offsets, stdlib only).
+    Provenance = the ``ne`` Wikipedia project, NOT script detection.
+  - nepali_english_codeswitch: NATURAL SOURCE NOT YET VERIFIED. A small
+    hand-written SYNTHETIC diagnostic set exists; it is measured
+    separately, labelled synthetic, and is NEVER used to fit a
+    tokenizer or counted as natural data.
+  - Unity documentation / Asset Store / Academy: BLOCKED (not scraped).
+
+CONTENT-TYPE-AWARE NORMALIZATION (the one change to shared code):
+``training.corpus_prep.normalize_text`` strips per-line indentation and
+collapses space runs, which is destructive for code and markdown.
+``prepare_corpus`` gained an OPTIONAL ``text_normalizer`` hook (default
+``None`` = unchanged behaviour). This module supplies
+:func:`normalize_document`: prose categories keep ``normalize_text``;
+code and technical-documentation categories use
+:func:`normalize_structured_text` (CRLF->LF, trailing space/tab removal,
+leading/trailing blank lines removed; indentation, tabs and internal
+space runs preserved).
+
+SPLIT: ``prepare_corpus``'s own split is global (a small category can
+land with zero validation documents). This module therefore reuses its
+gate/normalize/quality/exact-dedup stages and re-splits the accepted
+documents PER CATEGORY with the existing ``training.split.split_sentences``
+(same seed and fraction). ``corpus_prep_manifest.train_count`` /
+``validation_count`` describe prepare_corpus's global split and are NOT
+what tokenizer fitting uses; ``split`` describes the split actually used.
+
+TOKENIZER: the existing ``ByteLevelBpeTokenizer`` (unmodified), fitted
+ONLY on training documents, via the same prefix-of-largest-fit approach
+as ``tokenizer_vocab_scaling`` (its building blocks are imported, not
+duplicated). Fit mixture = natural concatenation of every category's
+train partition, so byte-heavy categories dominate merge learning; this
+is reported (``train_composition``), not corrected.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import hashlib
+import json
+import urllib.parse
+import urllib.request
+from collections import Counter
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Sequence
+
+from training.corpus_prep import (
+    LicenseDecision,
+    LicensePolicy,
+    RawDocument,
+    normalize_text,
+    prepare_corpus,
+)
+from training.errors import TrainingError
+from training.experiments import tokenizer_vocab_scaling as tvs
+from training.experiments.real_corpus_experiment import (
+    COMMON_PILE_DATASET_ID,
+    COMMON_PILE_DATASET_REVISION,
+    SEED,
+    VAL_FRACTION,
+    WIKIMEDIA_LICENSE,
+    acquire_common_pile_wikimedia_sample,
+)
+from training.split import split_sentences
+
+EXPERIMENT_NAME = "representative_mini_corpus_investigation"
+
+CAT_ENGLISH = "general_english"
+CAT_CODE = "code"
+CAT_CSHARP = "csharp_gamedev"
+CAT_DOCS = "software_docs"
+CAT_NEPALI = "nepali"
+CAT_CODESWITCH = "nepali_english_codeswitch"
+CATEGORIES: tuple[str, ...] = (CAT_ENGLISH, CAT_CODE, CAT_CSHARP, CAT_DOCS, CAT_NEPALI, CAT_CODESWITCH)
+
+CONTENT_TYPE: dict[str, str] = {
+    CAT_ENGLISH: "prose",
+    CAT_CODE: "code",
+    CAT_CSHARP: "code",
+    CAT_DOCS: "technical_documentation",
+    CAT_NEPALI: "nepali_prose",
+    CAT_CODESWITCH: "code_switched_text",
+}
+_STRUCTURED_CONTENT_TYPES = frozenset({"code", "technical_documentation"})
+
+DEFAULT_VOCAB_SIZES: tuple[int, ...] = (1024, 2048, 4096, 8192)
+DEFAULT_ENGLISH_MAX_DOCUMENTS = 60
+DEFAULT_ENGLISH_MAX_DOC_CHARS = 12_000
+DEFAULT_ENGLISH_MAX_TOTAL_CHARS = 180_000
+DEFAULT_NEPALI_MAX_TOTAL_CHARS = 60_000
+DEFAULT_NEPALI_MAX_DOC_CHARS = 8_000
+DEFAULT_NEPALI_MIN_DOC_CHARS = 300
+DEFAULT_NEPALI_MAX_ROWS_SCANNED = 2_000
+
+LICENSE_SYNTHETIC = "synthetic-diagnostic"
+_GITHUB_MANIFEST_PATH = Path(__file__).with_name("mini_corpus_github_files.json")
+_HF_ROWS_URL = "https://datasets-server.huggingface.co/rows"
+_HF_NEPALI_DATASET = "wikimedia/wikipedia"
+_HF_NEPALI_CONFIG = "20231101.ne"
+_USER_AGENT = "yug-mini-corpus-investigation/0.1"
+_HTTP_TIMEOUT_SECONDS = 60.0
+
+NATURAL_CODESWITCH_STATUS = "NATURAL SOURCE NOT YET VERIFIED"
+
+MINI_CORPUS_LICENSE_POLICY = LicensePolicy(
+    decisions={
+        "CC-BY-SA-4.0": LicenseDecision.ALLOW,
+        "CC-BY-SA-3.0": LicenseDecision.ALLOW,
+        "CC-BY-4.0": LicenseDecision.ALLOW,
+        "CC-BY-3.0": LicenseDecision.ALLOW,
+        "MIT": LicenseDecision.ALLOW,
+        "Apache-2.0": LicenseDecision.ALLOW,
+        "MS-PL": LicenseDecision.ALLOW,
+    },
+    default=LicenseDecision.REVIEW,  # unknown / synthetic / custom => REVIEW, never ALLOW
+)
+
+
+class MiniCorpusError(TrainingError):
+    """Invalid mini-corpus input (unknown category, bad configuration, ...)."""
+
+
+class MiniCorpusAcquisitionError(MiniCorpusError):
+    """A live source could not be acquired or verified."""
+
+
+# ---------------------------------------------------------------------------
+# Source registry (provenance / license status)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SourceSpec:
+    source_id: str
+    category: str
+    name: str
+    upstream: str
+    canonical_id: str
+    license_id: str
+    license_evidence: str
+    status: str  # ACCEPT | REVIEW | BLOCKED | NATURAL SOURCE NOT YET VERIFIED | SYNTHETIC_DIAGNOSTIC_ONLY
+    language: str
+    acquisition_method: str
+    revision: str
+    redistribution_notes: str
+    attribution: str
+    automated: bool
+    reason: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return dataclasses.asdict(self)
+
+
+def _gh(source_id, category, repo, license_id, evidence, commit, notes, reason, language="zxx"):
+    return SourceSpec(
+        source_id=source_id,
+        category=category,
+        name=f"{repo} (selected files)",
+        upstream=repo,
+        canonical_id=f"https://github.com/{repo}",
+        license_id=license_id,
+        license_evidence=evidence,
+        status="ACCEPT",
+        language=language,
+        acquisition_method="explicit file list at pinned commit via raw.githubusercontent.com; git blob SHA-1 verified",
+        revision=commit,
+        redistribution_notes=notes,
+        attribution="Retain upstream copyright/license notices; nothing is redistributed by this experiment (fetched locally, not committed).",
+        automated=True,
+        reason=reason,
+    )
+
+
+def _load_github_manifest(path: Path = _GITHUB_MANIFEST_PATH) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _commit_for(source_id: str) -> str:
+    for s in _load_github_manifest()["sources"]:
+        if s["source_id"] == source_id:
+            return s["commit"]
+    raise MiniCorpusError(f"source {source_id!r} missing from GitHub file manifest")
+
+
+def build_source_registry() -> tuple[SourceSpec, ...]:
+    c = _commit_for
+    repo_note = "License read from the repository LICENSE file at the pinned commit; repo-level, individual files not audited for bundled third-party code."
+    specs = [
+        SourceSpec(
+            source_id="cp-wikimedia-filtered",
+            category=CAT_ENGLISH,
+            name="Common Pile - Wikimedia Filtered (Wikibooks in shard 0)",
+            upstream="common-pile/wikimedia_filtered",
+            canonical_id=f"hf:{COMMON_PILE_DATASET_ID}@{COMMON_PILE_DATASET_REVISION}",
+            license_id=WIKIMEDIA_LICENSE,
+            license_evidence="per-record license string mapped by exact match in real_corpus_experiment",
+            status="ACCEPT",
+            language="en",
+            acquisition_method="existing acquire_common_pile_wikimedia_sample (bounded streaming read, pinned revision)",
+            revision=COMMON_PILE_DATASET_REVISION,
+            redistribution_notes="CC BY-SA 4.0: attribution + share-alike. Not committed to the repository.",
+            attribution="Wikimedia contributors; see per-document provenance in the acquisition report.",
+            automated=True,
+            reason="Already executed by Rai in the first real-corpus experiment; same shard, so the first N documents are a prefix of that sample.",
+        ),
+        _gh("gh-psf-requests", CAT_CODE, "psf/requests", "Apache-2.0", "LICENSE = Apache License 2.0", c("gh-psf-requests"), repo_note, "Python source"),
+        _gh("gh-expressjs-express", CAT_CODE, "expressjs/express", "MIT", "LICENSE = MIT", c("gh-expressjs-express"), repo_note, "JavaScript source"),
+        _gh("gh-gin-gonic-gin", CAT_CODE, "gin-gonic/gin", "MIT", "LICENSE = MIT", c("gh-gin-gonic-gin"), repo_note, "Go source"),
+        _gh(
+            "gh-burntsushi-ripgrep", CAT_CODE, "BurntSushi/ripgrep", "MIT",
+            "COPYING: dual-licensed Unlicense OR MIT; MIT chosen", c("gh-burntsushi-ripgrep"), repo_note, "Rust source",
+        ),
+        _gh("gh-cysharp-unitask", CAT_CSHARP, "Cysharp/UniTask", "MIT", "LICENSE = MIT", c("gh-cysharp-unitask"), repo_note,
+            "Third-party Unity-ecosystem C# library (UnityEngine APIs); source code only, NOT Unity documentation"),
+        _gh("gh-mirrornetworking-mirror", CAT_CSHARP, "MirrorNetworking/Mirror", "MIT",
+            "LICENSE = MIT (copyright Unity Technologies 2015 and Mirror contributors 2019)", c("gh-mirrornetworking-mirror"), repo_note,
+            "Third-party Unity game-networking C#; source code only, NOT Unity documentation"),
+        _gh("gh-monogame-monogame", CAT_CSHARP, "MonoGame/MonoGame", "MS-PL", "LICENSE.txt = Microsoft Public License (Ms-PL)", c("gh-monogame-monogame"),
+            repo_note + " Restricted to MonoGame.Framework/ (ThirdParty/ excluded).", "Game-development C# (not Unity)"),
+        _gh("gh-google-eng-practices", CAT_DOCS, "google/eng-practices", "CC-BY-3.0", "LICENSE = Creative Commons Attribution 3.0 Unported", c("gh-google-eng-practices"),
+            repo_note, "Engineering-practice documentation (code review)", language="en"),
+        _gh("gh-microsoft-api-guidelines", CAT_DOCS, "microsoft/api-guidelines", "CC-BY-4.0", "license.txt = Creative Commons Attribution 4.0 International", c("gh-microsoft-api-guidelines"),
+            repo_note, "API design documentation", language="en"),
+        _gh("gh-rust-lang-book", CAT_DOCS, "rust-lang/book", "MIT", "LICENSE-MIT + LICENSE-APACHE (dual MIT OR Apache-2.0); MIT chosen", c("gh-rust-lang-book"),
+            repo_note, "Programming-language documentation", language="en"),
+        SourceSpec(
+            source_id="hf-wikipedia-ne-20231101",
+            category=CAT_NEPALI,
+            name="Nepali Wikipedia, 20231101 dump (cleaned articles)",
+            upstream="wikimedia/wikipedia, config 20231101.ne (Wikipedia project ne)",
+            canonical_id=f"hf:{_HF_NEPALI_DATASET}#{_HF_NEPALI_CONFIG}",
+            license_id="CC-BY-SA-3.0",
+            license_evidence="[SOURCE-DERIVED] dataset card: text licensed under GFDL and CC BY-SA 3.0; some text may be CC-only or carry additional licenses",
+            status="ACCEPT",
+            language="ne",
+            acquisition_method="Hugging Face dataset-viewer /rows API, sequential offsets from 0, <=100 rows/request, stdlib urllib",
+            revision="snapshot label 20231101 (the /rows API exposes no git revision; num_rows_total is recorded at run time)",
+            redistribution_notes="CC BY-SA 3.0 (+GFDL): attribution + share-alike. Not committed to the repository.",
+            attribution="Nepali Wikipedia contributors; per-article title/url recorded in the acquisition report.",
+            automated=True,
+            reason="[PROPOSAL] ACCEPT on the dataset card's stated license; final legal call rests with the project owner. Live path NOT executed by the author (sandbox has no access).",
+        ),
+        SourceSpec(
+            source_id="synthetic-codeswitch-diagnostic",
+            category=CAT_CODESWITCH,
+            name="Hand-written synthetic English-Nepali code-switching diagnostic lines",
+            upstream="this repository (representative_mini_corpus.py)",
+            canonical_id="repo:training/experiments/representative_mini_corpus.py#SYNTHETIC_CODESWITCH_LINES",
+            license_id=LICENSE_SYNTHETIC,
+            license_evidence="original text written by the implementation engineer for diagnostics",
+            status="SYNTHETIC_DIAGNOSTIC_ONLY",
+            language="ne-en",
+            acquisition_method="in-repo constant",
+            revision="n/a",
+            redistribution_notes="Synthetic; not natural data; never used to fit a tokenizer or counted as training data.",
+            attribution="n/a",
+            automated=True,
+            reason="Not reviewed by a native Nepali speaker [UNKNOWN]. Measured separately as `synthetic_diagnostic`.",
+        ),
+        SourceSpec(
+            source_id="natural-codeswitch-none",
+            category=CAT_CODESWITCH,
+            name="Natural English-Nepali code-switching corpus",
+            upstream="none identified",
+            canonical_id="none",
+            license_id="unknown",
+            license_evidence="no source with verified license and provenance identified",
+            status=NATURAL_CODESWITCH_STATUS,
+            language="ne-en",
+            acquisition_method="none",
+            revision="n/a",
+            redistribution_notes="n/a",
+            attribution="n/a",
+            automated=False,
+            reason="Not acquired. Candidates must be license-verified before entering the gate.",
+        ),
+        SourceSpec(
+            source_id="unity-docs",
+            category=CAT_CSHARP,
+            name="Unity Manual / Scripting API documentation",
+            upstream="Unity Technologies",
+            canonical_id="https://docs.unity3d.com",
+            license_id="unknown",
+            license_evidence="not verified as training-safe",
+            status="BLOCKED",
+            language="en",
+            acquisition_method="none (not scraped)",
+            revision="n/a",
+            redistribution_notes="n/a",
+            attribution="n/a",
+            automated=False,
+            reason="Directive: do not assume Unity documentation is training-safe; do not scrape.",
+        ),
+        SourceSpec(
+            source_id="unity-asset-store-academy",
+            category=CAT_CSHARP,
+            name="Unity Asset Store / Unity Academy content",
+            upstream="Unity Technologies",
+            canonical_id="n/a",
+            license_id="unknown",
+            license_evidence="n/a",
+            status="BLOCKED",
+            language="en",
+            acquisition_method="none",
+            revision="n/a",
+            redistribution_notes="n/a",
+            attribution="n/a",
+            automated=False,
+            reason="Directive: must not be used.",
+        ),
+        SourceSpec(
+            source_id="gh-unity-csreference",
+            category=CAT_CSHARP,
+            name="Unity-Technologies/UnityCsReference",
+            upstream="Unity Technologies",
+            canonical_id="https://github.com/Unity-Technologies/UnityCsReference",
+            license_id="Unity Reference-Only License",
+            license_evidence="[VERIFIED BY REAL FETCH] LICENSE.md points to unity3d.com/legal/licenses/Unity_Reference_Only_License",
+            status="BLOCKED",
+            language="zxx",
+            acquisition_method="none",
+            revision="n/a",
+            redistribution_notes="reference-only terms; not an open-source license",
+            attribution="n/a",
+            automated=False,
+            reason="Reference-only license is not a training-use grant.",
+        ),
+        SourceSpec(
+            source_id="gh-unity-ml-agents",
+            category=CAT_CSHARP,
+            name="Unity-Technologies/ml-agents",
+            upstream="Unity Technologies",
+            canonical_id="https://github.com/Unity-Technologies/ml-agents",
+            license_id="Apache-2.0",
+            license_evidence="[VERIFIED BY REAL FETCH] LICENSE.md = Apache License 2.0",
+            status="REVIEW",
+            language="zxx",
+            acquisition_method="not automated",
+            revision="n/a",
+            redistribution_notes="Apache-2.0 at repo level",
+            attribution="Retain notices",
+            automated=False,
+            reason="License is explicit, but the project's existing Unity policy is not visible in the uploaded repository [UNKNOWN]; held for the owner's decision rather than accepted.",
+        ),
+        SourceSpec(
+            source_id="web-crawl-nepali",
+            category=CAT_NEPALI,
+            name="Web-crawl-derived Nepali corpora (e.g. CC-100/OSCAR/mC4 ne)",
+            upstream="various",
+            canonical_id="n/a",
+            license_id="unknown",
+            license_evidence="[ASSUMPTION] crawl-derived; per-document licenses not established",
+            status="REVIEW",
+            language="ne",
+            acquisition_method="none",
+            revision="n/a",
+            redistribution_notes="n/a",
+            attribution="n/a",
+            automated=False,
+            reason="Unclear per-document licensing => REVIEW, not ACCEPT.",
+        ),
+    ]
+    return tuple(specs)
+
+
+# ---------------------------------------------------------------------------
+# Categories + normalization
+# ---------------------------------------------------------------------------
+
+
+def category_of(doc: RawDocument) -> str:
+    """Category of ``doc`` (its ``primary_domain``). Raises
+    :class:`MiniCorpusError` for anything not in :data:`CATEGORIES`."""
+    if doc.primary_domain not in CONTENT_TYPE:
+        raise MiniCorpusError(
+            f"document {doc.document_id!r} has unknown category {doc.primary_domain!r}; expected one of {list(CATEGORIES)}"
+        )
+    return doc.primary_domain
+
+
+def normalize_structured_text(text: str) -> str:
+    """Whitespace-preserving normalization for code / markdown.
+
+    CRLF/CR -> LF; trailing spaces/tabs removed per line; leading and
+    trailing blank lines removed. Leading indentation, tabs, and
+    internal space runs are preserved. NOT done: Unicode normalization,
+    case changes, line joining. Known effect: trailing whitespace that
+    is semantically meaningful (e.g. markdown hard line breaks written
+    as two trailing spaces) is dropped.
+    """
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [line.rstrip(" \t") for line in text.split("\n")]
+    return "\n".join(lines).strip("\n")
+
+
+def normalize_document(doc: RawDocument) -> str:
+    """Content-type-aware normalizer passed to ``prepare_corpus``."""
+    if CONTENT_TYPE[category_of(doc)] in _STRUCTURED_CONTENT_TYPES:
+        return normalize_structured_text(doc.text)
+    return normalize_text(doc.text)
+
+
+# ---------------------------------------------------------------------------
+# Acquisition
+# ---------------------------------------------------------------------------
+
+
+def _default_open_bytes(url: str) -> bytes:
+    request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
+    with urllib.request.urlopen(request, timeout=_HTTP_TIMEOUT_SECONDS) as response:  # noqa: S310
+        return response.read()
+
+
+def git_blob_sha1(data: bytes) -> str:
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()  # noqa: S324 - git object id, not security
+
+
+def acquire_github_files(
+    manifest: dict[str, Any] | None = None,
+    *,
+    registry: Sequence[SourceSpec] | None = None,
+    open_bytes: Callable[[str], bytes] | None = None,
+) -> tuple[list[RawDocument], dict[str, dict[str, Any]], list[dict[str, Any]]]:
+    """Fetch every file in the pinned manifest and verify its git blob SHA-1.
+
+    Returns ``(documents, provenance, errors)``. A fetch failure, blob
+    SHA mismatch, or non-UTF-8 file is recorded in ``errors`` and that
+    file is skipped (never accepted unverified).
+    """
+    manifest = manifest if manifest is not None else _load_github_manifest()
+    specs = {s.source_id: s for s in (registry if registry is not None else build_source_registry())}
+    fetch = open_bytes or _default_open_bytes
+    docs: list[RawDocument] = []
+    provenance: dict[str, dict[str, Any]] = {}
+    errors: list[dict[str, Any]] = []
+
+    for source in manifest["sources"]:
+        spec = specs.get(source["source_id"])
+        if spec is None:
+            errors.append({"stage": "github", "source_id": source["source_id"], "error": "source not in registry"})
+            continue
+        repo = spec.upstream
+        commit = source["commit"]
+        for entry in source["files"]:
+            path = entry["path"]
+            url = f"https://raw.githubusercontent.com/{repo}/{commit}/{urllib.parse.quote(path)}"
+            try:
+                raw = fetch(url)
+            except Exception as exc:  # noqa: BLE001
+                errors.append({"stage": "github", "source_id": spec.source_id, "path": path, "error": f"fetch failed: {type(exc).__name__}: {exc}"})
+                continue
+            actual = git_blob_sha1(raw)
+            if actual != entry["git_blob_sha1"]:
+                errors.append({"stage": "github", "source_id": spec.source_id, "path": path,
+                               "error": f"git blob SHA-1 mismatch: expected {entry['git_blob_sha1']}, got {actual}"})
+                continue
+            try:
+                text = raw.decode("utf-8-sig")
+            except UnicodeDecodeError as exc:
+                errors.append({"stage": "github", "source_id": spec.source_id, "path": path, "error": f"not valid UTF-8: {exc}"})
+                continue
+            doc_id = f"{spec.source_id}:{path}@{commit[:12]}"
+            docs.append(
+                RawDocument(
+                    document_id=doc_id,
+                    text=text,
+                    source_id=spec.source_id,
+                    source_name=spec.name,
+                    license=spec.license_id,
+                    language=spec.language,
+                    primary_domain=spec.category,
+                )
+            )
+            provenance[doc_id] = {
+                "repo": repo, "commit": commit, "path": path, "url": url,
+                "git_blob_sha1": entry["git_blob_sha1"], "bom_stripped": raw.startswith(b"\xef\xbb\xbf"),
+                "license_id": spec.license_id,
+            }
+    return docs, provenance, errors
+
+
+def acquire_english(
+    max_documents: int = DEFAULT_ENGLISH_MAX_DOCUMENTS,
+    *,
+    max_doc_chars: int = DEFAULT_ENGLISH_MAX_DOC_CHARS,
+    max_total_chars: int = DEFAULT_ENGLISH_MAX_TOTAL_CHARS,
+    acquire: Callable[..., Any] | None = None,
+) -> tuple[list[RawDocument], dict[str, Any]]:
+    """General English via the EXISTING Common Pile acquisition, then a
+    deterministic size bound (documents longer than ``max_doc_chars``
+    are skipped, not truncated; stop once ``max_total_chars`` reached)."""
+    fn = acquire or acquire_common_pile_wikimedia_sample
+    raw_docs, report = fn(max_documents)
+    kept: list[RawDocument] = []
+    total = 0
+    skipped_long = 0
+    for doc in raw_docs:
+        if len(doc.text) > max_doc_chars:
+            skipped_long += 1
+            continue
+        if total + len(doc.text) > max_total_chars:
+            break
+        kept.append(dataclasses.replace(doc, primary_domain=CAT_ENGLISH))
+        total += len(doc.text)
+    info = {
+        "acquired_before_bounds": len(raw_docs),
+        "kept": len(kept),
+        "skipped_over_max_doc_chars": skipped_long,
+        "total_chars_kept": total,
+        "acquisition_report": {k: v for k, v in report.to_dict().items() if k != "provenance"},
+        "original_source_ids": sorted({d.source_id for d in kept}),
+    }
+    return kept, info
+
+
+def _default_open_json(url: str) -> dict[str, Any]:
+    return json.loads(_default_open_bytes(url).decode("utf-8"))
+
+
+def devanagari_fraction(text: str) -> float | None:
+    """Fraction of non-whitespace characters in U+0900..U+097F. A
+    DIAGNOSTIC only (e.g. to spot markup contamination); it is never
+    used to decide language."""
+    chars = [c for c in text if not c.isspace()]
+    if not chars:
+        return None
+    return sum(1 for c in chars if "\u0900" <= c <= "\u097f") / len(chars)
+
+
+def acquire_nepali_wikipedia(
+    *,
+    max_total_chars: int = DEFAULT_NEPALI_MAX_TOTAL_CHARS,
+    max_doc_chars: int = DEFAULT_NEPALI_MAX_DOC_CHARS,
+    min_doc_chars: int = DEFAULT_NEPALI_MIN_DOC_CHARS,
+    max_rows_scanned: int = DEFAULT_NEPALI_MAX_ROWS_SCANNED,
+    open_json: Callable[[str], dict[str, Any]] | None = None,
+) -> tuple[list[RawDocument], dict[str, dict[str, Any]], dict[str, Any]]:
+    """Bounded, deterministic read of Nepali Wikipedia rows (offset 0
+    upward, 100 per request). Rows whose ``text`` cell is truncated by
+    the API, too short, or too long are skipped and counted.
+
+    Raises :class:`MiniCorpusAcquisitionError` on transport/schema
+    failure or if no usable document was found.
+    """
+    fetch = open_json or _default_open_json
+    docs: list[RawDocument] = []
+    provenance: dict[str, dict[str, Any]] = {}
+    skipped: Counter = Counter()
+    total = 0
+    scanned = 0
+    offset = 0
+    num_rows_total: int | None = None
+    requests_made = 0
+
+    while total < max_total_chars and scanned < max_rows_scanned:
+        query = urllib.parse.urlencode(
+            {"dataset": _HF_NEPALI_DATASET, "config": _HF_NEPALI_CONFIG, "split": "train", "offset": offset, "length": 100}
+        )
+        try:
+            payload = fetch(f"{_HF_ROWS_URL}?{query}")
+            requests_made += 1
+            rows = payload["rows"]
+            num_rows_total = payload.get("num_rows_total", num_rows_total)
+        except Exception as exc:  # noqa: BLE001
+            raise MiniCorpusAcquisitionError(f"Nepali Wikipedia rows request failed at offset {offset}: {type(exc).__name__}: {exc}") from exc
+        if not rows:
+            break
+        for item in rows:
+            scanned += 1
+            try:
+                row = item["row"]
+                text, rid = row["text"], str(row["id"])
+            except (KeyError, TypeError) as exc:
+                raise MiniCorpusAcquisitionError(f"unexpected row schema at offset {offset}: {exc!r}") from exc
+            if "text" in (item.get("truncated_cells") or []):
+                skipped["text_truncated_by_api"] += 1
+                continue
+            if not isinstance(text, str) or len(text) < min_doc_chars:
+                skipped["below_min_doc_chars"] += 1
+                continue
+            if len(text) > max_doc_chars:
+                skipped["over_max_doc_chars"] += 1
+                continue
+            if total + len(text) > max_total_chars:
+                skipped["would_exceed_budget"] += 1
+                continue
+            doc_id = f"wikipedia-ne:{rid}"
+            docs.append(
+                RawDocument(
+                    document_id=doc_id, text=text, source_id="hf-wikipedia-ne-20231101",
+                    source_name=f"{_HF_NEPALI_DATASET}#{_HF_NEPALI_CONFIG}", license="CC-BY-SA-3.0",
+                    language="ne", primary_domain=CAT_NEPALI,
+                )
+            )
+            provenance[doc_id] = {
+                "row_idx": item.get("row_idx"), "title": row.get("title"), "url": row.get("url"),
+                "devanagari_fraction_diagnostic": devanagari_fraction(text),
+            }
+            total += len(text)
+            if total >= max_total_chars:
+                break
+        offset += len(rows)
+
+    if not docs:
+        raise MiniCorpusAcquisitionError(f"no usable Nepali Wikipedia documents found (scanned={scanned}, skipped={dict(skipped)})")
+    fractions = sorted(p["devanagari_fraction_diagnostic"] for p in provenance.values() if p["devanagari_fraction_diagnostic"] is not None)
+    info = {
+        "rows_scanned": scanned, "requests_made": requests_made, "documents_kept": len(docs), "total_chars_kept": total,
+        "skipped": dict(sorted(skipped.items())), "num_rows_total_reported_by_api": num_rows_total,
+        "devanagari_fraction_min": fractions[0] if fractions else None,
+        "devanagari_fraction_median": fractions[len(fractions) // 2] if fractions else None,
+    }
+    return docs, provenance, info
+
+
+# Hand-written SYNTHETIC diagnostic lines. NOT natural data. Not reviewed
+# by a native speaker [UNKNOWN].
+SYNTHETIC_CODESWITCH_LINES: tuple[str, ...] = (
+    "आज मैले नयाँ laptop किनें, तर battery life निकै कमजोर छ।",
+    "यो function ले array को length फर्काउँछ।",
+    "कृपया file लाई GitHub मा push गर्नुहोस्।",
+    "मेरो code मा bug छ, debug गर्न मद्दत चाहियो।",
+    "Unity मा player को movement कसरी गर्ने भनेर म सिक्दै छु।",
+    "भोलि meeting मा हामी project को deadline बारे छलफल गर्नेछौं।",
+    "यो database query धेरै slow छ, index थप्नुपर्छ।",
+    "Nepal को capital Kathmandu हो र यो शहर धेरै busy छ।",
+    "मलाई Python सिक्न मन लाग्छ किनभने यो सजिलो छ।",
+    "server down भएकाले website खुल्दैन।",
+    "कृपया password नबिर्सनुहोस्, नत्र account lock हुन सक्छ।",
+    "उसले exam मा राम्रो score ल्यायो र सबै खुसी भए।",
+)
+
+
+def synthetic_codeswitch_documents() -> list[RawDocument]:
+    """The synthetic diagnostic set, explicitly labelled (source_id,
+    license and name all say synthetic). Its license is not in the ALLOW
+    policy, so it can never pass the license gate into the corpus."""
+    return [
+        RawDocument(
+            document_id=f"synthetic-codeswitch:{i:03d}", text=line, source_id="synthetic-codeswitch-diagnostic",
+            source_name="SYNTHETIC diagnostic (not natural data)", license=LICENSE_SYNTHETIC,
+            language="ne-en", primary_domain=CAT_CODESWITCH,
+        )
+        for i, line in enumerate(SYNTHETIC_CODESWITCH_LINES)
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Corpus construction
+# ---------------------------------------------------------------------------
+
+
+def _sorted_counts(items: Sequence[str]) -> dict[str, int]:
+    c = Counter(items)
+    return {k: c[k] for k in sorted(c)}
+
+
+def stratified_split(accepted, *, val_fraction: float, seed: int):
+    """Per-category deterministic split reusing ``split_sentences``.
+    Returns ``(train, validation)`` lists in category order. A category
+    with fewer than 2 accepted documents goes entirely to train."""
+    train, validation = [], []
+    for cat in CATEGORIES:
+        docs = [d for d in accepted if d.primary_domain == cat]
+        if len(docs) < 2:
+            train.extend(docs)
+            continue
+        by_text = {d.text: d for d in docs}
+        tr, va = split_sentences([d.text for d in docs], val_fraction=val_fraction, seed=seed)
+        train.extend(by_text[t] for t in tr)
+        validation.extend(by_text[t] for t in va)
+    return train, validation
+
+
+def build_corpus(documents: list[RawDocument], *, val_fraction: float = VAL_FRACTION, seed: int = SEED) -> dict[str, Any]:
+    """Run gate/normalize/quality/exact-dedup (``prepare_corpus`` with the
+    content-type-aware normalizer), then the per-category split.
+
+    Raises :class:`MiniCorpusError` for an unknown category (fail fast,
+    before any processing)."""
+    for doc in documents:
+        category_of(doc)
+    prep = prepare_corpus(
+        documents, license_policy=MINI_CORPUS_LICENSE_POLICY, val_fraction=val_fraction, seed=seed,
+        text_normalizer=normalize_document,
+    )
+    train, validation = stratified_split(prep.accepted, val_fraction=val_fraction, seed=seed)
+    cat_by_id = {d.document_id: d.primary_domain for d in documents}
+
+    per_category: dict[str, dict[str, Any]] = {}
+    for cat in CATEGORIES:
+        rej = [r for r in prep.rejected if cat_by_id[r.document_id] == cat]
+        rev = [r for r in prep.review if cat_by_id[r.document_id] == cat]
+        per_category[cat] = {
+            "content_type": CONTENT_TYPE[cat],
+            "input": sum(1 for d in documents if d.primary_domain == cat),
+            "accepted": sum(1 for d in prep.accepted if d.primary_domain == cat),
+            "rejected": len(rej),
+            "review": len(rev),
+            "duplicates": sum(1 for r in rej if r.reason.value == "exact_duplicate"),
+            "rejection_reasons": _sorted_counts([r.reason.value for r in rej + rev]),
+            "train": sum(1 for d in train if d.primary_domain == cat),
+            "validation": sum(1 for d in validation if d.primary_domain == cat),
+            "accepted_content_hash": hashlib.sha256(
+                "\n".join(sorted(d.content_hash for d in prep.accepted if d.primary_domain == cat)).encode("utf-8")
+            ).hexdigest(),
+        }
+    return {"prep": prep, "train": train, "validation": validation, "per_category": per_category}
+
+
+# ---------------------------------------------------------------------------
+# Measurement
+# ---------------------------------------------------------------------------
+
+_SUM_KEYS = (
+    "document_count", "total_characters", "total_words", "total_tokens", "total_utf8_bytes",
+    "encoding_failures", "decoding_failures", "round_trip_mismatches", "ids_out_of_range",
+)
+
+
+def _finish(stats: dict[str, Any]) -> dict[str, Any]:
+    out = dict(stats)
+    tok = out["total_tokens"]
+    out["tokens_per_word"] = tok / out["total_words"] if out["total_words"] else None
+    out["tokens_per_character"] = tok / out["total_characters"] if out["total_characters"] else None
+    out["tokens_per_utf8_byte"] = tok / out["total_utf8_bytes"] if out["total_utf8_bytes"] else None
+    return out
+
+
+def measure_group(tokenizer, texts: list[str]) -> tuple[dict[str, Any], Counter]:
+    """``measure_partition`` (reused) plus UTF-8 byte totals."""
+    stats, counts = tvs.measure_partition(tokenizer, texts)
+    stats = dict(stats)
+    stats["total_utf8_bytes"] = sum(len(t.encode("utf-8")) for t in texts)
+    return _finish(stats), counts
+
+
+def combine_stats(parts: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Sum additive fields; recompute ratios from the sums."""
+    total = {k: sum(p[k] for p in parts) for k in _SUM_KEYS}
+    return _finish(total)
+
+
+def category_dispersion(per_category: dict[str, dict[str, Any]], metric: str = "tokens_per_character") -> dict[str, Any]:
+    """Descriptive spread of ``combined.<metric>`` across natural
+    categories that have data. Not a ranking or selection."""
+    vals = {c: v["combined"][metric] for c, v in per_category.items() if v.get("combined") and v["combined"][metric] is not None}
+    if not vals:
+        return {"metric": metric, "categories_measured": 0}
+    lo = min(vals, key=lambda c: (vals[c], c))
+    hi = max(vals, key=lambda c: (vals[c], c))
+    return {
+        "metric": metric, "categories_measured": len(vals), "values": dict(sorted(vals.items())),
+        "min": {"category": lo, "value": vals[lo]}, "max": {"category": hi, "value": vals[hi]},
+        "max_over_min_ratio": (vals[hi] / vals[lo]) if vals[lo] else None,
+    }
+
+
+def _reduction_block(base: dict[str, Any] | None, cur: dict[str, Any] | None) -> dict[str, Any] | None:
+    if base is None or cur is None:
+        return None
+    return {
+        "token_count_reduction_pct": tvs._pct_reduction(base["total_tokens"], cur["total_tokens"]),
+        "tokens_per_word_reduction_pct": tvs._pct_reduction(base["tokens_per_word"], cur["tokens_per_word"]),
+        "tokens_per_character_reduction_pct": tvs._pct_reduction(base["tokens_per_character"], cur["tokens_per_character"]),
+    }
+
+
+LIMITATIONS: tuple[str, ...] = (
+    "Tokenization statistics are not model-quality evidence; no Transformer is trained and no multilingual capability is claimed.",
+    "Source diversity is small: a few repositories per code/docs category, one Wikibooks shard for English, Nepali Wikipedia only for Nepali.",
+    "Natural English-Nepali code-switching data is NOT available (NATURAL SOURCE NOT YET VERIFIED); the synthetic set is measured separately and is not natural.",
+    "Unity-specific coverage is limited to third-party MIT C# source (UniTask, Mirror); Unity documentation is BLOCKED and no Unity-authored material is included.",
+    "Repo-level licenses were read from LICENSE files; individual files were not audited for bundled third-party code.",
+    "Per-category validation sets are small; per-category validation statistics are noisy. `combined` (train+validation) is provided for comparison.",
+    "The tokenizer is fitted on the natural concatenation of category train partitions, so byte-heavy categories dominate merge learning.",
+    "Structured normalization drops trailing whitespace (e.g. markdown hard breaks) and does not touch Unicode normalization.",
+    "Nepali Wikipedia is encyclopedic formal prose; it does not represent colloquial Nepali. Language is by Wikipedia-project provenance, not script detection.",
+    "The Nepali live acquisition path was written from the dataset-viewer documentation and has not been executed by the author.",
+    "Pure-Python BPE cost grows with vocabulary size; wall-clock at 8192 is unmeasured until a real run.",
+)
+
+
+def run_representative_mini_corpus(
+    documents: list[RawDocument],
+    *,
+    synthetic_documents: list[RawDocument] | None = None,
+    vocab_sizes: Sequence[int] = DEFAULT_VOCAB_SIZES,
+    baseline_vocab_size: int | None = None,
+    verify_prefix_up_to: int = tvs.DEFAULT_VERIFY_PREFIX_UP_TO,
+    acquisition_info: dict[str, Any] | None = None,
+    progress: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
+    """Tokenizer-only, per-category vocabulary diagnostic. No Transformer.
+
+    ``documents`` are natural documents (category in ``primary_domain``).
+    ``synthetic_documents`` (default: the built-in synthetic code-switch
+    set) are measured but never fitted on. Per-size failures are
+    recorded in ``errors`` without aborting other sizes.
+    """
+    import tempfile
+    import time
+
+    from yug.tokenizer.bpe import ByteLevelBpeTokenizer
+
+    baseline = baseline_vocab_size if baseline_vocab_size is not None else min(vocab_sizes)
+    sizes = tvs.validate_vocab_sizes(vocab_sizes, baseline)
+    say = progress if callable(progress) else (lambda _m: None)
+    synthetic = synthetic_codeswitch_documents() if synthetic_documents is None else synthetic_documents
+    for s in synthetic:
+        category_of(s)
+        if s.license != LICENSE_SYNTHETIC:
+            raise MiniCorpusError(f"synthetic document {s.document_id!r} must carry license {LICENSE_SYNTHETIC!r}")
+
+    built = build_corpus(documents)
+    prep, train, validation = built["prep"], built["train"], built["validation"]
+    manifest = prep.manifest.to_dict()
+    registry = build_source_registry()
+
+    train_ids = {d.document_id for d in train}
+    val_ids = {d.document_id for d in validation}
+    leakage = {
+        "tokenizer_fit_partition": "train_only",
+        "document_id_overlap_train_validation": len(train_ids & val_ids),
+        "content_hash_overlap_train_validation": len({d.content_hash for d in train} & {d.content_hash for d in validation}),
+        "synthetic_documents_in_fit_corpus": sum(1 for d in train if d.license == LICENSE_SYNTHETIC or d.source_id.startswith("synthetic")),
+        "train_fit_corpus_fingerprint": "sha256:" + hashlib.sha256("".join(d.content_hash for d in train).encode("utf-8")).hexdigest(),
+        "categories_without_validation_documents": [c for c, v in built["per_category"].items() if v["accepted"] and not v["validation"]],
+    }
+    comp = {c: sum(len(d.text) for d in train if d.primary_domain == c) for c in CATEGORIES}
+    comp_bytes = {c: sum(len(d.text.encode("utf-8")) for d in train if d.primary_domain == c) for c in CATEGORIES}
+    tot_b = sum(comp_bytes.values()) or 1
+
+    result: dict[str, Any] = {
+        "experiment": EXPERIMENT_NAME,
+        "not_a_milestone": True,
+        "nb13_assigned": False,
+        "trains_transformer": False,
+        "configuration": {
+            "seed": SEED, "val_fraction": VAL_FRACTION, "vocab_sizes": sizes, "baseline_vocab_size": baseline,
+            "verify_prefix_up_to": verify_prefix_up_to, "fit_mode": "prefix_of_largest_fit",
+            "special_tokens": list(tvs.SPECIAL_TOKENS), "rare_thresholds_count_lt": list(tvs.RARE_THRESHOLDS),
+            "categories": list(CATEGORIES), "content_types": CONTENT_TYPE,
+            "normalization": {"prose": "corpus_prep.normalize_text", "structured (code, technical_documentation)": "normalize_structured_text"},
+            "split": "per-category, training.split.split_sentences, same seed/fraction",
+            "word_count_definition": "len(text.split())",
+            "no_winner_selected": True,
+        },
+        "source_manifest": [s.to_dict() for s in registry],
+        "source_license_status": _sorted_counts([s.status for s in registry]),
+        "acquisition": acquisition_info or {},
+        "category_distribution": built["per_category"],
+        "language_distribution": _sorted_counts([d.language for d in prep.accepted]),
+        "split": {"train_documents": len(train), "validation_documents": len(validation), "seed": SEED, "val_fraction": VAL_FRACTION},
+        "corpus_counts": {
+            "input": manifest["input_count"], "accepted": manifest["accepted_count"], "rejected": manifest["rejected_count"],
+            "review": manifest["review_count"], "duplicates": manifest["duplicate_count"],
+            "rejection_reason_counts": manifest["rejection_reason_counts"],
+        },
+        "corpus_prep_manifest": manifest,
+        "corpus_hashes": {"accepted_content_hash": manifest["accepted_content_hash"],
+                          "per_category_accepted_content_hash": {c: v["accepted_content_hash"] for c, v in built["per_category"].items()}},
+        "train_composition": {c: {"characters": comp[c], "utf8_bytes": comp_bytes[c], "share_of_train_bytes": comp_bytes[c] / tot_b} for c in CATEGORIES},
+        "leakage_checks": leakage,
+        "tokenizers": [],
+        "global_metrics_by_vocab": {},
+        "per_category_metrics_by_vocab": {},
+        "comparison_to_baseline": {},
+        "errors": [],
+        "limitations": list(LIMITATIONS),
+        "timings_seconds_non_deterministic": {},
+    }
+    timings = result["timings_seconds_non_deterministic"]
+
+    train_texts = [d.text for d in train]
+    if not train_texts:
+        result["errors"].append({"stage": "fit", "error": "no training documents"})
+        return result
+
+    fitted: dict[int, Any] = {}
+    fit_info: dict[int, dict[str, Any]] = {}
+    try:
+        t0 = time.perf_counter()
+        say(f"fitting tokenizer once at {sizes[-1]} on train partition only")
+        full = ByteLevelBpeTokenizer.train(corpus=train_texts, vocab_size=sizes[-1], special_tokens=tvs.SPECIAL_TOKENS)
+        timings["fit_max_size"] = time.perf_counter() - t0
+        for s in sizes:
+            fitted[s] = tvs.tokenizer_from_merge_prefix(full, s)
+            fit_info[s] = {"mode": "prefix_of_max_size_fit", "prefix_equals_independent_training": None}
+    except Exception as exc:  # noqa: BLE001
+        result["errors"].append({"stage": "fit", "error": f"{type(exc).__name__}: {exc}"})
+
+    for s in sizes:
+        if s in fitted and s <= verify_prefix_up_to:
+            try:
+                say(f"verifying prefix equivalence at {s}")
+                fit_info[s]["prefix_equals_independent_training"] = tvs._train_independent(train_texts, s).identity == fitted[s].identity
+            except Exception as exc:  # noqa: BLE001
+                result["errors"].append({"stage": "verify_prefix", "requested_vocab_size": s, "error": f"{type(exc).__name__}: {exc}"})
+
+    by_cat_train = {c: [d.text for d in train if d.primary_domain == c] for c in CATEGORIES}
+    by_cat_val = {c: [d.text for d in validation if d.primary_domain == c] for c in CATEGORIES}
+    per_size_blocks: dict[int, dict[str, Any]] = {}
+
+    for s in sizes:
+        tok = fitted.get(s)
+        if tok is None:
+            continue
+        try:
+            t0 = time.perf_counter()
+            say(f"measuring vocab {s} (actual {tok.vocab_size})")
+            num_specials = len(tok.special_tokens)
+            num_merges = tok.vocab_size - 256 - num_specials
+            per_cat: dict[str, Any] = {}
+            train_parts, val_parts, train_counter, val_counter = [], [], Counter(), Counter()
+            for cat in CATEGORIES:
+                if not by_cat_train[cat] and not by_cat_val[cat]:
+                    per_cat[cat] = {
+                        "status": NATURAL_CODESWITCH_STATUS if cat == CAT_CODESWITCH else "NO DOCUMENTS ACCEPTED",
+                        "train": None, "validation": None, "combined": None, "utilization": None,
+                    }
+                    continue
+                tr, trc = measure_group(tok, by_cat_train[cat])
+                va, vac = measure_group(tok, by_cat_val[cat])
+                train_parts.append(tr), val_parts.append(va)
+                train_counter.update(trc), val_counter.update(vac)
+                per_cat[cat] = {
+                    "status": "measured",
+                    "train": tr, "validation": va, "combined": combine_stats([tr, va]),
+                    "utilization": {
+                        "train": tvs.compute_utilization(trc, num_merges=num_merges, num_specials=num_specials),
+                        "validation": tvs.compute_utilization(vac, num_merges=num_merges, num_specials=num_specials),
+                    },
+                }
+            g_train, g_val = combine_stats(train_parts), combine_stats(val_parts)
+            global_block = {
+                "train": g_train, "validation": g_val, "combined": combine_stats([g_train, g_val]),
+                "utilization": {
+                    "train": tvs.compute_utilization(train_counter, num_merges=num_merges, num_specials=num_specials),
+                    "validation": tvs.compute_utilization(val_counter, num_merges=num_merges, num_specials=num_specials),
+                },
+            }
+
+            syn_stats, _ = measure_group(tok, [d.text for d in synthetic]) if synthetic else (None, Counter())
+            with tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "tok.json"
+                tok.save(path)
+                reloaded = ByteLevelBpeTokenizer.load(path).identity
+
+            def _ok(field: str) -> bool:
+                blocks = [b for c in per_cat.values() if c["status"] == "measured" for b in (c["train"], c["validation"])]
+                blocks += [syn_stats] if syn_stats else []
+                return all(b[field] == 0 for b in blocks)
+
+            per_size_blocks[s] = {"global": global_block, "per_category": per_cat}
+            result["tokenizers"].append({
+                "requested_vocab_size": s, "actual_vocab_size": tok.vocab_size, "stopped_short_of_request": tok.vocab_size < s,
+                "num_merges": num_merges, "tokenizer_identity": tok.identity, "fit": fit_info.get(s, {}),
+                "global": global_block, "per_category": per_cat,
+                "category_dispersion": {
+                    "tokens_per_character": category_dispersion(per_cat, "tokens_per_character"),
+                    "tokens_per_utf8_byte": category_dispersion(per_cat, "tokens_per_utf8_byte"),
+                },
+                "synthetic_diagnostic": {
+                    "is_synthetic": True, "natural_data": False, "used_for_tokenizer_fit": False,
+                    "category": CAT_CODESWITCH, "metrics": syn_stats,
+                },
+                "checks": {
+                    "encoding_ok": _ok("encoding_failures"), "decoding_ok": _ok("decoding_failures"),
+                    "round_trip_ok": _ok("round_trip_mismatches"), "no_out_of_range_or_special_ids": _ok("ids_out_of_range"),
+                    "no_unk_token": "unk" not in tok.special_tokens and "<unk>" not in tok.special_tokens,
+                    "save_load_identity_preserved": reloaded == tok.identity,
+                },
+            })
+            timings[f"measure_{s}"] = time.perf_counter() - t0
+        except Exception as exc:  # noqa: BLE001
+            result["errors"].append({"stage": "measure", "requested_vocab_size": s, "error": f"{type(exc).__name__}: {exc}"})
+
+    for t in result["tokenizers"]:
+        key = str(t["requested_vocab_size"])
+        result["global_metrics_by_vocab"][key] = {k: t["global"][k] for k in ("train", "validation", "combined")}
+        result["per_category_metrics_by_vocab"][key] = {
+            c: ({k: v[k] for k in ("train", "validation", "combined")} if v["status"] == "measured" else {"status": v["status"]})
+            for c, v in t["per_category"].items()
+        }
+
+    base_block = per_size_blocks.get(baseline)
+    if base_block is None:
+        result["errors"].append({"stage": "comparison", "error": f"baseline vocab {baseline} has no result"})
+    else:
+        for s, blk in sorted(per_size_blocks.items()):
+            entry = {"baseline_vocab_size": baseline, "global": _reduction_block(base_block["global"]["combined"], blk["global"]["combined"]), "per_category": {}}
+            for cat in CATEGORIES:
+                b, c = base_block["per_category"][cat], blk["per_category"][cat]
+                entry["per_category"][cat] = _reduction_block(b["combined"], c["combined"]) if b["status"] == "measured" and c["status"] == "measured" else None
+            result["comparison_to_baseline"][str(s)] = entry
+    return result
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def assemble_natural_documents(
+    *,
+    english_max_documents: int = DEFAULT_ENGLISH_MAX_DOCUMENTS,
+    nepali_max_total_chars: int = DEFAULT_NEPALI_MAX_TOTAL_CHARS,
+    allow_missing_categories: bool = False,
+    progress: Callable[[str], None] | None = None,
+) -> tuple[list[RawDocument], dict[str, Any]]:
+    """Live acquisition of all automated natural sources. Fails (raises
+    :class:`MiniCorpusAcquisitionError`) if any required natural
+    category ends up empty, unless ``allow_missing_categories``."""
+    say = progress if callable(progress) else (lambda _m: None)
+    docs: list[RawDocument] = []
+    info: dict[str, Any] = {"errors": []}
+
+    say("acquiring English (Common Pile Wikimedia)")
+    try:
+        en_docs, info["english"] = acquire_english(english_max_documents)
+        docs += en_docs
+    except Exception as exc:  # noqa: BLE001
+        info["errors"].append({"stage": "english", "error": f"{type(exc).__name__}: {exc}"})
+
+    say("acquiring pinned GitHub files")
+    gh_docs, gh_prov, gh_errors = acquire_github_files()
+    docs += gh_docs
+    info["github"] = {"documents": len(gh_docs), "files_failed": len(gh_errors), "provenance": gh_prov}
+    info["errors"] += gh_errors
+
+    say("acquiring Nepali Wikipedia")
+    try:
+        ne_docs, ne_prov, info["nepali"] = acquire_nepali_wikipedia(max_total_chars=nepali_max_total_chars)
+        info["nepali"]["provenance"] = ne_prov
+        docs += ne_docs
+    except MiniCorpusAcquisitionError as exc:
+        info["errors"].append({"stage": "nepali", "error": str(exc)})
+
+    present = {d.primary_domain for d in docs}
+    required = [CAT_ENGLISH, CAT_CODE, CAT_CSHARP, CAT_DOCS, CAT_NEPALI]
+    missing = [c for c in required if c not in present]
+    info["missing_required_categories"] = missing
+    if missing and not allow_missing_categories:
+        raise MiniCorpusAcquisitionError(f"required categories have no documents: {missing}; errors: {info['errors'][:5]}")
+    return docs, info
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="Representative mini-corpus investigation (not a milestone).")
+    parser.add_argument("--vocab-sizes", type=int, nargs="+", default=list(DEFAULT_VOCAB_SIZES))
+    parser.add_argument("--baseline", type=int, default=None, help="default: smallest requested size")
+    parser.add_argument("--english-max-documents", type=int, default=DEFAULT_ENGLISH_MAX_DOCUMENTS)
+    parser.add_argument("--nepali-max-chars", type=int, default=DEFAULT_NEPALI_MAX_TOTAL_CHARS)
+    parser.add_argument("--verify-prefix-up-to", type=int, default=tvs.DEFAULT_VERIFY_PREFIX_UP_TO)
+    parser.add_argument("--allow-missing-categories", action="store_true")
+    parser.add_argument("--acquire-only", action="store_true", help="acquire + prepare corpus, report counts, no tokenizer work")
+    parser.add_argument("--output", default=None, help="write UTF-8 JSON here (avoids PowerShell UTF-16 redirection)")
+    args = parser.parse_args()
+
+    def _log(message: str) -> None:
+        print(f"[mini-corpus] {message}", file=sys.stderr, flush=True)
+
+    try:
+        natural_docs, acq = assemble_natural_documents(
+            english_max_documents=args.english_max_documents, nepali_max_total_chars=args.nepali_max_chars,
+            allow_missing_categories=args.allow_missing_categories, progress=_log,
+        )
+    except MiniCorpusAcquisitionError as exc:
+        print(f"ACQUISITION FAILED: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    for section in ("github", "nepali"):  # keep the artifact compact
+        if section in acq and "provenance" in acq[section]:
+            acq[section]["provenance_document_count"] = len(acq[section].pop("provenance"))
+
+    if args.acquire_only:
+        built = build_corpus(natural_docs)
+        payload = json.dumps({"acquisition": acq, "category_distribution": built["per_category"],
+                              "corpus_prep_manifest": built["prep"].manifest.to_dict()}, indent=2, sort_keys=True, default=str)
+    else:
+        try:
+            outcome = run_representative_mini_corpus(
+                natural_docs, vocab_sizes=args.vocab_sizes, baseline_vocab_size=args.baseline,
+                verify_prefix_up_to=args.verify_prefix_up_to, acquisition_info=acq, progress=_log,
+            )
+        except (tvs.VocabScalingConfigError, MiniCorpusError) as exc:
+            print(f"CONFIGURATION ERROR: {exc}", file=sys.stderr)
+            sys.exit(3)
+        payload = json.dumps(outcome, indent=2, sort_keys=True, default=str)
+        code = 0 if not outcome["errors"] else 1
+    if args.output:
+        Path(args.output).write_text(payload, encoding="utf-8")
+        print(f"result written to {args.output}")
+    else:
+        print(payload)
+    sys.exit(0 if args.acquire_only else code)
+

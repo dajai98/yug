@@ -1,0 +1,1102 @@
+{
+  "acquisition": {
+    "compressed_bytes_read": 2883614,
+    "dataset_id": "common-pile/wikimedia_filtered",
+    "dataset_revision": "0641bb84bd9b7162bcddf8be7836822161a9a342",
+    "main_namespace_only": true,
+    "max_documents": 1000,
+    "records_scanned": 1647,
+    "records_selected": 1000,
+    "shard_files": [
+      "wikimedia-0000.json.gz"
+    ],
+    "skipped": {
+      "wrong_namespace": 647
+    }
+  },
+  "comparison_to_baseline": {
+    "1024": {
+      "baseline_vocab_size": 384,
+      "train_token_count_reduction_pct": 29.543537119599556,
+      "train_tokens_per_character_reduction_pct": 29.543537119599563,
+      "train_tokens_per_word_reduction_pct": 29.543537119599566,
+      "validation_token_count_reduction_pct": 29.263268174011152,
+      "validation_tokens_per_character_reduction_pct": 29.263268174011152,
+      "validation_tokens_per_word_reduction_pct": 29.26326817401115
+    },
+    "2048": {
+      "baseline_vocab_size": 384,
+      "train_token_count_reduction_pct": 41.583711924655915,
+      "train_tokens_per_character_reduction_pct": 41.583711924655915,
+      "train_tokens_per_word_reduction_pct": 41.58371192465592,
+      "validation_token_count_reduction_pct": 40.946782915867075,
+      "validation_tokens_per_character_reduction_pct": 40.94678291586708,
+      "validation_tokens_per_word_reduction_pct": 40.94678291586708
+    },
+    "384": {
+      "baseline_vocab_size": 384,
+      "train_token_count_reduction_pct": 0.0,
+      "train_tokens_per_character_reduction_pct": 0.0,
+      "train_tokens_per_word_reduction_pct": 0.0,
+      "validation_token_count_reduction_pct": 0.0,
+      "validation_tokens_per_character_reduction_pct": 0.0,
+      "validation_tokens_per_word_reduction_pct": 0.0
+    },
+    "4096": {
+      "baseline_vocab_size": 384,
+      "train_token_count_reduction_pct": 51.05648158934226,
+      "train_tokens_per_character_reduction_pct": 51.05648158934226,
+      "train_tokens_per_word_reduction_pct": 51.05648158934226,
+      "validation_token_count_reduction_pct": 49.971374222025226,
+      "validation_tokens_per_character_reduction_pct": 49.97137422202523,
+      "validation_tokens_per_word_reduction_pct": 49.971374222025226
+    },
+    "512": {
+      "baseline_vocab_size": 384,
+      "train_token_count_reduction_pct": 12.115848944709782,
+      "train_tokens_per_character_reduction_pct": 12.115848944709779,
+      "train_tokens_per_word_reduction_pct": 12.115848944709784,
+      "validation_token_count_reduction_pct": 12.0854508853844,
+      "validation_tokens_per_character_reduction_pct": 12.08545088538441,
+      "validation_tokens_per_word_reduction_pct": 12.085450885384397
+    },
+    "8192": {
+      "baseline_vocab_size": 384,
+      "train_token_count_reduction_pct": 58.70808579285318,
+      "train_tokens_per_character_reduction_pct": 58.70808579285318,
+      "train_tokens_per_word_reduction_pct": 58.70808579285319,
+      "validation_token_count_reduction_pct": 57.0200313288573,
+      "validation_tokens_per_character_reduction_pct": 57.0200313288573,
+      "validation_tokens_per_word_reduction_pct": 57.0200313288573
+    }
+  },
+  "configuration": {
+    "baseline_vocab_size": 384,
+    "fit_mode": "prefix",
+    "rare_thresholds_count_lt": [
+      5,
+      10,
+      100
+    ],
+    "seed": 1234,
+    "special_tokens": [
+      "bos",
+      "eos"
+    ],
+    "tokenizer": "yug.tokenizer.ByteLevelBpeTokenizer (unmodified, byte-level, no <unk>)",
+    "unknown_token_note": "not applicable: byte-level BPE has no <unk> concept",
+    "val_fraction": 0.2,
+    "verify_prefix_up_to": 1024,
+    "vocab_sizes": [
+      384,
+      512,
+      1024,
+      2048,
+      4096,
+      8192
+    ],
+    "word_count_definition": "len(text.split())"
+  },
+  "corpus": {
+    "accepted_content_hash": "ad304dc739ece9fce7656aa645d26a523a3fbc11a50d2884aa18b04ee3a9b5fe",
+    "manifest": {
+      "accepted_content_hash": "ad304dc739ece9fce7656aa645d26a523a3fbc11a50d2884aa18b04ee3a9b5fe",
+      "accepted_count": 1000,
+      "config": {
+        "min_length": 20,
+        "min_repeated_tokens_for_pathological": 6,
+        "seed": 1234,
+        "val_fraction": 0.2
+      },
+      "domain_distribution": {
+        "wikibooks.com": 1000
+      },
+      "duplicate_count": 0,
+      "input_count": 1000,
+      "language_distribution": {
+        "en": 1000
+      },
+      "license_distribution": {
+        "CC-BY-SA-4.0": 1000
+      },
+      "rejected_count": 0,
+      "rejection_reason_counts": {},
+      "review_count": 0,
+      "schema_version": "corpus-prep-prototype-v1",
+      "source_distribution": {
+        "wiki/dump/wikibooks.com": 1000
+      },
+      "train_count": 800,
+      "validation_count": 200
+    },
+    "previous_run_comparison": {
+      "accepted_content_hash_matches": true,
+      "baseline_tokenizer_identity_matches": true,
+      "baseline_train_tokens_match": true,
+      "baseline_validation_tokens_match": true,
+      "reference": {
+        "accepted_content_hash": "ad304dc739ece9fce7656aa645d26a523a3fbc11a50d2884aa18b04ee3a9b5fe",
+        "tokenizer_identity": "sha256:78d6028adc8d05b84434c4a1f15a934217b1304be989236e626ad950c55bfbb3",
+        "train_document_count": 800,
+        "train_total_tokens": 2266296,
+        "validation_document_count": 200,
+        "validation_total_tokens": 595617,
+        "vocab_size": 384
+      },
+      "train_document_count_matches": true,
+      "validation_document_count_matches": true
+    },
+    "requested_document_count": 1000
+  },
+  "determinism_check": {
+    "requested_vocab_size": 384,
+    "retrain_identity_matches": true
+  },
+  "errors": [],
+  "experiment": "tokenizer_vocabulary_scaling_investigation",
+  "leakage_checks": {
+    "content_hash_overlap_train_validation": 0,
+    "document_id_overlap_train_validation": 0,
+    "tokenizer_fit_partition": "train_only",
+    "train_document_count": 800,
+    "train_fit_corpus_fingerprint": "sha256:aeffb9b9ae51d7138c0db4abe1b3dedce4e979579b59eec36d27adb3de528f14",
+    "validation_document_count": 200
+  },
+  "limitations": [
+    "Pure-Python BPE training/encoding cost grows with vocabulary size; wall-clock at 4096/8192 on the full corpus is unmeasured until a real run.",
+    "Utilization is measured on a ~4M-character corpus; it says nothing about how utilization would look on a larger corpus.",
+    "Tokenization efficiency is NOT model quality: no Transformer is trained here, so no conclusion about loss or generation follows from these numbers.",
+    "Word count is a whitespace split, not a linguistic word count.",
+    "Wikibooks-only shard sample (per the prior experiment); results may not transfer to other domains.",
+    "In prefix fit mode, prefix==independent-training equivalence is verified only for sizes <= verify_prefix_up_to; larger sizes rely on the algorithm's determinism."
+  ],
+  "nb13_assigned": false,
+  "not_a_milestone": true,
+  "timings_seconds_non_deterministic": {
+    "fit_max_size": 6344.285399000044,
+    "independent_fit_1024": 691.5260626000818,
+    "independent_fit_384": 139.9906768000219,
+    "independent_fit_512": 258.4445426000748,
+    "measure_1024": 380.2900149000343,
+    "measure_2048": 557.6105390000157,
+    "measure_384": 115.17386860004626,
+    "measure_4096": 712.8028831999982,
+    "measure_512": 193.75244080007542,
+    "measure_8192": 850.676948599983
+  },
+  "tokenizers": [
+    {
+      "actual_vocab_size": 384,
+      "checks": {
+        "decoding_ok": true,
+        "encoding_ok": true,
+        "no_special_or_out_of_range_ids_emitted": true,
+        "no_unk_token": true,
+        "round_trip_ok": true,
+        "save_load_identity_preserved": true
+      },
+      "fit": {
+        "mode": "prefix_of_max_size_fit",
+        "prefix_equals_independent_training": true
+      },
+      "num_merges": 126,
+      "requested_vocab_size": 384,
+      "stopped_short_of_request": false,
+      "tokenizer_identity": "sha256:78d6028adc8d05b84434c4a1f15a934217b1304be989236e626ad950c55bfbb3",
+      "train": {
+        "decoding_failures": 0,
+        "document_count": 800,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.5814061058138917,
+        "tokens_per_word": 3.497974958634826,
+        "total_characters": 3897957,
+        "total_tokens": 2266296,
+        "total_words": 647888
+      },
+      "utilization": {
+        "train": {
+          "frequency_summary_observed_tokens": {
+            "max": 75829,
+            "mean": 7082.175,
+            "median": 3920,
+            "min": 1,
+            "p10": 75,
+            "p90": 18714,
+            "p99": 50605,
+            "top100_token_share": 0.7975326259235334,
+            "top10_token_share": 0.21672279349211224,
+            "unigram_entropy_bits": 7.173883422179315
+          },
+          "never_observed_base_bytes": 62,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 0,
+          "percent_observed": 83.7696335078534,
+          "rare_token_counts": {
+            "count_lt_10": 70,
+            "count_lt_100": 107,
+            "count_lt_5": 64
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 62,
+          "tokens_observed": 320,
+          "universe_size_non_special": 382
+        },
+        "validation": {
+          "frequency_summary_observed_tokens": {
+            "max": 19775,
+            "mean": 1890.847619047619,
+            "median": 1053,
+            "min": 1,
+            "p10": 30,
+            "p90": 5122,
+            "p99": 13802,
+            "top100_token_share": 0.7998042366151402,
+            "top10_token_share": 0.21709756437442182,
+            "unigram_entropy_bits": 7.171613159157828
+          },
+          "never_observed_base_bytes": 67,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 0,
+          "observed_in_validation_not_in_train": 0,
+          "percent_observed": 82.4607329842932,
+          "rare_token_counts": {
+            "count_lt_10": 72,
+            "count_lt_100": 152,
+            "count_lt_5": 69
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 67,
+          "tokens_observed": 315,
+          "universe_size_non_special": 382
+        }
+      },
+      "validation": {
+        "decoding_failures": 0,
+        "document_count": 200,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.5789237341264635,
+        "tokens_per_word": 3.406620872678605,
+        "total_characters": 1028835,
+        "total_tokens": 595617,
+        "total_words": 174841
+      }
+    },
+    {
+      "actual_vocab_size": 512,
+      "checks": {
+        "decoding_ok": true,
+        "encoding_ok": true,
+        "no_special_or_out_of_range_ids_emitted": true,
+        "no_unk_token": true,
+        "round_trip_ok": true,
+        "save_load_identity_preserved": true
+      },
+      "fit": {
+        "mode": "prefix_of_max_size_fit",
+        "prefix_equals_independent_training": true
+      },
+      "num_merges": 254,
+      "requested_vocab_size": 512,
+      "stopped_short_of_request": false,
+      "tokenizer_identity": "sha256:266ff0aeab441d3dca26856908bc6c53dfea66924abc3840bd4303ee04b957f0",
+      "train": {
+        "decoding_failures": 0,
+        "document_count": 800,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.5109638202781611,
+        "tokens_per_word": 3.074165596522856,
+        "total_characters": 3897957,
+        "total_tokens": 1991715,
+        "total_words": 647888
+      },
+      "utilization": {
+        "train": {
+          "frequency_summary_observed_tokens": {
+            "max": 47344,
+            "mean": 4445.792410714285,
+            "median": 2294,
+            "min": 1,
+            "p10": 98,
+            "p90": 10933,
+            "p99": 30689,
+            "top100_token_share": 0.6642034628448348,
+            "top10_token_share": 0.15868585615913924,
+            "unigram_entropy_bits": 7.839015517734458
+          },
+          "never_observed_base_bytes": 62,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 0,
+          "percent_observed": 87.84313725490196,
+          "rare_token_counts": {
+            "count_lt_10": 70,
+            "count_lt_100": 107,
+            "count_lt_5": 64
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 62,
+          "tokens_observed": 448,
+          "universe_size_non_special": 510
+        },
+        "validation": {
+          "frequency_summary_observed_tokens": {
+            "max": 12839,
+            "mean": 1182.018058690745,
+            "median": 621,
+            "min": 1,
+            "p10": 39,
+            "p90": 2832,
+            "p99": 8842,
+            "top100_token_share": 0.6665896408560178,
+            "top10_token_share": 0.16099031002570496,
+            "unigram_entropy_bits": 7.832219364954875
+          },
+          "never_observed_base_bytes": 67,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 0,
+          "observed_in_validation_not_in_train": 0,
+          "percent_observed": 86.86274509803921,
+          "rare_token_counts": {
+            "count_lt_10": 72,
+            "count_lt_100": 154,
+            "count_lt_5": 69
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 67,
+          "tokens_observed": 443,
+          "universe_size_non_special": 510
+        }
+      },
+      "validation": {
+        "decoding_failures": 0,
+        "document_count": 200,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.5089581905747763,
+        "tokens_per_word": 2.994915380259779,
+        "total_characters": 1028835,
+        "total_tokens": 523634,
+        "total_words": 174841
+      }
+    },
+    {
+      "actual_vocab_size": 1024,
+      "checks": {
+        "decoding_ok": true,
+        "encoding_ok": true,
+        "no_special_or_out_of_range_ids_emitted": true,
+        "no_unk_token": true,
+        "round_trip_ok": true,
+        "save_load_identity_preserved": true
+      },
+      "fit": {
+        "mode": "prefix_of_max_size_fit",
+        "prefix_equals_independent_training": true
+      },
+      "num_merges": 766,
+      "requested_vocab_size": 1024,
+      "stopped_short_of_request": false,
+      "tokenizer_identity": "sha256:09f3c72a18e5215950c64b1044d3ee9bb6250a8584b21220b1d37f3ea368ecf4",
+      "train": {
+        "decoding_failures": 0,
+        "document_count": 800,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.40963817712714634,
+        "tokens_per_word": 2.4645494282962486,
+        "total_characters": 3897957,
+        "total_tokens": 1596752,
+        "total_words": 647888
+      },
+      "utilization": {
+        "train": {
+          "frequency_summary_observed_tokens": {
+            "max": 18454,
+            "mean": 1663.2833333333333,
+            "median": 776,
+            "min": 1,
+            "p10": 204,
+            "p90": 4047,
+            "p99": 12982,
+            "top100_token_share": 0.46984065152259086,
+            "top10_token_share": 0.09077239295770415,
+            "unigram_entropy_bits": 8.992693161000627
+          },
+          "never_observed_base_bytes": 62,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 0,
+          "percent_observed": 93.9334637964775,
+          "rare_token_counts": {
+            "count_lt_10": 70,
+            "count_lt_100": 115,
+            "count_lt_5": 64
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 62,
+          "tokens_observed": 960,
+          "universe_size_non_special": 1022
+        },
+        "validation": {
+          "frequency_summary_observed_tokens": {
+            "max": 4749,
+            "mean": 442.09863588667366,
+            "median": 210,
+            "min": 1,
+            "p10": 56,
+            "p90": 1076,
+            "p99": 3355,
+            "top100_token_share": 0.46965014715655556,
+            "top10_token_share": 0.09194911231368082,
+            "unigram_entropy_bits": 8.981727131832198
+          },
+          "never_observed_base_bytes": 67,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 2,
+          "observed_in_validation_not_in_train": 0,
+          "percent_observed": 93.24853228962819,
+          "rare_token_counts": {
+            "count_lt_10": 77,
+            "count_lt_100": 230,
+            "count_lt_5": 72
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 69,
+          "tokens_observed": 953,
+          "universe_size_non_special": 1022
+        }
+      },
+      "validation": {
+        "decoding_failures": 0,
+        "document_count": 200,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.40951172928603713,
+        "tokens_per_word": 2.409732271034826,
+        "total_characters": 1028835,
+        "total_tokens": 421320,
+        "total_words": 174841
+      }
+    },
+    {
+      "actual_vocab_size": 2048,
+      "checks": {
+        "decoding_ok": true,
+        "encoding_ok": true,
+        "no_special_or_out_of_range_ids_emitted": true,
+        "no_unk_token": true,
+        "round_trip_ok": true,
+        "save_load_identity_preserved": true
+      },
+      "fit": {
+        "mode": "prefix_of_max_size_fit",
+        "prefix_equals_independent_training": null
+      },
+      "num_merges": 1790,
+      "requested_vocab_size": 2048,
+      "stopped_short_of_request": false,
+      "tokenizer_identity": "sha256:e9be9a0b141982db343548c0ac9b83c64b56e3fb12b0e24a6cf69211c4df63b8",
+      "train": {
+        "decoding_failures": 0,
+        "document_count": 800,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.33963586565988285,
+        "tokens_per_word": 2.0433871286395178,
+        "total_characters": 3897957,
+        "total_tokens": 1323886,
+        "total_words": 647888
+      },
+      "utilization": {
+        "train": {
+          "frequency_summary_observed_tokens": {
+            "max": 10330,
+            "mean": 668.6292929292929,
+            "median": 305,
+            "min": 1,
+            "p10": 168,
+            "p90": 1535,
+            "p99": 5773,
+            "top100_token_share": 0.3468365100922587,
+            "top10_token_share": 0.060720484996442295,
+            "unigram_entropy_bits": 9.964991032409985
+          },
+          "never_observed_base_bytes": 62,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 4,
+          "percent_observed": 96.7741935483871,
+          "rare_token_counts": {
+            "count_lt_10": 80,
+            "count_lt_100": 183,
+            "count_lt_5": 71
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 66,
+          "tokens_observed": 1980,
+          "universe_size_non_special": 2046
+        },
+        "validation": {
+          "frequency_summary_observed_tokens": {
+            "max": 2775,
+            "mean": 179.36308006119327,
+            "median": 84,
+            "min": 1,
+            "p10": 27,
+            "p90": 411,
+            "p99": 1583,
+            "top100_token_share": 0.3495000440677677,
+            "top10_token_share": 0.0617119332671843,
+            "unigram_entropy_bits": 9.917259042015793
+          },
+          "never_observed_base_bytes": 67,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 18,
+          "observed_in_validation_not_in_train": 0,
+          "percent_observed": 95.8455522971652,
+          "rare_token_counts": {
+            "count_lt_10": 130,
+            "count_lt_100": 1204,
+            "count_lt_5": 99
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 85,
+          "tokens_observed": 1961,
+          "universe_size_non_special": 2046
+        }
+      },
+      "validation": {
+        "decoding_failures": 0,
+        "document_count": 200,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.34187308946526895,
+        "tokens_per_word": 2.01171921917628,
+        "total_characters": 1028835,
+        "total_tokens": 351731,
+        "total_words": 174841
+      }
+    },
+    {
+      "actual_vocab_size": 4096,
+      "checks": {
+        "decoding_ok": true,
+        "encoding_ok": true,
+        "no_special_or_out_of_range_ids_emitted": true,
+        "no_unk_token": true,
+        "round_trip_ok": true,
+        "save_load_identity_preserved": true
+      },
+      "fit": {
+        "mode": "prefix_of_max_size_fit",
+        "prefix_equals_independent_training": null
+      },
+      "num_merges": 3838,
+      "requested_vocab_size": 4096,
+      "stopped_short_of_request": false,
+      "tokenizer_identity": "sha256:deb4b438b8c14707d17e8fccfdea76ac35924a10bfc6e1cf945a1f673538fa68",
+      "train": {
+        "decoding_failures": 0,
+        "document_count": 800,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.2845606044397103,
+        "tokens_per_word": 1.7120320178796335,
+        "total_characters": 3897957,
+        "total_tokens": 1109205,
+        "total_words": 647888
+      },
+      "utilization": {
+        "train": {
+          "frequency_summary_observed_tokens": {
+            "max": 7405,
+            "mean": 276.1964641434263,
+            "median": 122,
+            "min": 1,
+            "p10": 69,
+            "p90": 536,
+            "p99": 2851,
+            "top100_token_share": 0.26677755689886,
+            "top10_token_share": 0.04748536113703058,
+            "unigram_entropy_bits": 10.847027203145464
+          },
+          "never_observed_base_bytes": 62,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 16,
+          "percent_observed": 98.09477283829995,
+          "rare_token_counts": {
+            "count_lt_10": 137,
+            "count_lt_100": 1594,
+            "count_lt_5": 111
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 78,
+          "tokens_observed": 4016,
+          "universe_size_non_special": 4094
+        },
+        "validation": {
+          "frequency_summary_observed_tokens": {
+            "max": 1987,
+            "mean": 75.68681737363475,
+            "median": 32,
+            "min": 1,
+            "p10": 10,
+            "p90": 160,
+            "p99": 814,
+            "top100_token_share": 0.27344544414203686,
+            "top10_token_share": 0.04749999161014702,
+            "unigram_entropy_bits": 10.733640442316648
+          },
+          "never_observed_base_bytes": 67,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 90,
+          "observed_in_validation_not_in_train": 0,
+          "percent_observed": 96.16511968734733,
+          "rare_token_counts": {
+            "count_lt_10": 545,
+            "count_lt_100": 3449,
+            "count_lt_5": 304
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 157,
+          "tokens_observed": 3937,
+          "universe_size_non_special": 4094
+        }
+      },
+      "validation": {
+        "decoding_failures": 0,
+        "document_count": 200,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.289627588486006,
+        "tokens_per_word": 1.7042856080667579,
+        "total_characters": 1028835,
+        "total_tokens": 297979,
+        "total_words": 174841
+      }
+    },
+    {
+      "actual_vocab_size": 8192,
+      "checks": {
+        "decoding_ok": true,
+        "encoding_ok": true,
+        "no_special_or_out_of_range_ids_emitted": true,
+        "no_unk_token": true,
+        "round_trip_ok": true,
+        "save_load_identity_preserved": true
+      },
+      "fit": {
+        "mode": "prefix_of_max_size_fit",
+        "prefix_equals_independent_training": null
+      },
+      "num_merges": 7934,
+      "requested_vocab_size": 8192,
+      "stopped_short_of_request": false,
+      "tokenizer_identity": "sha256:3bbff2cd92014097cb83644651b5cca13d73c2420ee77a00e92e595e5d2a2d19",
+      "train": {
+        "decoding_failures": 0,
+        "document_count": 800,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.2400737104077854,
+        "tokens_per_word": 1.4443808189069716,
+        "total_characters": 3897957,
+        "total_tokens": 935797,
+        "total_words": 647888
+      },
+      "utilization": {
+        "train": {
+          "frequency_summary_observed_tokens": {
+            "max": 5269,
+            "mean": 116.06064740171152,
+            "median": 52,
+            "min": 1,
+            "p10": 28,
+            "p90": 207,
+            "p99": 1373,
+            "top100_token_share": 0.2040463904030468,
+            "top10_token_share": 0.0386985638979394,
+            "unigram_entropy_bits": 11.75353711273062
+          },
+          "never_observed_base_bytes": 63,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 64,
+          "percent_observed": 98.44932844932845,
+          "rare_token_counts": {
+            "count_lt_10": 371,
+            "count_lt_100": 6265,
+            "count_lt_5": 260
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 127,
+          "tokens_observed": 8063,
+          "universe_size_non_special": 8190
+        },
+        "validation": {
+          "frequency_summary_observed_tokens": {
+            "max": 1354,
+            "mean": 33.52488213724463,
+            "median": 14,
+            "min": 1,
+            "p10": 3,
+            "p90": 66,
+            "p99": 410,
+            "top100_token_share": 0.2158471226112908,
+            "top10_token_share": 0.04041469397959343,
+            "unigram_entropy_bits": 11.517423656028576
+          },
+          "never_observed_base_bytes": 70,
+          "never_observed_first_ids": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ],
+          "never_observed_merges": 484,
+          "observed_in_validation_not_in_train": 4,
+          "percent_observed": 93.23565323565323,
+          "rare_token_counts": {
+            "count_lt_10": 3289,
+            "count_lt_100": 7718,
+            "count_lt_5": 1713
+          },
+          "special_tokens_emitted": 0,
+          "tokens_never_observed": 554,
+          "tokens_observed": 7636,
+          "universe_size_non_special": 8190
+        }
+      },
+      "validation": {
+        "decoding_failures": 0,
+        "document_count": 200,
+        "encoding_failures": 0,
+        "ids_out_of_range": 0,
+        "round_trip_mismatches": 0,
+        "tokens_per_character": 0.24882123955736343,
+        "tokens_per_word": 1.4641645838218724,
+        "total_characters": 1028835,
+        "total_tokens": 255996,
+        "total_words": 174841
+      }
+    }
+  ],
+  "trains_transformer": false
+}

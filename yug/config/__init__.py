@@ -1,0 +1,1 @@
+"""Validated configuration for YUG."""
