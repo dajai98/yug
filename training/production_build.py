@@ -150,7 +150,7 @@ def execute(args):
             current=build.db.execute("SELECT coalesce(sum(tokens),0) FROM totals WHERE kind='category'").fetchone()[0]
             need(args.target_tokens>=current,'Target is below already committed tokens; accounting cannot be rolled back')
             if args.dry_run:
-                result=build.dry_run(plan);atomic_json(directory/'runner/progress.json',result);return 0
+                result=build.dry_run(plan);atomic_json(directory/'runner/progress.json',seal(result));return 0
             # Conservative estimate, not an OS reservation or a guarantee for all source distributions.
             pending_bytes=sum(json.loads(r[0])['bytes'] for r in build.db.execute("SELECT record FROM items WHERE stage='PENDING'")) if build.get('plan_registered') else inventory['raw_bytes']
             pending_count=build.db.execute("SELECT count(*) FROM items WHERE stage='PENDING'").fetchone()[0] if build.get('plan_registered') else inventory['scheduled']
@@ -167,7 +167,7 @@ def execute(args):
                 retry=0;total=progress['accepted_clean_train_tokens']
                 result=dict(progress,target_tokens=args.target_tokens,network_files_this_process=fetch.network_files,network_bytes_this_process=fetch.network_bytes,
                             note='All inventory payloads settle global dedup before accounting; token target is not a download-byte limit.')
-                atomic_json(directory/'runner/progress.json',result)
+                atomic_json(directory/'runner/progress.json',seal(result))
                 print(json.dumps(dict(state=progress['state'],train_tokens=total,target=args.target_tokens,stages=progress['stages'])),flush=True)
                 if progress['state']!='PARTIAL':break
             ledger=hashlib.sha256()
@@ -177,7 +177,7 @@ def execute(args):
             shards=build.export_shards(destination)
             result.update(export_directory=str(destination),shard_manifest_identity=shards['manifest_identity'],
                           target_satisfied=total>=args.target_tokens,inventory_exhausted=progress['state']=='COMPLETE' and total<args.target_tokens)
-            atomic_json(directory/'runner/progress.json',result)
+            atomic_json(directory/'runner/progress.json',seal(result))
             return 0 if result['target_satisfied'] else 3
 
 

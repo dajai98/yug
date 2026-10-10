@@ -1,4 +1,4 @@
-﻿"""Approved inventory runner recovery and target-prefix contracts."""
+"""Approved inventory runner recovery and target-prefix contracts."""
 import json
 import os
 from pathlib import Path
@@ -9,7 +9,7 @@ from tests.test_production_acquisition import fixture_plan,Tokenizer,ROOT
 from training.production_acquisition import ProductionBuild,item_key
 from training.production_build import compile_inventory,Fetcher,disk_preflight
 from training.production_corpus import canonical,file_digest
-from training.production_spec import SpecificationError,seal
+from training.production_spec import SpecificationError,seal,verify_seal
 
 
 def test_compiler_replay_and_corruption(tmp_path):
@@ -116,10 +116,10 @@ with ProductionBuild(root/'out',spec,reg,repository_root=root,diagnostic=True) a
  print(result['accepted_clean_train_tokens'])
 '''
     args=[sys.executable,'-B','-c',script,str(tmp_path),str(ROOT/'artifacts/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json')]
-    assert subprocess.run(args+['crash'],cwd=ROOT,capture_output=True).returncode==17
-    first=subprocess.run(args+['resume'],cwd=ROOT,capture_output=True,text=True)
+    assert subprocess.run(args+['crash'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True).returncode==17
+    first=subprocess.run(args+['resume'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True,text=True)
     assert first.returncode==0,first.stderr
-    second=subprocess.run(args+['resume'],cwd=ROOT,capture_output=True,text=True)
+    second=subprocess.run(args+['resume'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True,text=True)
     assert second.returncode==0 and second.stdout==first.stdout
 
 
@@ -153,15 +153,16 @@ def test_cli_dry_run_resume_complete_and_no_repeat(tmp_path):
     refs=tmp_path/'heldout.jsonl'
     refs.write_bytes(canonical(dict(reference_id='unrelated-heldout',text='Independent historic observations of planetary spectroscopy and stellar spectra.',content_type='prose',language='en',provenance={'source':'fixture'}))+b'\n')
     args=[sys.executable,'-B','-m','training.production_build','--root',str(tmp_path),'--spec',str(tmp_path/'spec.json'),'--registry',str(tmp_path/'registry.json'),'--plan',str(plan),'--directory',str(tmp_path/'out'),'--references',str(refs),'--tokenizer',str(ROOT/'artifacts/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json'),'--target-tokens','100000','--reserve-mib','0','--chunk-items','1']
-    dry=subprocess.run(args+['--dry-run'],cwd=ROOT,capture_output=True,text=True)
+    dry=subprocess.run(args+['--dry-run'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True,text=True)
     assert dry.returncode==0,dry.stdout+dry.stderr
     assert not list((tmp_path/'out/raw').glob('*.txt'))
-    first=subprocess.run(args+['--resume'],cwd=ROOT,capture_output=True,text=True)
+    first=subprocess.run(args+['--resume'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True,text=True)
     assert first.returncode==3,first.stdout+first.stderr  # inventory exhausted, not a fabricated 100K pass
     before={str(p):p.stat().st_mtime_ns for folder in ('raw','normalized','tokens') for p in (tmp_path/'out'/folder).glob('*')}
     progress=json.loads((tmp_path/'out/runner/progress.json').read_bytes())
+    verify_seal(progress)
     assert progress['inventory_exhausted'] and progress['network_bytes_this_process']==0
-    second=subprocess.run(args+['--resume'],cwd=ROOT,capture_output=True,text=True)
+    second=subprocess.run(args+['--resume'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True,text=True)
     assert second.returncode==3,second.stdout+second.stderr
     after={str(p):p.stat().st_mtime_ns for folder in ('raw','normalized','tokens') for p in (tmp_path/'out'/folder).glob('*')}
     assert before==after
