@@ -284,7 +284,8 @@ class ProductionBuild:
                 self.db.rollback()
                 raise
 
-    def run(self,plan,tokenizer,*,fetch=None,max_items=None):
+    def run(self,plan,tokenizer,*,fetch=None,max_items=None,target_tokens=None):
+        need(target_tokens is None or (type(target_tokens) is int and 0<target_tokens<=sum(QUOTAS.values())),'Invalid target token ceiling')
         need(max_items is None or (type(max_items) is int and max_items>0),'max_items must be a positive integer or None')
         need(tokenizer.identity==TOKENIZER and tokenizer.vocab_size==4096,'Frozen tokenizer mismatch')
         with _writer_lock(self.directory/'coordinator'):
@@ -308,7 +309,12 @@ class ProductionBuild:
                         with self.db:self.db.execute("UPDATE items SET stage='DUPLICATE',reason=? WHERE item=?",(canonical(assignment).decode(),item))
                     else:
                         need(assignment['split']==record['split'],'Cluster split conflict')
+                        if target_tokens is not None and record['split']=='train':
+                            current=self.db.execute("SELECT coalesce(sum(tokens),0) FROM totals WHERE kind='category'").fetchone()[0]
+                            if current>=target_tokens:return self.checkpoint('TARGET_REACHED')
                         m=self._cached_tokens(item,record,tokenizer)
+                        if target_tokens is not None and record['split']=='train' and current+m['count']>target_tokens:
+                            return self.checkpoint('TARGET_BOUNDARY')
                         with self.db:
                             reason=self._account(item,record,m['count'])
                             self.db.execute('UPDATE items SET stage=?,reason=?,token_sha=?,token_count=? WHERE item=?',('QUOTA_REJECTED' if reason else 'ACCEPTED',reason,m['sha256'],m['count'],item))
@@ -348,16 +354,19 @@ class ProductionBuild:
         if state!='FAILED':self.put('last_error',None)
         self.db.commit();report=self.progress(state);atomic_json(self.directory/'progress.json',report);return report
 
-    def export_shards(self):
-        try:return self._export_shards()
+    def export_shards(self,output_directory=None):
+        try:return self._export_shards(output_directory)
         except Exception as exc:
             self.db.rollback();self.put('last_error',type(exc).__name__+': '+str(exc));self.db.commit();self.checkpoint('FAILED');raise
 
-    def _export_shards(self):
-        need(self.get('state')=='COMPLETE' and self.get('dedup_settled'),'Build not complete')
+    def _export_shards(self,output_directory=None):
+        destination=Path(output_directory).resolve() if output_directory is not None else self.directory
+        need(destination.is_relative_to(self.directory),'Export must stay inside build directory')
+        destination.mkdir(parents=True,exist_ok=True)
+        need(self.get('state') in ('COMPLETE','TARGET_REACHED','TARGET_BOUNDARY') and self.get('dedup_settled'),'Build not complete')
         with _writer_lock(self.directory/'coordinator'):
             self.verify()
-            accepted=self.directory/'admission.jsonl'
+            accepted=destination/'admission.jsonl'
             temp=accepted.with_suffix('.part')
             with temp.open('wb') as out:
                 for item,record,stage,reason,nsha,tsha,count in self.db.execute('SELECT item,record,stage,reason,normalized_sha,token_sha,token_count FROM items ORDER BY item'):
@@ -370,11 +379,11 @@ class ProductionBuild:
                 spec_identity=self.spec['identity'],registry_identity=self.registry['identity'],plan_identity=self.get('plan_identity'),diagnostic=self.diagnostic,reference_identity=self.get('request')['reference_identity'],
                 dedup_policy=POLICY,admission_sha256=file_digest(accepted),counts=counts)
             manifest['prepared_corpus_identity']=identity(manifest)
-            atomic_json(self.directory/'prepared.json',manifest)
+            atomic_json(destination/'prepared.json',manifest)
             prepared=_Prepared(self,manifest);cache=_TokenCache(self)
-            result=build_token_shards(prepared,cache,self.directory/'shards')
+            result=build_token_shards(prepared,cache,destination/'shards')
             for split in ('train','validation'):
-                TokenShardStream(self.directory/'shards',split=split,tokenizer_identity=TOKENIZER,prepared_corpus_identity=prepared.identity)
+                TokenShardStream(destination/'shards',split=split,tokenizer_identity=TOKENIZER,prepared_corpus_identity=prepared.identity)
             return result
 
 class _Prepared:
