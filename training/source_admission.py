@@ -51,7 +51,7 @@ def cached_sources(cache,registry,spec,root):
         yield directory,source,path,done
 
 
-def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved_plan,references,output,*,root=ROOT):
+def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved_plan,references,output,*,root=ROOT,evidence=None):
     root=Path(root).resolve();output=Path(output).resolve();cache=Path(cache).resolve()
     need(output.is_relative_to(root) and not output.is_relative_to(cache) and not cache.is_relative_to(output),'Output must be separate from cache under repository')
     for protected in (root_registry,root_spec,approved_registry,approved_spec,approved_plan,references):
@@ -67,6 +67,16 @@ def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved
     caches=list(cached_sources(cache,base_reg,base_spec,root));need(caches,'No completed cache receipts found')
     for directory,source,path,done in caches:
         for p in (path,directory/'request.json',directory/'complete.json'):inputs[p.relative_to(root).as_posix()]=file_digest(p)
+    if evidence is not None:
+        from training.clearance_evidence import verify_bundle
+        evidence=Path(evidence).resolve()
+        need(not evidence.is_relative_to(output) and not output.is_relative_to(evidence),'Admission output overlaps evidence')
+        bundle=verify_bundle(evidence,root)
+        need(bundle['complete'],'Partial evidence cannot be admitted')
+        evidence_request=json.loads((evidence/'request.json').read_bytes())
+        need(evidence_request['inputs']==inputs,'Evidence does not cover these admission inputs')
+        for name in ('request.json','complete.json','evidence.jsonl'):
+            p=evidence/name;inputs[p.relative_to(root).as_posix()]=file_digest(p)
     request=seal(dict(policy=POLICY,inputs=inputs))
     old_request=output/'request.json'
     if old_request.exists():need(json.loads(old_request.read_bytes())==request,'Admission inputs changed; use a new output version')
@@ -79,6 +89,12 @@ def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved
     db=sqlite3.connect('');db.execute('PRAGMA cache_size=-8192')
     db.executescript('CREATE TABLE grants (item TEXT PRIMARY KEY,source TEXT,path TEXT,record TEXT); CREATE TABLE files(source TEXT,path TEXT,record TEXT,PRIMARY KEY(source,path)); CREATE TABLE seen(source TEXT,path TEXT,PRIMARY KEY(source,path));')
     try:
+        db.execute('CREATE TABLE evidence(source TEXT,path TEXT,payload TEXT,PRIMARY KEY(source,path))')
+        if evidence is not None:
+            for e in read_plan(evidence/'evidence.jsonl'):
+                verify_seal(e)
+                need(e['request_identity']==bundle['request_identity'],'Evidence row request mismatch')
+                db.execute('INSERT INTO evidence VALUES (?,?,?)',(e['source_id'],e['path'],canonical(e).decode()))
         sources={s['source_id']:s for s in registry['sources']}
         grant_sources={r['source_id'] for r in read_plan(approved_plan)}
         for sid in sorted(grant_sources):
@@ -111,22 +127,32 @@ def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved
                     status,reason=screening(row['path'],row['git_mode'],row['bytes'] or 0,data,source,base_spec)
                     status='EXCLUDED' if status=='EXCLUDED' or row['screening']=='EXCLUDED' else 'REVIEW'
                     grant=None
+                    original_clearance=None
                     if status!='EXCLUDED' and source['split_group'] in groups:status,reason='EXCLUDED','retained evaluation source group'
                     if status=='REVIEW':
                         key=item_key(dict(source_id=sid,revision=row['revision'],path=row['path'],sha256=row['sha256']))
                         match=db.execute('SELECT record FROM grants WHERE item=?',(key,)).fetchone()
                         if match:
                             grant=json.loads(match[0]);need(grant['bytes']==row['bytes'],'Grant byte size mismatch')
+                            original_clearance=grant['identity']
                             need(sources[sid]['locator'].casefold().rstrip('/')==source['locator'].casefold().rstrip('/'),'Grant repository origin mismatch')
                             status,reason='CLEARED','exact existing immutable per-file clearance'
                             # Same approved payload; route acquisition to verified local cache.
                             grant=seal(dict(grant,input_path=blob.relative_to(root).as_posix()))
                             db.execute('UPDATE grants SET record=? WHERE item=?',(canonical(grant).decode(),key));matched+=1
                         else:reason='no exact evidenced per-file clearance; source/root license is insufficient'
+                    if evidence is not None:
+                        found=db.execute('SELECT payload FROM evidence WHERE source=? AND path=?',(sid,row['path'])).fetchone()
+                        need(found is not None,'Missing file evidence')
+                        e=json.loads(found[0])
+                        need(all(e[k]==row[k] for k in ('source_id','revision','path','sha256','bytes')) and e['cache_inventory_sha256']==done['inventory_sha256'],'Evidence file binding mismatch')
+                        need(e['status']==('EVIDENCED' if status=='CLEARED' else status),'Evidence/admission classification mismatch')
+                        if grant:need(e['scope']['clearance_identity']==original_clearance and e['license_id']==grant['license_id'],'Evidence clearance binding mismatch')
                     result=dict(source_id=sid,revision=row['revision'],path=row['path'],sha256=row['sha256'],bytes=row['bytes'],status=status,reason=reason,category=row.get('category'),subcategory=row.get('subcategory'),cache_inventory_sha256=done['inventory_sha256'],clearance_identity=grant['identity'] if grant else None,production_already_in_approved_scope=grant is not None)
                     decisions.write(canonical(result)+b'\n');counts[status]+=1;reasons[reason]+=1;sc[status]+=1
                 need(sum(sc.values())==sum(done['counts'].values()),'Cache inventory count mismatch')
                 per_source[sid]=dict(sc)
+        if evidence is not None:need(db.execute('SELECT count(*) FROM evidence').fetchone()[0]==sum(counts.values()),'Unexpected evidence rows')
         if existing.exists():
             need(file_digest(temp)==file_digest(output/'decisions.jsonl'),'Admission decisions changed');temp.unlink()
             return complete
@@ -146,13 +172,14 @@ def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--cache',type=Path,required=True);p.add_argument('--output',type=Path,default=ROOT/'artifacts/source_admission_gate_v1')
+    p.add_argument('--evidence',type=Path,help='Complete clearance_evidence output; exact grants remain mandatory')
     p.add_argument('--registry',type=Path,default=ROOT/'training/specifications/source_registry_v1.json');p.add_argument('--spec',type=Path,default=ROOT/'training/specifications/production_corpus_v1.json')
     p.add_argument('--approved-registry',type=Path,default=ROOT/'artifacts/production_batch_1_v1/admission/registry.json');p.add_argument('--approved-spec',type=Path,default=ROOT/'artifacts/production_batch_1_v1/admission/spec.json');p.add_argument('--approved-plan',type=Path,default=ROOT/'artifacts/production_batch_1_v1/admission/plan.jsonl');p.add_argument('--references',type=Path,default=ROOT/'artifacts/acquisition_readiness_gate_v1/heldout_references.jsonl')
     a=p.parse_args()
     try:
         need(a.output.resolve().is_relative_to(ROOT/'artifacts'),'Output must remain under artifacts')
         with _writer_lock(a.output/'compiler'):
-            r=build(a.cache,a.registry,a.spec,a.approved_registry,a.approved_spec,a.approved_plan,a.references,a.output)
+            r=build(a.cache,a.registry,a.spec,a.approved_registry,a.approved_spec,a.approved_plan,a.references,a.output,evidence=a.evidence)
         print(json.dumps({k:r[k] for k in ('counts','reviewed_files','production_plan_files','newly_authorized_files','new_production_tokens')},sort_keys=True));return 0
     except Exception as exc:print(f'Admission stopped: {type(exc).__name__}: {exc}');return 2
 
