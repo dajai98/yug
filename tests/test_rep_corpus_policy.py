@@ -304,14 +304,25 @@ def test_policy_sections_are_kept_apart_and_nothing_is_authorized():
 
 
 def test_policy_artifact_file_matches_the_builder():
-    if not _POLICY_ARTIFACT.is_file():
-        pytest.skip(f"policy artifact not present at {_POLICY_ARTIFACT}")
-    assert _POLICY_ARTIFACT.read_text(encoding="utf-8") == pol.policy_json()
+    # The immutable snapshot retains its original provenance URLs and fingerprint.
+    # Only the builder's evidence location moved; decisions must match exactly.
+    historical = json.loads(_POLICY_ARTIFACT.read_text(encoding="utf-8"))
+    assert historical["fingerprint"] == pol._fingerprint(historical)
+    current = json.loads(pol.policy_json())
+    assert current["fingerprint"] == pol._fingerprint(current)
+    original = "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json"
+    assert current["facts"]["evidence_artifact"] == pol.EVIDENCE_ARTIFACT
+    current["facts"]["evidence_artifact"] = original
+    for row in current["source_policy"]:
+        ref = row["facts"]["evidence_ref"]
+        if ref is not None:
+            assert ref == f"{pol.EVIDENCE_ARTIFACT}#{row['source_id']}"
+            row["facts"]["evidence_ref"] = f"{original}#{row['source_id']}"
+    current["fingerprint"] = pol._fingerprint(current)
+    assert current == historical
 
 
 def test_file_flags_match_the_evidence_artifact():
-    if not _EVIDENCE_ARTIFACT.is_file():
-        pytest.skip(f"evidence artifact not present at {_EVIDENCE_ARTIFACT}")
     data = json.loads(_EVIDENCE_ARTIFACT.read_text(encoding="utf-8"))
     for s in data["sources"]:
         flags = pol._STAGE1B_FILE_FLAGS[s["source_id"]]

@@ -1,0 +1,31 @@
+{
+  "verdict": "FREEZE YUG-100M ARCHITECTURE",
+  "initialization_gate": "PASS",
+  "model_config": "model_config.json",
+  "model_config_identity": "sha256:c268d611800b51bc73aeafcfbadc8f3032f7db74c077d43cfbc56bbccce3cb26",
+  "exact_parameter_count": 100951680,
+  "initialization": {
+    "policy": "tied_embedding_fan_in_v1",
+    "distribution": "N(0, 1/hidden_size)",
+    "implementation": "Scale existing N(0,1) embedding once by hidden_size**-0.5 after tying; no extra RNG draws",
+    "std_at_width_640": 0.03952847075210474,
+    "other_parameters": "unchanged PyTorch Linear defaults; RMSNorm scales one; no depth-dependent residual scaling"
+  },
+  "implementation_constants": {
+    "rmsnorm_eps": 1e-06,
+    "rope_base": 10000.0,
+    "rope_pairing": "adjacent coordinates",
+    "rope_scaling": null,
+    "head_dim": 64,
+    "dtype_baseline": "float32",
+    "mixed_precision_approved": false,
+    "dropout_placement": "attention probability only; probability 0.0"
+  },
+  "torch_version_verified": "2.12.0+cpu",
+  "model_source_sha256": "e4071a7960166b4978e1c6d02ee234c633f31e2b87fe71f2bfcc46b5310db3fe",
+  "config_file_sha256": "ab615c9ea66c5c49fed8b1f7cfe8964afc30441c559c624756b32ef30149fa69",
+  "tokenizer_identity": "sha256:0b9b2bb9efe58902e3cf3dcb359cf174a25f3d7bf603b14bd3fe8e2d7fec0507",
+  "corpus_build_authorized": false,
+  "yug_100m_training_authorized": false,
+  "freeze_record_identity": "sha256:2792890d44e5f56b94f2415eace326e9489506197801b5b2484cc2f6301a479f"
+}

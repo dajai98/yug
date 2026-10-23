@@ -92,7 +92,7 @@ def test_dry_run_reports_no_invented_acquisition_or_yield(bundle):
     assert report['storage']['train_spool_plus_shard_bytes']==16_000_000_000
 
 def test_old_sources_preserved_new_candidates_not_promoted(bundle):
-    old=json.loads((ROOT/'artifacts/rep_corpus_10m_v1/01_source_policy.json').read_text())
+    old=json.loads((ROOT/'training/resources/phase1/rep_corpus_10m_v1/01_source_policy.json').read_text())
     current={s['source_id']:s for s in bundle[1]['sources']}
     for source in old['source_policy']:
         assert current[source['source_id']]['prior_status']==source['stage1c_status']

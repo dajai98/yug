@@ -39,6 +39,8 @@ def read_plan(path):
 def validate_clearance(record,source,spec,root,approved_file=None):
     """File-specific, content-bound approval; source ACCEPT is necessary only."""
     verify_seal(record)
+    from training.conditional_license import validate_approval
+    validate_approval(record,source,root)
     need(not acquisition_blockers(source),'Source is not production-cleared: '+source['source_id'])
     need(record['source_id']==source['source_id'] and record['revision']==source['revision'],'Clearance source/revision mismatch')
     need(record['clearance_status']=='ACCEPT','Item clearance does not permit admission')
@@ -75,7 +77,7 @@ def validate_clearance(record,source,spec,root,approved_file=None):
     return item_key(record)
 
 class ProductionBuild:
-    def __init__(self,directory,spec,registry,*,repository_root,reference_plan=None,diagnostic=False):
+    def __init__(self,directory,spec,registry,*,repository_root,reference_plan=None,diagnostic=False,prior_production=None):
         validate(spec,registry,repository_root)
         self.directory=Path(directory).resolve();self.directory.mkdir(parents=True,exist_ok=True)
         self.root=Path(repository_root).resolve();self.spec=json.loads(canonical(spec));self.registry=json.loads(canonical(registry))
@@ -83,6 +85,7 @@ class ProductionBuild:
         self.reference_plan=Path(reference_plan).resolve() if reference_plan is not None else None
         if self.reference_plan:need(self.reference_plan.is_relative_to(self.root),'Reference inventory escapes root')
         self.diagnostic=diagnostic
+        self.prior_production=Path(prior_production).resolve() if prior_production is not None else None
         self.sources={s['source_id']:s for s in self.registry['sources']}
         self.db=sqlite3.connect(self.directory/'state.sqlite')
         self.db.execute('PRAGMA synchronous=FULL');self.db.execute('PRAGMA temp_store=FILE')
@@ -162,6 +165,87 @@ class ProductionBuild:
                 if clearance.exists():need(json.loads(clearance.read_bytes())==record,'Immutable clearance file changed')
                 else:atomic_json(clearance,record)
             self.put('plan_identity',plan_hash);self.put('plan_registered',True)
+
+    def register_prior_production(self):
+        """Bind an owner-supplied complete inventory; seals prove integrity, not authority.
+
+        An empty inventory must explicitly declare genesis. Never infer genesis
+        from a missing file. Legacy completed builds may replay, not admit more.
+        Prior databases and payloads are opened read-only; only this build's
+        existing dedup index receives reference members (never token accounting).
+        """
+        bound=self.get('prior_production')
+        pending=not self.get('plan_registered') or self.db.execute(
+            "SELECT 1 FROM items WHERE stage IN ('PENDING','ACQUIRED','PREPARED') LIMIT 1").fetchone()
+        if self.prior_production is None:
+            need(bound is None,'Bound prior-production inventory required on resume')
+            need(self.diagnostic or not pending,'Production admission requires explicit prior-production inventory')
+            return
+        need(not self.diagnostic,'Prior production cannot be attached to diagnostic builds')
+        inventory=json.loads(self.prior_production.read_bytes());verify_seal(inventory)
+        need(inventory.get('schema')=='yug-prior-production-v1' and inventory.get('complete') is True,
+             'Incomplete/incompatible prior-production inventory')
+        entries=inventory.get('builds')
+        need(isinstance(entries,list) and type(inventory.get('genesis')) is bool
+             and inventory['genesis']==(not entries),'Explicit genesis or prior builds required')
+        need(bound is None or bound==inventory,'Prior-production inventory changed on resume')
+        # Do not retroactively reinterpret previously accounted items.
+        need(bound is not None or not self.db.execute("SELECT 1 FROM items WHERE stage='ACCEPTED' LIMIT 1").fetchone(),
+             'Cannot attach history after accounting; replay legacy build without new admission')
+        paths={}
+        for entry in entries:
+            path=local_path(self.root,entry['path'])
+            need(path!=self.directory/'state.sqlite' and path not in paths,'Self/duplicate prior production build')
+            need(file_digest(path)==entry['sha256'],'Prior production database hash mismatch')
+            paths[path]=entry['sha256']
+        self.db.execute('CREATE TABLE IF NOT EXISTS prior_items(item TEXT PRIMARY KEY,split TEXT NOT NULL)')
+        with self.db:
+            for path,expected in sorted(paths.items()):
+                db=sqlite3.connect(path.as_uri()+'?mode=ro',uri=True)
+                try:
+                    need(db.execute('PRAGMA quick_check').fetchone()[0]=='ok','Corrupt prior production database')
+                    meta={k:json.loads(v) for k,v in db.execute('SELECT key,value FROM meta')}
+                    req=meta['request']
+                    need(req['tokenizer']==TOKENIZER and req['dedup']==identity(POLICY)
+                         and req['diagnostic'] is False and meta.get('dedup_settled')
+                         and meta.get('state') in ('COMPLETE','TARGET_REACHED','TARGET_BOUNDARY'),
+                         'Incompatible/unfinished prior production build')
+                    for ancestor in (meta.get('prior_production') or {}).get('builds',[]):
+                        need(paths.get(local_path(self.root,ancestor['path']))==ancestor['sha256'],
+                             'Prior-production inventory omits/changes an ancestor')
+                    totals=Counter()
+                    for item,encoded,nsha,tsha,count,split,owner in db.execute(
+                        "SELECT item,record,normalized_sha,token_sha,token_count,split,owner FROM items WHERE stage='ACCEPTED' ORDER BY item"):
+                        r=json.loads(encoded);verify_seal(r)
+                        need(item_key(r)==item and split==r['split'] and owner==r['owner'],'Prior item identity mismatch')
+                        need(json.loads((path.parent/'clearances'/(item[7:]+'.json')).read_bytes())==r,'Prior clearance changed')
+                        raw=path.parent/'raw'/item[7:]; normalized=path.parent/'normalized'/item[7:]
+                        tokens=path.parent/'tokens'/(item[7:]+'.bin')
+                        need(file_digest(raw)==r['sha256'] and file_digest(normalized)==nsha
+                             and file_digest(tokens)==tsha and tokens.stat().st_size==count*4,'Prior production payload corrupt')
+                        text=raw.read_bytes().decode('utf-8-sig')
+                        text=normalize_structured_text(text) if r['content_type'] in ('code','markdown') else normalize_text(text)
+                        need(digest(text.encode('utf-8'))==nsha,'Prior normalization mismatch')
+                        key='prior:'+identity(dict(database=expected,item=item))
+                        self.dedup.add(key,text,r['content_type'],r['language'],split,r)
+                        self.db.execute('INSERT OR IGNORE INTO prior_items VALUES (?,?)',(key,split))
+                        group=self.db.execute('SELECT split FROM splits WHERE group_id=?',(r['split_group'],)).fetchone()
+                        need(group is None or group[0]==split,'Prior source group split conflict')
+                        self.db.execute('INSERT OR IGNORE INTO splits VALUES (?,?)',(r['split_group'],split))
+                        totals[('category' if split=='train' else 'validation_category',owner)]+=count
+                    actual={(k,v):n for k,v,n in db.execute("SELECT kind,key,tokens FROM totals WHERE kind IN ('category','validation_category')")}
+                    need(dict(totals)==actual,'Prior production accounting mismatch')
+                finally:db.close()
+                need(file_digest(path)==expected,'Prior database changed during verification')
+            self.put('prior_production',inventory)
+
+    def prior_clusters(self):
+        self.db.execute('CREATE TEMP TABLE IF NOT EXISTS prior_clusters(cluster TEXT,split TEXT,PRIMARY KEY(cluster,split))')
+        self.db.execute('DELETE FROM prior_clusters')
+        if self.get('prior_production') is not None:
+            for item,split in self.db.execute('SELECT item,split FROM prior_items ORDER BY item'):
+                self.db.execute('INSERT OR IGNORE INTO prior_clusters VALUES (?,?)',
+                    (self.dedup.assignment(item)['cluster_id'],split))
 
     def verify(self):
         need(self.db.execute('PRAGMA quick_check').fetchone()[0]=='ok','Corrupt production state database')
@@ -290,6 +374,7 @@ class ProductionBuild:
         need(tokenizer.identity==TOKENIZER and tokenizer.vocab_size==4096,'Frozen tokenizer mismatch')
         with _writer_lock(self.directory/'coordinator'):
             try:
+                self.register_prior_production()
                 self.register_references();self.register(plan);self.verify();done=0
                 for item,encoded,stage in self.db.execute("SELECT item,record,stage FROM items WHERE stage IN ('PENDING','ACQUIRED') ORDER BY item"):
                     if max_items is not None and done>=max_items:return self.checkpoint('PARTIAL')
@@ -302,10 +387,15 @@ class ProductionBuild:
                         self.db.execute('UPDATE items SET stage=?,reason=?,normalized_sha=? WHERE item=?',('FILTERED' if reason else 'PREPARED',reason,nsha,item))
                     done+=1
                 self.put('dedup_settled',True);self.db.commit()
+                self.prior_clusters()
                 for item,encoded in self.db.execute("SELECT item,record FROM items WHERE stage='PREPARED' ORDER BY item"):
                     if max_items is not None and done>=max_items:return self.checkpoint('PARTIAL')
                     record=json.loads(encoded);assignment=self.dedup.assignment(item)
-                    if assignment['canonical_item']!=item:
+                    prior=list(self.db.execute('SELECT split FROM prior_clusters WHERE cluster=?',(assignment['cluster_id'],)))
+                    if prior:
+                        reason='prior_production_split_conflict' if any(s!=record['split'] for (s,) in prior) else 'prior_production_duplicate'
+                        with self.db:self.db.execute("UPDATE items SET stage='DUPLICATE',reason=? WHERE item=?",(reason,item))
+                    elif assignment['canonical_item']!=item:
                         with self.db:self.db.execute("UPDATE items SET stage='DUPLICATE',reason=? WHERE item=?",(canonical(assignment).decode(),item))
                     else:
                         need(assignment['split']==record['split'],'Cluster split conflict')

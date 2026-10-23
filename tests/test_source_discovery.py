@@ -8,6 +8,7 @@ from training.production_corpus import canonical
 from training.production_spec import seal, SpecificationError
 from training.source_expansion import build as expand
 from training.source_prepare import ROOT, classify
+from pathlib import Path
 
 
 @pytest.fixture
@@ -57,6 +58,18 @@ def test_license_allowlist(inputs, license_id, status):
     assert json.loads((inputs['output']/'catalog.json').read_bytes())['sources'] == []
 
 
+@pytest.mark.parametrize('license_id',['CC-BY-SA-3.0','CC-BY-SA-4.0','MPL-2.0','Apache-2.0 WITH LLVM-exception'])
+def test_conditional_metadata_never_grants(inputs,license_id):
+    fetch,_=provider(license_id)
+    result=discovery.build(**inputs,fetcher=fetch)
+    assert result['counts']['REVIEW']==1 and result['counts']['ACCEPTED']==0
+    source=json.loads((inputs['output']/'catalog.json').read_bytes())['sources'][0]
+    assert source['status']=='CONDITIONAL' and source['conditional_license']['approval_required']
+    assert not source['training_allowed_after_clearance'] and not source['allow_paths']
+    assert classify(source)=='CACHE_READY'
+    assert discovery.build(**inputs,resume=True)==result
+
+
 @pytest.mark.parametrize('field,value', [('sha','0'*40), ('size',0), ('encoding','plain'),
                                       ('path','vendor/LICENSE'), ('html_url','https://github.com/example/library/blob/main/LICENSE')])
 def test_invalid_license_binding_fails_closed(inputs, field, value):
@@ -88,6 +101,26 @@ def test_corrupt_response_rejected(inputs):
 def test_no_implicit_network(inputs):
     with pytest.raises(SpecificationError, match='explicit --fetch'):
         discovery.build(**inputs)
+
+
+@pytest.mark.parametrize('corrupt',[False,True])
+def test_noassertion_uses_verified_full_text(inputs,corrupt):
+    fetch,_=provider('NOASSERTION')
+    data=(Path(__file__).parent/'fixtures/license_evidence/Apache-2.0.txt').read_bytes()
+    def retained(url):
+        result=fetch(url)
+        if '/license?' in url:
+            result.update(content=base64.b64encode(data).decode(),size=len(data),
+                          sha='0'*40 if corrupt else hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest())
+        return result
+    if corrupt:
+        with pytest.raises(ValueError): discovery.build(**inputs,fetcher=retained)
+    else:
+        result=discovery.build(**inputs,fetcher=retained)
+        assert result['counts']['ACCEPTED']==1
+        assert discovery.build(**inputs,resume=True)==result
+        source=json.loads((inputs['output']/'catalog.json').read_bytes())['sources'][0]
+        assert source['license_id']=='Apache-2.0' and source['allow_paths']==[]
 
 
 def test_existing_source_not_rediscovered(inputs):

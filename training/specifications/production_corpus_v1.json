@@ -1,6 +1,6 @@
 {
   "schema": "yug-production-corpus-spec-v1",
-  "registry_identity": "sha256:dceee5214397b5729e21860957f6928abdcd9f16d2fd042630f7a498b383f88c",
+  "registry_identity": "sha256:e276058ca363bc2b41c36514e862a0809c94bcbf357532c720988c85235dbf19",
   "tokenizer_identity": "sha256:0b9b2bb9efe58902e3cf3dcb359cf174a25f3d7bf603b14bd3fe8e2d7fec0507",
   "vocab_size": 4096,
   "total_clean_train_tokens": 2000000000,
@@ -761,31 +761,31 @@
   ],
   "evidence": [
     {
-      "path": "artifacts/rep_corpus_10m_v1/01_source_policy.json",
+      "path": "training/resources/phase1/rep_corpus_10m_v1/01_source_policy.json",
       "sha256": "sha256:bf15648f3d20013653b7cabcc83f541b4a23ad22a048acdbbdb5ac07f26704d1"
     },
     {
-      "path": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json",
+      "path": "training/resources/phase1/rep_corpus_10m_v1/00_source_license_evidence.json",
       "sha256": "sha256:efe647647dae64f1f984554c9536d381537c769c9c11ef5da277b090fe5d6432"
     },
     {
-      "path": "artifacts/tokenizer_fit_sample_gate_v1/source_registry.json",
+      "path": "training/resources/phase1/tokenizer_fit_sample_gate_v1/source_registry.json",
       "sha256": "sha256:d25b802d213d61de9feb32e717712e81df9205599dc2c9951fa061a9f51f16e9"
     },
     {
-      "path": "artifacts/tokenizer_fit_sample_gate_v1/acquisition.json",
+      "path": "training/resources/phase1/tokenizer_fit_sample_gate_v1/acquisition.json",
       "sha256": "sha256:69e3fdf1998f52d386b199841d165bbfaccd85ca2675542d2d9a5f995014a1cb"
     },
     {
-      "path": "artifacts/model_initialization_gate_v1/model_config.json",
+      "path": "training/resources/phase1/model_initialization_gate_v1/model_config.json",
       "sha256": "sha256:ab615c9ea66c5c49fed8b1f7cfe8964afc30441c559c624756b32ef30149fa69"
     },
     {
-      "path": "artifacts/model_initialization_gate_v1/freeze.json",
+      "path": "training/resources/phase1/model_initialization_gate_v1/freeze.json",
       "sha256": "sha256:2813ecb9e0807e8ea27caa7efb4191876e69dedd8eea7a5991bfa67f3639b8d6"
     },
     {
-      "path": "artifacts/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json",
+      "path": "training/resources/phase1/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json",
       "sha256": "sha256:5d20407935f25f6ddf21f8ef370d06ecf14c827f67a819adc4d71ca2558fbc86"
     },
     {
@@ -806,11 +806,11 @@
     },
     {
       "path": "training/experiments/rep_corpus_policy.py",
-      "sha256": "sha256:68e047ebd63c09cfdbd0aaac4bd3a5df98427c7ac6c1fb8b425d4dbac2c461f9"
+      "sha256": "sha256:45ad996ce7291b9bc76f268c5115077a2049da5cc583aaf3ee35b64b21e15bba"
     },
     {
       "path": "training/experiments/rep_corpus_sources.py",
-      "sha256": "sha256:63aa6bb153e7ad9140ac1c742b872683af4fdace05927e025f0b2a9583dd7621"
+      "sha256": "sha256:15fa6d1a71746fa0b556974f0f0aa5c992e1398e4629a04aa20855d3f41bcc9e"
     },
     {
       "path": "training/checkpoint.py",
@@ -844,5 +844,5 @@
   "training_readiness": "CLOSED per latest owner instruction; external T4 evidence not re-adjudicated here",
   "acquisition_started": false,
   "training_authorized": false,
-  "identity": "sha256:c7f63e99258825236700b8c1ec26f9b26fc7c6892317db6f435e3458d9a166ef"
+  "identity": "sha256:f2df6bd444ddab6a529f77c6fdda189177b9949fff7089571fd3d777b12a2aa3"
 }

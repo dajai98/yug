@@ -1,44 +1,27 @@
-# YUG — Final Package
+﻿# YUG
 
-This archive contains the complete YUG project as it currently stands:
-architecture documentation, the full source repository, and the full test
-suite.
+The authoritative live tree is root `yug/`, `training/`, `tests/` and
+`pyproject.toml`. `SOURCE/` is an ignored historical snapshot, not an install target.
 
-**Start here, in this order:**
+From the repository root, with Python 3.11 or newer:
 
-1. `REPORT/YUG_FINAL_ARCHITECTURE_DECISION_REPORT.md` — the complete,
-   single-file summary of verified state, frozen decisions, open items,
-   risks, and the exact next step. Read this first.
-2. `ARCHITECTURE/NATIVE_BRAIN_ARCHITECTURE.md` — the canonical, living
-   architecture record. This is the authoritative source if it ever
-   disagrees with the report above (it's updated per-milestone; the
-   report is a point-in-time synthesis).
-3. `ARCHITECTURE/YUG_HANDOFF.md` — a prior conversation-handoff summary,
-   kept for continuity.
-4. `SOURCE/TEST_STATUS.md` — **read this before trusting any test result.**
-   Real `pytest` and PyTorch have not been available in the development
-   environment that produced this package (no network access); see this
-   file and the main report's §6 for exactly what has and hasn't been
-   genuinely verified.
-5. `SOURCE/` — the complete, self-contained package: `yug/`, `tests/`,
-   `pyproject.toml`, and `TEST_STATUS.md`. Installable via
-   `pip install -e ./SOURCE` (or copy `SOURCE/*` into a fresh repo root).
+```powershell
+python -m pip install -e ".[dev,native,dataset]"
+python -B -m pytest -q
+```
 
-## Most important open item
+Native model, tokenizer, training, checkpoint and corpus automation code have been
+exercised. The Phase 1 closure audit recorded 1469 passed, zero failures and two
+optional hardware/model skips. This historical result does not replace fresh tests.
 
-`yug/native/model.py` (the native Transformer implementation) has been
-written but **never executed** — PyTorch is not installed in the
-environment that produced this package. Before continuing any work on
-this project, install PyTorch (`pip install -e ".[native]"` from the
-`SOURCE/` directory) and run `pytest SOURCE/tests/test_native_model.py -v`
-to find out whether it actually works. See the final report, §1 and §6,
-for full detail.
+YUG uses its native transformer trained from scratch. The frozen target is
+100,951,680 parameters, context 2048 and vocabulary 4096. This checkpoint does not
+authorize production pretraining.
 
-## Quick orientation
+See [checkpoint evidence and restoration boundaries](docs/evidence/phase1/README.md).
+Tests use tracked resources, not local corpora. Production acquisition still needs
+verified clearance, holdout and prior-production evidence and fails closed without it.
+No production corpus or model checkpoint is bundled.
 
-- **What works and is tested right now:** Phase 0 (config, logging, CLI),
-  Phase 1 (`BrainInterface` + mock/llama.cpp adapters), NB-02 (tokenizer),
-  NB-03 (model configuration) — 169 tests passing.
-- **What's written but unverified:** NB-04 (the native Transformer itself).
-- **What doesn't exist yet:** training pipeline, checkpoint format,
-  `YugNativeAdapter`, generation/sampling, anything past NB-04.
+`ARCHITECTURE/` and `REPORT/` retain historical decisions: respect milestone dates
+and scope. The external research ledger is documentation, not corpus policy.

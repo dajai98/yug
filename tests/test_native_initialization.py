@@ -8,7 +8,7 @@ from yug.native.model import YugTransformer
 
 @pytest.fixture(scope='module')
 def legacy():
-    path=Path(__file__).resolve().parents[1]/'artifacts/model_initialization_gate_v1/legacy_model.py'
+    path=Path(__file__).resolve().parents[1]/'tests/fixtures/phase1/legacy_model.py'
     spec=importlib.util.spec_from_file_location('pre_init_fix_model',path)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     return module.YugTransformer

@@ -14,6 +14,12 @@ from training.experiments.production_corpus_spec import build
 ROOT=Path(__file__).resolve().parents[1]
 BASE=' '.join('word'+str(i) for i in range(90))
 
+def prior_inventory(root, builds=(), name='prior.json'):
+    path=root/name
+    path.write_bytes(canonical(seal(dict(schema='yug-prior-production-v1',complete=True,
+        genesis=not builds,builds=[dict(path=p.relative_to(root).as_posix(),sha256=file_digest(p)) for p in builds]))))
+    return path
+
 @pytest.fixture
 def index(tmp_path):
     db=sqlite3.connect(tmp_path/'dedup.sqlite')
@@ -198,7 +204,7 @@ def test_partial_download_recovery_and_wrong_payload(tmp_path):
 
 def test_real_frozen_tokenizer_cached_shard_equivalence(tmp_path):
     from yug.tokenizer.bpe import ByteLevelBpeTokenizer
-    tokenizer=ByteLevelBpeTokenizer.load(ROOT/'artifacts/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json')
+    tokenizer=ByteLevelBpeTokenizer.load(ROOT/'training/resources/phase1/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json')
     spec,registry,plan,records=fixture_plan(tmp_path,texts=[BASE])
     from training.token_shards import TokenShardStream
     with ProductionBuild(tmp_path/'out',spec,registry,repository_root=tmp_path,diagnostic=True) as b:
@@ -213,7 +219,7 @@ def test_heldout_inventory_exclusion_and_mandatory_pin(tmp_path):
         ProductionBuild(tmp_path/'no-reference',spec,registry,repository_root=tmp_path)
     refs=tmp_path/'heldout.jsonl'
     refs.write_bytes(canonical(dict(reference_id='heldout-test',text=BASE.replace('word30','variant30'),content_type='prose',language='en',provenance={'source':'diagnostic heldout'}))+b'\n')
-    with ProductionBuild(tmp_path/'out',spec,registry,repository_root=tmp_path,reference_plan=refs) as b:
+    with ProductionBuild(tmp_path/'out',spec,registry,repository_root=tmp_path,reference_plan=refs,prior_production=prior_inventory(tmp_path)) as b:
         result=b.run(plan,Tokenizer())
         assert result['accepted_clean_train_tokens']==0 and result['stages']['DUPLICATE']==1
         assert result['heldout_references']==1
@@ -360,15 +366,32 @@ def test_clearance_sidecar_mutation_rejected_on_resume(tmp_path):
 
 
 
-def test_retained_real_heldout_inventory_is_reproducible():
+def test_heldout_inventory_is_reproducible_and_checks_payloads(tmp_path):
+    """Exercise both historical formats using diagnostic text, never corpus copies."""
     from training.experiments.acquisition_readiness_gate import retained_heldout_inventory
-    a,inputs=retained_heldout_inventory(ROOT)
-    b,other=retained_heldout_inventory(ROOT)
+    from training.production_acquisition import digest
+    from training.production_corpus import PipelineError
+    text = 'Diagnostic heldout fixture, not production data.'
+    fit = dict(text=text, content_hash=digest(text.encode())[7:], partition='validation',
+               provenance={'path':'example.py'}, primary_domain='code',
+               document_id='diagnostic-fit', language='python')
+    transfer = dict(text=text, text_sha256=digest(text.encode())[7:],
+                    path='example.md', id='diagnostic-transfer')
+    paths = [tmp_path/'artifacts/tokenizer_fit_sample_gate_v1/validation.jsonl',
+             tmp_path/'artifacts/tokenizer_transfer_gate_v1/documents.jsonl']
+    with pytest.raises(PipelineError): retained_heldout_inventory(tmp_path)
+    for path, row in zip(paths, [fit, transfer]):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(canonical(row)+b'\n')
+    a,inputs=retained_heldout_inventory(tmp_path)
+    b,other=retained_heldout_inventory(tmp_path)
     assert canonical(a)==canonical(b) and inputs==other
-    assert len(a)==59 and len({r['reference_id'] for r in a})==59
+    assert {r['reference_id'] for r in a}=={'fit_validation:diagnostic-fit','transfer_evaluation:diagnostic-transfer'}
     assert all(r['provenance']['artifact_sha256'].startswith('sha256:') for r in a)
-    assert sum(r['reference_id'].startswith('fit_validation:') for r in a)==35
-
+    assert a[0]['language']=='python' and a[1]['content_type']=='markdown'
+    transfer['text']='Changed payload'
+    paths[1].write_bytes(canonical(transfer)+b'\n')
+    with pytest.raises(ValueError,match='hash mismatch'):retained_heldout_inventory(tmp_path)
 
 
 def test_coordinator_dry_run_never_acquires_or_encodes(tmp_path,monkeypatch):

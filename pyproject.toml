@@ -19,6 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dataset = ["pyarrow>=14.0"]
 dev = [
     "pytest>=7.4",
     "ruff>=0.4",

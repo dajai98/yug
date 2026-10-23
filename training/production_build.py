@@ -57,7 +57,8 @@ def compile_inventory(spec,registry,root,directory,plan=None):
             source=sources.get(r['source_id'])
             if source is None:skip(r['source_id'],r.get('path'),'unknown source');return
             if acquisition_blockers(source):skip(r['source_id'],r.get('path'),'source has no approved immutable acquisition scope');return
-            if r.get('license_id') not in SAFE_LICENSES or r.get('clearance_status')!='ACCEPT':skip(r['source_id'],r.get('path'),'unsupported/ambiguous license or uncleared item');return
+            from training.conditional_license import CONDITIONAL
+            if r.get('license_id') not in SAFE_LICENSES | CONDITIONAL.keys() or r.get('clearance_status')!='ACCEPT':skip(r['source_id'],r.get('path'),'unsupported/ambiguous license or uncleared item');return
             origin=urllib.parse.urlsplit(source['locator'])
             github=(origin.scheme=='https' and origin.netloc=='github.com' and not origin.query and not origin.fragment
                     and len(origin.path.strip('/').split('/'))==2 and '..' not in origin.path)
@@ -75,7 +76,8 @@ def compile_inventory(spec,registry,root,directory,plan=None):
                 if acquisition_blockers(source):skip(sid,None,'source has no approved immutable acquisition scope');continue
                 grant=json.loads(local_path(root,source['clearance_record']).read_bytes())
                 for f in iter_manifest_files(root,source_manifest(root,source)):
-                    if f.get('license_id') not in SAFE_LICENSES:skip(sid,f['path'],'unsupported/ambiguous per-file license');continue
+                    from training.conditional_license import CONDITIONAL
+                    if f.get('license_id') not in SAFE_LICENSES | CONDITIONAL.keys():skip(sid,f['path'],'unsupported/ambiguous per-file license');continue
                     owner=f['owner'];category=next(c for c in spec['categories'] if c['id']==owner)
                     sub=f.get('subcategory',source['subcategory'])
                     if sub not in category['subcategories']:skip(sid,f['path'],'subcategory needs approved routing');continue
@@ -87,7 +89,7 @@ def compile_inventory(spec,registry,root,directory,plan=None):
                            subcategory=sub,split=source['split'],split_group=source['split_group'],split_unit_kind='source',
                            allow_rule=rules[0],deny_rules_checked=source['deny_paths'],language=f.get('language',sub),
                            license_evidence=f.get('license_evidence',grant['evidence']),attribution=grant['attribution'])
-                    for key in ('input_path','three_d_topic','three_d_form'):
+                    for key in ('input_path','three_d_topic','three_d_form','conditional_approval_identity'):
                         if key in f:r[key]=f[key]
                     accept(seal(r))
         out.flush();os.fsync(out.fileno());log.flush();os.fsync(log.fileno())
@@ -146,7 +148,8 @@ def execute(args):
         need(inventory['scheduled']>0,'No cleared files scheduled. See runner/unresolved.jsonl; no licensing guesses or downloads were made.')
         tokenizer=ByteLevelBpeTokenizer.load(args.tokenizer);need(tokenizer.identity==TOKENIZER,'Frozen tokenizer mismatch')
         fetch=Fetcher(root,registry,args.request_interval)
-        with ProductionBuild(directory,spec,registry,repository_root=root,reference_plan=args.references) as build:
+        with ProductionBuild(directory,spec,registry,repository_root=root,reference_plan=args.references,
+                             prior_production=args.prior_production) as build:
             current=build.db.execute("SELECT coalesce(sum(tokens),0) FROM totals WHERE kind='category'").fetchone()[0]
             need(args.target_tokens>=current,'Target is below already committed tokens; accounting cannot be rolled back')
             if args.dry_run:
@@ -187,7 +190,8 @@ def main():
     p.add_argument('--registry',default=str(ROOT/'training/specifications/source_registry_v1.json'))
     p.add_argument('--plan',type=Path);p.add_argument('--directory',default=str(ROOT/'artifacts/autonomous_production_v1'))
     p.add_argument('--references',default=str(ROOT/'artifacts/acquisition_readiness_gate_v1/heldout_references.jsonl'))
-    p.add_argument('--tokenizer',default=str(ROOT/'artifacts/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json'))
+    p.add_argument('--prior-production',type=Path,help='Required for admission: sealed yug-prior-production-v1 complete inventory of prior state.sqlite paths and SHA256 hashes; explicit genesis=true with builds=[] only for an authorized first build')
+    p.add_argument('--tokenizer',default=str(ROOT/'training/resources/phase1/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json'))
     p.add_argument('--target-tokens',type=int,required=True);p.add_argument('--resume',action='store_true');p.add_argument('--dry-run',action='store_true')
     p.add_argument('--chunk-items',type=int,default=50);p.add_argument('--reserve-mib',type=int,default=512);p.add_argument('--request-interval',type=float,default=.25)
     args=p.parse_args()

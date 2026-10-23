@@ -125,9 +125,13 @@ def build(cache, output, *, root=ROOT, resume=False, dry_run=False, limit=None, 
     caches = list(cached_sources(cache, base_reg, base_spec, root))
     need(caches, 'No completed cache receipts')
     hashes = {Path(p).resolve().relative_to(root).as_posix(): file_digest(p) for p in inputs.values()}
+    approved_sources = {s['source_id']: s for s in registry['sources']}
     for directory, source, inventory, done in caches:
-        need(source['locator'] == next((s['locator'] for s in registry['sources']
-             if s['source_id'] == source['source_id']), None), 'Grant repository origin mismatch')
+        approved = approved_sources.get(source['source_id'])
+        # Newly discovered sources have no production grants. They still need
+        # screening, but cannot become EVIDENCED through _grants/_decision.
+        if approved is not None:
+            need(source['locator'] == approved['locator'], 'Grant repository origin mismatch')
         for p in (inventory, directory/'request.json', directory/'complete.json'):
             hashes[p.relative_to(root).as_posix()] = file_digest(p)
     request = seal(dict(policy_version=POLICY, inputs=hashes))

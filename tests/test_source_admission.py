@@ -3,7 +3,7 @@ import copy
 import json
 from pathlib import Path
 import pytest
-from tests.test_production_acquisition import fixture_plan,Tokenizer
+from tests.test_production_acquisition import fixture_plan,Tokenizer,prior_inventory
 from training.production_spec import seal,SpecificationError
 from training.production_corpus import canonical,file_digest
 from training.source_admission import build
@@ -37,7 +37,7 @@ def test_exact_grants_only_and_production_compatibility(inputs):
     out=inputs['output'];spec=json.loads((out/'spec.json').read_bytes());reg=json.loads((out/'registry.json').read_bytes())
     plan,receipt=compile_inventory(spec,reg,inputs['root'],out/'runner',out/'plan.jsonl')
     assert receipt['scheduled']==2
-    with ProductionBuild(out/'fixture_production',spec,reg,repository_root=inputs['root'],reference_plan=inputs['references']) as b:
+    with ProductionBuild(out/'fixture_production',spec,reg,repository_root=inputs['root'],reference_plan=inputs['references'],prior_production=prior_inventory(inputs['root'])) as b:
         assert b.run(plan,Tokenizer())['stages']=={'ACCEPTED':2}
 
 

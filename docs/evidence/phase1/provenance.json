@@ -1,0 +1,99 @@
+[
+  {
+    "original_path": "artifacts/rep_corpus_10m_v1/01_source_policy.json",
+    "path": "training/resources/phase1/rep_corpus_10m_v1/01_source_policy.json",
+    "sha256": "bf15648f3d20013653b7cabcc83f541b4a23ad22a048acdbbdb5ac07f26704d1",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "original_path": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json",
+    "path": "training/resources/phase1/rep_corpus_10m_v1/00_source_license_evidence.json",
+    "sha256": "efe647647dae64f1f984554c9536d381537c769c9c11ef5da277b090fe5d6432",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "original_path": "artifacts/tokenizer_fit_sample_gate_v1/source_registry.json",
+    "path": "training/resources/phase1/tokenizer_fit_sample_gate_v1/source_registry.json",
+    "sha256": "d25b802d213d61de9feb32e717712e81df9205599dc2c9951fa061a9f51f16e9",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "original_path": "artifacts/tokenizer_fit_sample_gate_v1/acquisition.json",
+    "path": "training/resources/phase1/tokenizer_fit_sample_gate_v1/acquisition.json",
+    "sha256": "69e3fdf1998f52d386b199841d165bbfaccd85ca2675542d2d9a5f995014a1cb",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "original_path": "artifacts/model_initialization_gate_v1/model_config.json",
+    "path": "training/resources/phase1/model_initialization_gate_v1/model_config.json",
+    "sha256": "ab615c9ea66c5c49fed8b1f7cfe8964afc30441c559c624756b32ef30149fa69",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "original_path": "artifacts/model_initialization_gate_v1/freeze.json",
+    "path": "training/resources/phase1/model_initialization_gate_v1/freeze.json",
+    "sha256": "2813ecb9e0807e8ea27caa7efb4191876e69dedd8eea7a5991bfa67f3639b8d6",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "original_path": "artifacts/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json",
+    "path": "training/resources/phase1/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json",
+    "sha256": "5d20407935f25f6ddf21f8ef370d06ecf14c827f67a819adc4d71ca2558fbc86",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "original_path": "artifacts/model_initialization_gate_v1/legacy_model.py",
+    "path": "tests/fixtures/phase1/legacy_model.py",
+    "sha256": "d928bb21f3af97d61b041172705c8e0d49b899d3adfa49c4799931bbe8e37992",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "original_path": "artifacts/tokenizer_transfer_gate_v1/probe.py",
+    "path": "tests/fixtures/phase1/transfer_probe.py",
+    "source_sha256": "12de1f028078e6c12f76164f42aa3415051d69bbd5cfa2f9a48fcf80dae9eaa2",
+    "sha256": "0b974ddbbdb1be9721d4b78493c437440b6ff0a861facc023ce9fc29e2b75a90",
+    "transformation": "Overlap helpers unchanged; initial payload verification extracted; network/encoding CLI omitted"
+  },
+  {
+    "original_path": "artifacts/mit_heading_fix_v1/REPORT.md",
+    "path": "docs/evidence/phase1/mit_heading_fix_v1/REPORT.md",
+    "sha256": "9af80fa6d417a35c29610fa61e7f670e92926a0216f69c112e8950ea79c34b6d",
+    "transformation": "byte-identical historical evidence; relative links refer to original artifact layout"
+  },
+  {
+    "original_path": "artifacts/mit_heading_fix_v1/result.json",
+    "path": "docs/evidence/phase1/mit_heading_fix_v1/result.json",
+    "sha256": "f673177e6213fd9349772d7f7978ca506d426471c05dba55a327512865cb447f",
+    "transformation": "byte-identical historical evidence; relative links refer to original artifact layout"
+  },
+  {
+    "original_path": "artifacts/mit_heading_fix_v1/production/result.json",
+    "path": "docs/evidence/phase1/mit_heading_fix_v1/production/result.json",
+    "sha256": "f3d63b7d8c88de4cb1b606e7f8822d27285410185e06d1dd91079acdbe66188f",
+    "transformation": "byte-identical historical evidence; relative links refer to original artifact layout"
+  },
+  {
+    "original_path": "artifacts/autonomous_runner_validation_v1/REPORT.md",
+    "path": "docs/evidence/phase1/autonomous_runner_validation_v1/REPORT.md",
+    "sha256": "6b9680668b4fb1379113da77d023a339bfc0f27ab7fe63e9b35153c7336bf39d",
+    "transformation": "byte-identical historical evidence; relative links refer to original artifact layout"
+  },
+  {
+    "original_path": "artifacts/autonomous_runner_validation_v1/verification.json",
+    "path": "docs/evidence/phase1/autonomous_runner_validation_v1/verification.json",
+    "sha256": "12904695d65047c9a55b9a807a96511e25e4e2a69e3d7f00425a593fb2a39ab4",
+    "transformation": "byte-identical historical evidence; relative links refer to original artifact layout"
+  },
+  {
+    "original_path": "artifacts/production_corpus_spec_v1/REPORT.md",
+    "path": "docs/evidence/phase1/production_corpus_spec_v1/REPORT.md",
+    "sha256": "52b0ac1b1c021e162d637eb58e9549ed9a85dc9fe2cdcdcab858c77090e3908e",
+    "transformation": "byte-identical historical evidence; relative links refer to original artifact layout"
+  },
+  {
+    "original_path": "artifacts/model_initialization_gate_v1/REPORT.md",
+    "path": "docs/evidence/phase1/model_initialization_gate_v1/REPORT.md",
+    "sha256": "d821932d31f59a71b01893a3802201a6459e38b3cca4ec913f45a60ecabfe6d9",
+    "transformation": "byte-identical historical evidence; relative links refer to original artifact layout"
+  }
+]

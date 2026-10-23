@@ -1,0 +1,19 @@
+# Preserve immutable snapshots byte-for-byte; do not normalize historical evidence.
+/training/resources/phase1/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/tests/fixtures/phase1/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/docs/evidence/phase1/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+# Specification evidence hashes cover exact source bytes. Pin checkout line endings.
+/training/production_corpus.py text eol=lf
+/training/token_shards.py text eol=lf
+/training/corpus_prep.py text eol=lf
+/training/experiments/representative_mini_corpus.py text eol=crlf
+/training/experiments/rep_corpus_policy.py text eol=crlf
+/training/experiments/rep_corpus_sources.py text eol=crlf
+/training/checkpoint.py text eol=crlf
+/training/loss.py text eol=crlf
+/training/loop.py text eol=lf
+/training/evaluate.py text eol=crlf
+/yug/native/model.py text eol=crlf
+/yug/native/config.py text eol=lf
+/yug/tokenizer/bpe.py text eol=crlf

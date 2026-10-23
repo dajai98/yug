@@ -34,8 +34,8 @@ from typing import Any, Iterable, Sequence
 from training.experiments import rep_corpus_sources as rs
 
 POLICY_SCHEMA = "rep-corpus-source-policy-v1"
-EVIDENCE_ARTIFACT = "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json"
-POLICY_ARTIFACT = "artifacts/rep_corpus_10m_v1/01_source_policy.json"
+EVIDENCE_ARTIFACT = "training/resources/phase1/rep_corpus_10m_v1/00_source_license_evidence.json"
+POLICY_ARTIFACT = "training/resources/phase1/rep_corpus_10m_v1/01_source_policy.json"
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -590,7 +590,7 @@ def policy_json(body: dict[str, Any] | None = None) -> str:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Write the Stage 1C source policy (no network, no acquisition).")
-    parser.add_argument("--output", default=POLICY_ARTIFACT)
+    parser.add_argument("--output", default="artifacts/rep_corpus_10m_v1/01_source_policy.json")
     args = parser.parse_args(argv)
     try:
         body = build_policy()

@@ -1,0 +1,18 @@
+{
+  "activation": "silu",
+  "architecture": "yug_decoder_transformer",
+  "bias": false,
+  "context_length": 2048,
+  "dropout": 0.0,
+  "ffn_size": 2560,
+  "hidden_size": 640,
+  "identity": "sha256:c268d611800b51bc73aeafcfbadc8f3032f7db74c077d43cfbc56bbccce3cb26",
+  "normalization": "rmsnorm",
+  "num_heads": 10,
+  "num_layers": 20,
+  "positional_encoding": "rope",
+  "tie_embeddings": true,
+  "tokenizer_identity": "sha256:0b9b2bb9efe58902e3cf3dcb359cf174a25f3d7bf603b14bd3fe8e2d7fec0507",
+  "vocab_size": 4096,
+  "yug_model_config_format_version": "1"
+}

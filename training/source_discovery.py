@@ -18,6 +18,8 @@ from training.production_corpus import atomic_json, canonical, file_digest
 from training.production_spec import seal, verify_seal, need
 from training.source_prepare import ROOT, LICENSES
 from training.token_shards import _writer_lock
+from training.license_evidence import resolve_license
+from training.conditional_license import CONDITIONAL, pending
 
 VERSION = 'bounded-source-discovery-v1'
 MAX_RESPONSE = 524288
@@ -68,9 +70,7 @@ def discover(seed, directory, root, spec, fetcher):
     license_id = (license.get('license') or {}).get('spdx_id')
     base = dict(locator=locator, revision=revision, license_id=license_id,
                 category=seed['category'], subcategory=seed['subcategory'])
-    if not license_id or license_id == 'NOASSERTION':
-        return dict(base, status='REVIEW', reason='unrecognized/unclear license evidence'), None
-    if license_id not in LICENSES:
+    if license_id and license_id != 'NOASSERTION' and license_id not in LICENSES | CONDITIONAL.keys():
         return dict(base, status='REJECTED', reason='license outside existing allowlist'), None
     need(license.get('encoding') == 'base64' and license.get('type') == 'file', 'Invalid license payload')
     data = base64.b64decode(''.join(license['content'].split()), validate=True)
@@ -80,6 +80,11 @@ def discover(seed, directory, root, spec, fetcher):
     path = license.get('path')
     need(isinstance(path, str) and re.fullmatch(r'[A-Za-z0-9_.-]+', path), 'Non-root/ambiguous license scope')
     need(license.get('html_url') == locator+'/blob/'+revision+'/'+path, 'License evidence is not revision-bound')
+    conditional = license_id in CONDITIONAL
+    license_id = license_id if conditional else resolve_license(license_id, data)
+    base['license_id'] = license_id
+    if license_id not in LICENSES | CONDITIONAL.keys():
+        return dict(base, status='REVIEW', reason='retained license text unresolved; no filename or cross-file inference'), None
     sid = 'gh-'+repo.lower().replace('/', '-')
     evidence = dict(path=(directory/'license.json').relative_to(root).as_posix(),
                     sha256=file_digest(directory/'license.json'), upstream_path=path,
@@ -95,6 +100,9 @@ def discover(seed, directory, root, spec, fetcher):
                   file_manifest=None, clearance_record=None, origin_verified=False,
                   provenance=dict(discovery_version=VERSION, metadata_only=True),
                   training_allowed_after_clearance=False)
+    if conditional:
+        source.update(status='CONDITIONAL',status_reason='Conditional metadata claim only; no file approval',conditional_license=pending(license_id))
+        return dict(base,source_id=sid,status='REVIEW',reason='CONDITIONAL; source-specific rights and obligation approval required',license_evidence=evidence),source
     return dict(base, source_id=sid, status='ACCEPTED', reason='Pinned source-level license evidence only',
                 license_evidence=evidence), source
 

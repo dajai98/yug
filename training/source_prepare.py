@@ -15,6 +15,7 @@ from training.production_corpus import atomic_json,atomic_replace,canonical,file
 from training.production_spec import need,path_allowed,seal,verify_seal
 from training.production_acquisition import MAX_ITEM_BYTES
 from training.token_shards import _writer_lock
+from training.conditional_license import CONDITIONAL
 
 ROOT=Path(__file__).resolve().parents[1]
 POLICY='local-source-review-cache-v1'
@@ -29,6 +30,9 @@ def classify(source):
     u=urlsplit(locator)
     if u.scheme!='https' or u.netloc!='github.com' or u.query or u.fragment or not re.fullmatch(r'/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?',u.path):return 'UNRESOLVED'
     if not re.fullmatch('[0-9a-f]{40}',source.get('revision') or ''):return 'BLOCKED_NO_REVISION'
+    if source.get('license_id') in CONDITIONAL:
+        if source.get('status') not in ('CONDITIONAL','ACCEPT') or not source.get('license_evidence'):return 'BLOCKED_LICENSE'
+        return 'CACHE_READY'  # Review cache only; explicit approval is enforced at clearance.
     if source.get('status')!='ACCEPT' or source.get('license_id') not in LICENSES or not source.get('license_evidence'):return 'BLOCKED_LICENSE'
     return 'CACHE_READY'
 

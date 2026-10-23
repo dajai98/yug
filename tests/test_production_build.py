@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 import pytest
-from tests.test_production_acquisition import fixture_plan,Tokenizer,ROOT
+from tests.test_production_acquisition import fixture_plan,Tokenizer,ROOT,prior_inventory
 from training.production_acquisition import ProductionBuild,item_key
 from training.production_build import compile_inventory,Fetcher,disk_preflight
 from training.production_corpus import canonical,file_digest
@@ -115,7 +115,7 @@ with ProductionBuild(root/'out',spec,reg,repository_root=root,diagnostic=True) a
  b.export_shards()
  print(result['accepted_clean_train_tokens'])
 '''
-    args=[sys.executable,'-B','-c',script,str(tmp_path),str(ROOT/'artifacts/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json')]
+    args=[sys.executable,'-B','-c',script,str(tmp_path),str(ROOT/'training/resources/phase1/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json')]
     assert subprocess.run(args+['crash'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True).returncode==17
     first=subprocess.run(args+['resume'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True,text=True)
     assert first.returncode==0,first.stderr
@@ -152,7 +152,8 @@ def test_cli_dry_run_resume_complete_and_no_repeat(tmp_path):
     (tmp_path/'spec.json').write_bytes(canonical(spec));(tmp_path/'registry.json').write_bytes(canonical(reg))
     refs=tmp_path/'heldout.jsonl'
     refs.write_bytes(canonical(dict(reference_id='unrelated-heldout',text='Independent historic observations of planetary spectroscopy and stellar spectra.',content_type='prose',language='en',provenance={'source':'fixture'}))+b'\n')
-    args=[sys.executable,'-B','-m','training.production_build','--root',str(tmp_path),'--spec',str(tmp_path/'spec.json'),'--registry',str(tmp_path/'registry.json'),'--plan',str(plan),'--directory',str(tmp_path/'out'),'--references',str(refs),'--tokenizer',str(ROOT/'artifacts/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json'),'--target-tokens','100000','--reserve-mib','0','--chunk-items','1']
+    args=[sys.executable,'-B','-m','training.production_build','--root',str(tmp_path),'--spec',str(tmp_path/'spec.json'),'--registry',str(tmp_path/'registry.json'),'--plan',str(plan),'--directory',str(tmp_path/'out'),'--references',str(refs),'--tokenizer',str(ROOT/'training/resources/phase1/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json'),'--target-tokens','100000','--reserve-mib','0','--chunk-items','1']
+    args+=['--prior-production',str(prior_inventory(tmp_path))]
     dry=subprocess.run(args+['--dry-run'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True,text=True)
     assert dry.returncode==0,dry.stdout+dry.stderr
     assert not list((tmp_path/'out/raw').glob('*.txt'))

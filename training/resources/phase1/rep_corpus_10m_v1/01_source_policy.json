@@ -1,0 +1,2810 @@
+{
+  "acquisition_authorized": false,
+  "facts": {
+    "evidence_artifact": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json",
+    "planning_total_train_bytes": 41000000,
+    "planning_total_train_bytes_basis": "owner-supplied estimate: ~10M 4096-equivalent train tokens at ~4.12 bytes/token",
+    "registry_fingerprint": "sha256:839fa3c60646d975508f8bb6ae9afede03f7b941eaef51c1cb0ac27cee2766d2",
+    "stage1b_evidence_fingerprint": "sha256:bbc2fe55f3f9b2942ae9a3f1c38f6464cfa80e2465b02939b49aefa4df4315fb",
+    "stage1b_proposed_accept_count": 11,
+    "stage1b_proposed_accept_sources": [
+      "gh-dotnet-roslyn",
+      "gh-flame-engine-flame",
+      "gh-google-guava",
+      "gh-lodash-lodash",
+      "gh-neuecc-unirx",
+      "gh-rust-lang-reference",
+      "gh-rust-lang-rust-by-example",
+      "gh-rust-lang-rustc-dev-guide",
+      "gh-serde-rs-serde",
+      "gh-spf13-cobra",
+      "gh-tokio-rs-tokio"
+    ]
+  },
+  "fingerprint": "sha256:9793421d0b74c22c9d57a8c7624a91d65a6da3777794f8470fca0b9cd6ba5d25",
+  "model_training_authorized": false,
+  "nb13_assigned": false,
+  "not_a_milestone": true,
+  "owner_decisions": {
+    "category_byte_target_pct": {
+      "code": 24,
+      "csharp_gamedev": 22,
+      "general_english": 19,
+      "nepali": 17,
+      "software_docs": 18
+    },
+    "category_target_meaning": "working BYTE-share targets for the expansion experiment, not final YUG-100M proportions",
+    "design_principles": [
+      {
+        "authority": "OWNER",
+        "constraint": "YUG must not receive unrestricted authority to rewrite or upgrade itself.",
+        "flow": [
+          "detect problem",
+          "analyze repository",
+          "propose change",
+          "apply change only inside an isolated sandbox/worktree",
+          "run tests and checks",
+          "present diff + evidence to owner",
+          "require explicit owner approval",
+          "apply approved change",
+          "verify",
+          "maintain rollback path"
+        ],
+        "id": "DP-01",
+        "reference": "ARCHITECTURE/YUG_SELF_IMPROVEMENT_PRINCIPLE.md",
+        "status": "RECORDED_NOT_IMPLEMENTED",
+        "title": "Controlled YUG self-improvement"
+      }
+    ],
+    "license_allowlist": [
+      "Apache-2.0",
+      "CC-BY-3.0",
+      "CC-BY-4.0",
+      "CC-BY-SA-3.0",
+      "CC-BY-SA-4.0",
+      "MIT",
+      "MS-PL"
+    ],
+    "license_allowlist_changed_by_stage1c": false,
+    "natural_codeswitch_share_pct": 0,
+    "od08_general_code_language_target_pct": {
+      "c_cpp": 15,
+      "go": 10,
+      "javascript_typescript": 15,
+      "python": 35,
+      "rust": 25
+    },
+    "od08_meaning": "byte-share targets within the 24% general-code category; C# is excluded (own category); languages not listed cannot enter",
+    "synthetic_codeswitch": "diagnostic only; never fitted or primary-scored",
+    "unity_blocked_source_ids": [
+      "gh-unity-csreference",
+      "unity-asset-store-academy",
+      "unity-docs",
+      "unity-learn"
+    ]
+  },
+  "proposals": {
+    "cap_audit": {
+      "by_cap_bp": {
+        "1000": {
+          "category_ceilings": {
+            "code": {
+              "accepted_sources": 8,
+              "ceiling_pct": 80.0
+            },
+            "csharp_gamedev": {
+              "accepted_sources": 5,
+              "ceiling_pct": 50.0
+            },
+            "software_docs": {
+              "accepted_sources": 4,
+              "ceiling_pct": 40.0
+            }
+          },
+          "code_language_ceilings": {
+            "_total": {
+              "ceiling_bytes": 5904000,
+              "ceiling_pct_of_code_category": 60.0
+            },
+            "c_cpp": {
+              "accepted_repos": 0,
+              "ceiling_bytes": 0,
+              "ceiling_pct_of_language_target": 0.0,
+              "target_bytes": 1476000,
+              "target_pct_of_code": 15
+            },
+            "go": {
+              "accepted_repos": 2,
+              "ceiling_bytes": 984000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 984000,
+              "target_pct_of_code": 10
+            },
+            "javascript_typescript": {
+              "accepted_repos": 2,
+              "ceiling_bytes": 1476000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 1476000,
+              "target_pct_of_code": 15
+            },
+            "python": {
+              "accepted_repos": 1,
+              "ceiling_bytes": 984000,
+              "ceiling_pct_of_language_target": 28.6,
+              "target_bytes": 3444000,
+              "target_pct_of_code": 35
+            },
+            "rust": {
+              "accepted_repos": 3,
+              "ceiling_bytes": 2460000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 2460000,
+              "target_pct_of_code": 25
+            }
+          },
+          "per_repo_bytes": {
+            "code": 984000,
+            "csharp_gamedev": 902000,
+            "software_docs": 738000
+          }
+        },
+        "1250": {
+          "category_ceilings": {
+            "code": {
+              "accepted_sources": 8,
+              "ceiling_pct": 100.0
+            },
+            "csharp_gamedev": {
+              "accepted_sources": 5,
+              "ceiling_pct": 62.5
+            },
+            "software_docs": {
+              "accepted_sources": 4,
+              "ceiling_pct": 50.0
+            }
+          },
+          "code_language_ceilings": {
+            "_total": {
+              "ceiling_bytes": 6150000,
+              "ceiling_pct_of_code_category": 62.5
+            },
+            "c_cpp": {
+              "accepted_repos": 0,
+              "ceiling_bytes": 0,
+              "ceiling_pct_of_language_target": 0.0,
+              "target_bytes": 1476000,
+              "target_pct_of_code": 15
+            },
+            "go": {
+              "accepted_repos": 2,
+              "ceiling_bytes": 984000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 984000,
+              "target_pct_of_code": 10
+            },
+            "javascript_typescript": {
+              "accepted_repos": 2,
+              "ceiling_bytes": 1476000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 1476000,
+              "target_pct_of_code": 15
+            },
+            "python": {
+              "accepted_repos": 1,
+              "ceiling_bytes": 1230000,
+              "ceiling_pct_of_language_target": 35.7,
+              "target_bytes": 3444000,
+              "target_pct_of_code": 35
+            },
+            "rust": {
+              "accepted_repos": 3,
+              "ceiling_bytes": 2460000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 2460000,
+              "target_pct_of_code": 25
+            }
+          },
+          "per_repo_bytes": {
+            "code": 1230000,
+            "csharp_gamedev": 1127500,
+            "software_docs": 922500
+          }
+        },
+        "1500": {
+          "category_ceilings": {
+            "code": {
+              "accepted_sources": 8,
+              "ceiling_pct": 100.0
+            },
+            "csharp_gamedev": {
+              "accepted_sources": 5,
+              "ceiling_pct": 75.0
+            },
+            "software_docs": {
+              "accepted_sources": 4,
+              "ceiling_pct": 60.0
+            }
+          },
+          "code_language_ceilings": {
+            "_total": {
+              "ceiling_bytes": 6396000,
+              "ceiling_pct_of_code_category": 65.0
+            },
+            "c_cpp": {
+              "accepted_repos": 0,
+              "ceiling_bytes": 0,
+              "ceiling_pct_of_language_target": 0.0,
+              "target_bytes": 1476000,
+              "target_pct_of_code": 15
+            },
+            "go": {
+              "accepted_repos": 2,
+              "ceiling_bytes": 984000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 984000,
+              "target_pct_of_code": 10
+            },
+            "javascript_typescript": {
+              "accepted_repos": 2,
+              "ceiling_bytes": 1476000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 1476000,
+              "target_pct_of_code": 15
+            },
+            "python": {
+              "accepted_repos": 1,
+              "ceiling_bytes": 1476000,
+              "ceiling_pct_of_language_target": 42.9,
+              "target_bytes": 3444000,
+              "target_pct_of_code": 35
+            },
+            "rust": {
+              "accepted_repos": 3,
+              "ceiling_bytes": 2460000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 2460000,
+              "target_pct_of_code": 25
+            }
+          },
+          "per_repo_bytes": {
+            "code": 1476000,
+            "csharp_gamedev": 1353000,
+            "software_docs": 1107000
+          }
+        },
+        "2000": {
+          "category_ceilings": {
+            "code": {
+              "accepted_sources": 8,
+              "ceiling_pct": 100.0
+            },
+            "csharp_gamedev": {
+              "accepted_sources": 5,
+              "ceiling_pct": 100.0
+            },
+            "software_docs": {
+              "accepted_sources": 4,
+              "ceiling_pct": 80.0
+            }
+          },
+          "code_language_ceilings": {
+            "_total": {
+              "ceiling_bytes": 6888000,
+              "ceiling_pct_of_code_category": 70.0
+            },
+            "c_cpp": {
+              "accepted_repos": 0,
+              "ceiling_bytes": 0,
+              "ceiling_pct_of_language_target": 0.0,
+              "target_bytes": 1476000,
+              "target_pct_of_code": 15
+            },
+            "go": {
+              "accepted_repos": 2,
+              "ceiling_bytes": 984000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 984000,
+              "target_pct_of_code": 10
+            },
+            "javascript_typescript": {
+              "accepted_repos": 2,
+              "ceiling_bytes": 1476000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 1476000,
+              "target_pct_of_code": 15
+            },
+            "python": {
+              "accepted_repos": 1,
+              "ceiling_bytes": 1968000,
+              "ceiling_pct_of_language_target": 57.1,
+              "target_bytes": 3444000,
+              "target_pct_of_code": 35
+            },
+            "rust": {
+              "accepted_repos": 3,
+              "ceiling_bytes": 2460000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 2460000,
+              "target_pct_of_code": 25
+            }
+          },
+          "per_repo_bytes": {
+            "code": 1968000,
+            "csharp_gamedev": 1804000,
+            "software_docs": 1476000
+          }
+        },
+        "500": {
+          "category_ceilings": {
+            "code": {
+              "accepted_sources": 8,
+              "ceiling_pct": 40.0
+            },
+            "csharp_gamedev": {
+              "accepted_sources": 5,
+              "ceiling_pct": 25.0
+            },
+            "software_docs": {
+              "accepted_sources": 4,
+              "ceiling_pct": 20.0
+            }
+          },
+          "code_language_ceilings": {
+            "_total": {
+              "ceiling_bytes": 3936000,
+              "ceiling_pct_of_code_category": 40.0
+            },
+            "c_cpp": {
+              "accepted_repos": 0,
+              "ceiling_bytes": 0,
+              "ceiling_pct_of_language_target": 0.0,
+              "target_bytes": 1476000,
+              "target_pct_of_code": 15
+            },
+            "go": {
+              "accepted_repos": 2,
+              "ceiling_bytes": 984000,
+              "ceiling_pct_of_language_target": 100.0,
+              "target_bytes": 984000,
+              "target_pct_of_code": 10
+            },
+            "javascript_typescript": {
+              "accepted_repos": 2,
+              "ceiling_bytes": 984000,
+              "ceiling_pct_of_language_target": 66.7,
+              "target_bytes": 1476000,
+              "target_pct_of_code": 15
+            },
+            "python": {
+              "accepted_repos": 1,
+              "ceiling_bytes": 492000,
+              "ceiling_pct_of_language_target": 14.3,
+              "target_bytes": 3444000,
+              "target_pct_of_code": 35
+            },
+            "rust": {
+              "accepted_repos": 3,
+              "ceiling_bytes": 1476000,
+              "ceiling_pct_of_language_target": 60.0,
+              "target_bytes": 2460000,
+              "target_pct_of_code": 25
+            }
+          },
+          "per_repo_bytes": {
+            "code": 492000,
+            "csharp_gamedev": 451000,
+            "software_docs": 369000
+          }
+        }
+      },
+      "label": "CALCULATED",
+      "min_cap_bp_to_reach_category_target_if_all_sources_supply_fully": {
+        "code": 1250,
+        "csharp_gamedev": 2000,
+        "software_docs": 2500
+      },
+      "note": "Ceilings are the most a category could reach if every counted source supplied its full cap; availability of bytes is UNKNOWN.",
+      "planning_total_train_bytes": 41000000
+    },
+    "generated_file_markers": [
+      "Code generated",
+      "DO NOT EDIT",
+      "<auto-generated",
+      "@generated",
+      "This file was generated"
+    ],
+    "global_excluded_path_patterns": [
+      "**/vendor/**",
+      "**/node_modules/**",
+      "**/third_party/**",
+      "**/ThirdParty/**",
+      "**/target/**",
+      "**/*.min.js",
+      "**/*.min.css",
+      "**/package-lock.json",
+      "**/yarn.lock",
+      "**/Cargo.lock",
+      "**/go.sum",
+      "**/*.pb.go",
+      "**/*_pb2.py",
+      "**/*_pb2_grpc.py",
+      "**/*.g.cs",
+      "**/*.g.i.cs",
+      "**/*.Designer.cs",
+      "**/*.generated.*",
+      "**/*.Generated.*"
+    ],
+    "label": "PROPOSAL (awaiting owner approval, OD-12)",
+    "per_source_excluded_path_patterns": {
+      "gh-dotnet-roslyn": [
+        "**/Generated/**",
+        "**/Test/**",
+        "**/Tests/**",
+        "**/*.Tests/**",
+        "**/TestResources/**"
+      ],
+      "gh-lodash-lodash": [
+        "dist/**",
+        "lodash.js",
+        "lodash.min.js"
+      ],
+      "gh-monogame-monogame": [
+        "**/ThirdParty/**"
+      ]
+    },
+    "realized_share_gate": "report max realized per-source share at Stage 5; threshold NOT frozen",
+    "repo_cap_bp_of_category_target": {
+      "code": 1000,
+      "csharp_gamedev": 1000,
+      "software_docs": 1500
+    },
+    "repo_cap_meaning": "absolute byte budget per repository = cap x category target bytes; selection is deterministic (hash-ordered, greedy, never exceeds the budget)",
+    "stage1c_promotions": [
+      {
+        "basis": "C# category (general C#, not Unity data); single MIT license; generated and test paths excluded and capped.",
+        "source_id": "gh-dotnet-roslyn"
+      },
+      {
+        "basis": "JavaScript (OD-08); single MIT license; no submodules or notice files; generated builds excluded by path.",
+        "source_id": "gh-lodash-lodash"
+      },
+      {
+        "basis": "C# category (Unity-ecosystem third-party); single MIT license; archived and small.",
+        "source_id": "gh-neuecc-unirx"
+      },
+      {
+        "basis": "Docs; README states either Apache-2.0 or MIT at the user's option; both allow-listed.",
+        "source_id": "gh-rust-lang-rust-by-example"
+      },
+      {
+        "basis": "Rust (OD-08); README states either Apache-2.0 or MIT at the user's option; both allow-listed.",
+        "source_id": "gh-serde-rs-serde"
+      },
+      {
+        "basis": "Go (OD-08); single Apache-2.0 license; clean evidence.",
+        "source_id": "gh-spf13-cobra"
+      },
+      {
+        "basis": "Rust (OD-08); MIT stated in README and license file; clean evidence.",
+        "source_id": "gh-tokio-rs-tokio"
+      }
+    ],
+    "supersedes": "Stage 1A CR-08 blanket 'Plugins/' exclusion, which would drop UniTask's and UniRx's own source"
+  },
+  "schema": "rep-corpus-source-policy-v1",
+  "source_policy": [
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-burntsushi-ripgrep",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "MIT OR Unlicense",
+        "license_text_sha256": "sha256:0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "BurntSushi/ripgrep"
+      },
+      "od08_language": "rust",
+      "owner_decision_ids": [
+        "OD-10"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Allow-listed license, pinned commit, per-file blob SHAs verified in a prior real run; carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "gh-burntsushi-ripgrep",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "rust"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-encode-httpx",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "BSD-3-Clause",
+        "license_text_sha256": "sha256:4ec59d544f12b5f539a3a716fd321ac58ccd8030b465221f2c880200cdf28d8d",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "encode/httpx"
+      },
+      "od08_language": "python",
+      "owner_decision_ids": [
+        "OD-01"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Expected BSD-3-Clause is not in the allow-list; REVIEW until the owner decides OD-01 and the LICENSE is read. Stage 1B: BSD-3-Clause is not allow-listed: OD-01. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "gh-encode-httpx",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "python"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "7ef98448f8b38099ab1ded55e458538ad47a51e7",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-expressjs-express",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:95a5762890e5c1c9808921cef095661fc482c5e1f0bba31446ac85595df6237c",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "expressjs/express"
+      },
+      "od08_language": "javascript_typescript",
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Allow-listed license, pinned commit, per-file blob SHAs verified in a prior real run; carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "gh-expressjs-express",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "javascript"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "13c34f301b370d90ac8dcb2abb5ff04ce093681e",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-flame-engine-flame",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:a53bdfb9afc14859e8d0526dfc8880831de8cfa599b300ddbbe122441dec30e3",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "flame-engine/flame"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-08",
+        "OD-13"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Held at REVIEW: Dart is not in the frozen OD-08 language mix; unknown languages cannot enter the code category.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-flame-engine-flame",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "dart_game"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "1bd0ecf2d3e08da37efa270bb7be20c1eddb0d68",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-gin-gonic-gin",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:b104efb2c7700691650f27034e8541c5ae0ed9af54d884287f19a7467ca2fe7f",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "gin-gonic/gin"
+      },
+      "od08_language": "go",
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Allow-listed license, pinned commit, per-file blob SHAs verified in a prior real run; carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "gh-gin-gonic-gin",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "go"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "5dc4cd1ad452811629cb2ebe72c2c21142c22c1b",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-google-guava",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "Apache-2.0",
+        "license_text_sha256": "sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "google/guava"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-13"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Held at REVIEW: Java is not in the frozen OD-08 language mix; unknown languages cannot enter the code category.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-google-guava",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "java"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "2b5e6f7399a7b48005140b5d5c6bc6c0e62919a8",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-lodash-lodash",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:f71e8ed126b46346494aad5486874cd8f0aafe95092ed67d2e3cb6110f939abc",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "lodash/lodash"
+      },
+      "od08_language": "javascript_typescript",
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*",
+          "dist/**",
+          "lodash.js",
+          "lodash.min.js"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "JavaScript (OD-08); single MIT license; no submodules or notice files; generated builds excluded by path.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-lodash-lodash",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "STAGE1C_PROMOTION",
+      "subcategory": "javascript"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "11e75a54280b3474cb18c2f24d42660dc385596d",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-nlohmann-json",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:d64d1b4d948aa7751cfb613c02dc246aab7b358d760053e6580f01affe946906",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "nlohmann/json"
+      },
+      "od08_language": "c_cpp",
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Stage 1B: README states bundled third-party components under MIT; exclusions needed before promotion. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "gh-nlohmann-json",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "cpp"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "d73fa1cdcbd8b1465c151db8924ba58b1dd14e35",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-pallets-flask",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "BSD-3-Clause",
+        "license_text_sha256": "sha256:489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "pallets/flask"
+      },
+      "od08_language": "python",
+      "owner_decision_ids": [
+        "OD-01"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Expected BSD-3-Clause is not in the allow-list; REVIEW until the owner decides OD-01 and the LICENSE is read. Stage 1B: BSD-3-Clause is not allow-listed: OD-01. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "gh-pallets-flask",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "python"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-psf-requests",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "Apache-2.0",
+        "license_text_sha256": "sha256:09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b",
+        "license_used_for_eligibility": "Apache-2.0",
+        "pin_kind": "COMMIT",
+        "project": "psf/requests"
+      },
+      "od08_language": "python",
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Allow-listed license, pinned commit, per-file blob SHAs verified in a prior real run; carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "gh-psf-requests",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "python"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "6693a89cca77e0151437da1c7f890090b9ebf04c",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-serde-rs-serde",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "Apache-2.0 OR MIT",
+        "license_text_sha256": "sha256:23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "serde-rs/serde"
+      },
+      "od08_language": "rust",
+      "owner_decision_ids": [
+        "OD-10"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Rust (OD-08); README states either Apache-2.0 or MIT at the user's option; both allow-listed.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-serde-rs-serde",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "STAGE1C_PROMOTION",
+      "subcategory": "rust"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-spf13-cobra",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "Apache-2.0",
+        "license_text_sha256": "sha256:5e3400b93bbb099e83e52bab885e7441750673c21f97988ca3f1240639b63283",
+        "license_used_for_eligibility": "Apache-2.0",
+        "pin_kind": "COMMIT",
+        "project": "spf13/cobra"
+      },
+      "od08_language": "go",
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Go (OD-08); single Apache-2.0 license; clean evidence.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-spf13-cobra",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "STAGE1C_PROMOTION",
+      "subcategory": "go"
+    },
+    {
+      "category": "code",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "e6e84a4d4a5e11d5d0f419444a634ee07203b3e5",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-tokio-rs-tokio",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:253cd04c6714889df2d32f3f64d669179a1c95c76ac43c40882c52eb06bc3552",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "tokio-rs/tokio"
+      },
+      "od08_language": "rust",
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Rust (OD-08); MIT stated in README and license file; clean evidence.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-tokio-rs-tokio",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "STAGE1C_PROMOTION",
+      "subcategory": "rust"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "ceac8d6946b1125fe782cd171fbcb245b567dbf9",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-cysharp-unitask",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:b0e6aada5cdff8e90865b150498b81af955343f1d8f091e5b609fd94c4d4b3d0",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "Cysharp/UniTask"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Allow-listed license, pinned commit, per-file blob SHAs verified in a prior real run; carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "gh-cysharp-unitask",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "unity_ecosystem_third_party"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "a1bbcb8c7337ff9c51e642bdb9564577a3d928b9",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-dotnet-roslyn",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:ae48df11a335dc1a615f4f938b69cba73bcf4485c4f97af49b38efb0f216353b",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "dotnet/roslyn"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*",
+          "**/Generated/**",
+          "**/Test/**",
+          "**/Tests/**",
+          "**/*.Tests/**",
+          "**/TestResources/**"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "C# category (general C#, not Unity data); single MIT license; generated and test paths excluded and capped.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-dotnet-roslyn",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "STAGE1C_PROMOTION",
+      "subcategory": "general_csharp_dotnet"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "f823145d31bb750f7c91d1a25c191c6933df8938",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-dotnet-runtime",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:cfc21f5e8bd655ae997eec916138b707b1d290b83272c02a95c9f821b8c87310",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "dotnet/runtime"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Stage 1B: THIRD-PARTY-NOTICES.TXT present and README says the repo is MIT: vendored and third-party paths must be excluded first. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "gh-dotnet-runtime",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "general_csharp_dotnet"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "651c0ffdf4db43cd112865ad368c5d6cc3dc7558",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-fna-xna-fna",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "MS-PL (licenses/LICENSE); licenses/monoxna.LICENSE = MIT; licenses/lzxdecoder.LICENSE unrecognised",
+        "license_text_sha256": "sha256:9f59f590c7697491a8846391b73eea7cd6f47a7e3b7e512b17813e85f94964f6",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "FNA-XNA/FNA"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "Stage 2 must read .gitmodules at the frozen commit and exclude every listed path (a .gitmodules file exists)"
+      },
+      "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Stage 1B: [SOURCE-DERIVED] README says one component is under a dual MSPL/LGPL license; submodules present. LGPL-covered files must be excluded and the license read by a human. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "gh-fna-xna-fna",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "oss_game_framework"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "f2bfa97ef56c3e0eda92d7df34856467afcda865",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-messagepack-csharp",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "Apache-2.0 (primary); file text also contains BSD-2-Clause and MIT notices",
+        "license_text_sha256": "sha256:580852521f6e48cb1d210fcb228e7179a21433a32ebe3fbb46ec8c10255e7451",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "MessagePack-CSharp/MessagePack-CSharp"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Stage 1B: LICENSE also contains BSD-2-Clause text, which is not allow-listed (OD-01). Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "gh-messagepack-csharp",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "general_csharp_dotnet"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "c4f3739966e151f405be1762d33502794fd034ff",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-mirrornetworking-mirror",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:74819ab7f08d5e3b91f0392fc41a3146e27bbefe4af90dfafbf71b9c470a9560",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "MirrorNetworking/Mirror"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Allow-listed license, pinned commit, per-file blob SHAs verified in a prior real run; carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "gh-mirrornetworking-mirror",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "unity_ecosystem_third_party"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "9cce5c73ad5869a8abe54dad9ed201d0678fa8fe",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-monogame-monogame",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "MS-PL",
+        "license_text_sha256": "sha256:67301fd0f95a7e4ffb3cccde3dafed6ada739f32585c0f7b70adeb2fb904504b",
+        "license_used_for_eligibility": "MS-PL",
+        "pin_kind": "COMMIT",
+        "project": "MonoGame/MonoGame"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*",
+          "**/ThirdParty/**"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "Stage 2 must read .gitmodules at the frozen commit and exclude every listed path (a .gitmodules file exists)"
+      },
+      "reason": "Allow-listed license, pinned commit, per-file blob SHAs verified in a prior real run; carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "gh-monogame-monogame",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "oss_game_framework"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "6baeccf6c544c155497164327cca72f28163a578",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-neuecc-unirx",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:8d12196d9689ef80cb99e5ca166ceb9613ff0fe62098de7ba110c413bd4c7b14",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "neuecc/UniRx"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1000,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "C# category (Unity-ecosystem third-party); single MIT license; archived and small.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-neuecc-unirx",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "STAGE1C_PROMOTION",
+      "subcategory": "unity_ecosystem_third_party"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "a7fa31ced680c7d4a919f1fe233051cf508f6060",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-stride3d-stride",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "MIT",
+        "license_text_sha256": "sha256:46d821d4ede6fab226ec02b0392f8c2633ad3d9d2cc2cbd709e54a7a8b0a79f1",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "stride3d/stride"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Stage 1B: README says MIT unless stated otherwise (some files copied from other projects, with a third-party list): exclusions needed. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "gh-stride3d-stride",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "oss_game_framework"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "Unity-Technologies/UnityCsReference"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Unity Reference-Only License is not a training-use grant.",
+      "registry_status": "BLOCKED",
+      "source_id": "gh-unity-csreference",
+      "stage1c_status": "BLOCKED",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "unity_official"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "3e2237ef0c8bca470d8a0277b17e78e1411166d4",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-unity-ml-agents",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "Apache-2.0 (short notice, not full text)",
+        "license_text_sha256": "sha256:21169a6cd5de3af010f89d5bf5e679c0cc33e5ab1163464b6507b3634e3ca6e4",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "Unity-Technologies/ml-agents"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-07"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "Stage 2 must read .gitmodules at the frozen commit and exclude every listed path (a .gitmodules file exists)"
+      },
+      "reason": "Unity-authored; prior registry records Apache-2.0 but the owner's Unity policy is not visible; status held unchanged. Stage 1B: License evidence is allow-listed, but this is Unity-authored material: status held under OD-07; submodules present. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "gh-unity-ml-agents",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "unity_authored"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "Unity Asset Store / Unity Academy content"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Directive: must not be used.",
+      "registry_status": "BLOCKED",
+      "source_id": "unity-asset-store-academy",
+      "stage1c_status": "BLOCKED",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "unity_official"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "Unity Manual / Scripting API documentation"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Not established as training-safe; must not be scraped.",
+      "registry_status": "BLOCKED",
+      "source_id": "unity-docs",
+      "stage1c_status": "BLOCKED",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "unity_official"
+    },
+    {
+      "category": "csharp_gamedev",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "Unity Learn content"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "New record (no prior entry): Unity Learn content is not acquired unless explicit training-use rights are independently established.",
+      "registry_status": "BLOCKED",
+      "source_id": "unity-learn",
+      "stage1c_status": "BLOCKED",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "unity_official"
+    },
+    {
+      "category": "general_english",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "Common Corpus"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Not inspected.",
+      "registry_status": "UNKNOWN",
+      "source_id": "common-corpus",
+      "stage1c_status": "UNKNOWN",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": null
+    },
+    {
+      "category": "general_english",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "common-pile (non-wikimedia subsets)"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Subsets and per-subset licenses not inspected.",
+      "registry_status": "UNKNOWN",
+      "source_id": "cp-other-subsets",
+      "stage1c_status": "UNKNOWN",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "mixed"
+    },
+    {
+      "category": "general_english",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "0641bb84bd9b7162bcddf8be7836822161a9a342",
+        "evidence_ref": null,
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "per-record string; sampled records carry CC BY-SA 4.0",
+        "license_text_sha256": null,
+        "license_used_for_eligibility": "CC-BY-SA-4.0",
+        "pin_kind": "DATASET_REVISION",
+        "project": "common-pile/wikimedia_filtered"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 5000,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Pinned dataset revision; per-record license strings exact-match mapped to CC-BY-SA-4.0 (other strings pass through to REVIEW); carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "cp-wikimedia-filtered",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "wikibooks (the only wiki observed in shard 0)"
+    },
+    {
+      "category": "general_english",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "same card as Nepali Wikipedia (GFDL and CC-BY-SA-3.0 as stated)",
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "SNAPSHOT_LABEL",
+        "project": "wikimedia/wikipedia (20231101.en)"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-06"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Same Wikipedia license basis as the Nepali record; REVIEW until the owner settles OD-06.",
+      "registry_status": "REVIEW",
+      "source_id": "hf-wikipedia-en-20231101",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "encyclopedia"
+    },
+    {
+      "category": "general_english",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "public-domain books (e.g. via a library collection)"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Public-domain status varies by jurisdiction and edition; no evidence gathered.",
+      "registry_status": "UNKNOWN",
+      "source_id": "public-domain-books",
+      "stage1c_status": "UNKNOWN",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "public_domain"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "4d3cbcd0f78327cfc6ec5f357e3af512fcbe53f3",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#docker-docs",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "Apache-2.0 (repository LICENSE; applicability to documentation content not established)",
+        "license_text_sha256": "sha256:089009c932d3cc296355e429fa9d6faf80ac89597da866e2424b4ea09add64b1",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "docker/docs (Docker documentation)"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "No license evidence for the documentation content; do not infer from the repository code license. Stage 1B: Repository-level license does not establish the documentation license (rule: do not assume). Status unchanged (no silent promotion).",
+      "registry_status": "UNKNOWN",
+      "source_id": "docker-docs",
+      "stage1c_status": "UNKNOWN",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "containers"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "1443883303ca8a9e515a13c1c39c7224bb2cfa33",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-dotnet-docs",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "CC-BY-4.0 (LICENSE) + MIT (LICENSE-CODE); path scope not stated in the fetched text",
+        "license_text_sha256": "sha256:243f341367f0ee35271c8924aaf5d075157c62538042e2f3c11ff9a1fcc5539c",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "dotnet/docs (Microsoft/.NET documentation)"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-11"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Mixed docs/code licensing expected; path-level license handling needed (OD-11). Documentation license is evaluated separately from code license; not assumed. Stage 1B: Both licenses are allow-listed, but which paths each covers is not evidenced: OD-11. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "gh-dotnet-docs",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "dotnet"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "3bb3ec25b3b0199f4940b1aa75f0ac5c5753301c",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-google-eng-practices",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "CC-BY-3.0",
+        "license_text_sha256": "sha256:11dbf7126ae9794e4a7dc54334f3c82a67efcf22df888d396dc2ed707b2a3f9b",
+        "license_used_for_eligibility": "CC-BY-3.0",
+        "pin_kind": "COMMIT",
+        "project": "google/eng-practices"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1500,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Allow-listed license, pinned commit, per-file blob SHAs verified in a prior real run; carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "gh-google-eng-practices",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "engineering_practices"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "7a1c866f252e2d62a0bcdd3ea23a0052e6674679",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-kubernetes-website",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "CC-BY-4.0 (LICENSE); no code license file found; submodules present",
+        "license_text_sha256": "sha256:9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "kubernetes/website (Kubernetes documentation)"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-11"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "Stage 2 must read .gitmodules at the frozen commit and exclude every listed path (a .gitmodules file exists)"
+      },
+      "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Documentation license is evaluated separately from code license; not assumed. Stage 1B: Only a CC-BY-4.0 license was evidenced; the claimed Apache-2.0 code license was NOT found. Submodules present. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "gh-kubernetes-website",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "kubernetes"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "a7022a299442a8352431874e63ec4dff548a1b81",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-microsoft-api-guidelines",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "CC-BY-4.0",
+        "license_text_sha256": "sha256:e5795f98ce65fbcdb6311f8ae468038bb58d0049d6b913493752aad2099eea04",
+        "license_used_for_eligibility": "CC-BY-4.0",
+        "pin_kind": "COMMIT",
+        "project": "microsoft/api-guidelines"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1500,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Allow-listed license, pinned commit, per-file blob SHAs verified in a prior real run; carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "gh-microsoft-api-guidelines",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "api_design"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "1500248d8f230566e4ec9f27fcbb8fe9e2898ab1",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-rust-lang-book",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "Apache-2.0 + MIT (two license files; relationship not stated in the fetched README)",
+        "license_text_sha256": "sha256:0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "rust-lang/book"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-10"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1500,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Allow-listed license, pinned commit, per-file blob SHAs verified in a prior real run; carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "gh-rust-lang-book",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "rust"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "a286e1ecb8ce193d50056e4bb042eea9b23876ef",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-rust-lang-reference",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "Apache-2.0 + MIT (two license files; relationship not stated in the fetched README)",
+        "license_text_sha256": "sha256:0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "rust-lang/reference"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-10",
+        "OD-14"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Held at REVIEW: Two license files (MIT, Apache-2.0) with no statement of their relationship in the fetched README.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-rust-lang-reference",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "rust"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": "dcc14f912bf8790792a2df082eddc82ab2539229",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-rust-lang-rust-by-example",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "Apache-2.0 OR MIT",
+        "license_text_sha256": "sha256:4594f18866be94a3ce309ed8f94d92699f5b87739b76e1216addca75f5253fa7",
+        "license_used_for_eligibility": "MIT",
+        "pin_kind": "COMMIT",
+        "project": "rust-lang/rust-by-example"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-10"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 1500,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Docs; README states either Apache-2.0 or MIT at the user's option; both allow-listed.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-rust-lang-rust-by-example",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "STAGE1C_PROMOTION",
+      "subcategory": "rust"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "be8854f66df1b5450349061e45374ac072abd109",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#gh-rust-lang-rustc-dev-guide",
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": "Apache-2.0 + MIT (two license files; relationship not stated in the fetched README)",
+        "license_text_sha256": "sha256:23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "rust-lang/rustc-dev-guide"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-10",
+        "OD-14"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Held at REVIEW: Two license files (MIT, Apache-2.0) with no statement of their relationship in the fetched README.",
+      "registry_status": "REVIEW",
+      "source_id": "gh-rust-lang-rustc-dev-guide",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "rust"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "ac295ae8d3435f587b5233a9fe46bb55d92c1a5d",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#mdn-content",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "CC-BY-SA-2.5 (primary); LICENSE.md also mentions CC0-1.0 and MIT",
+        "license_text_sha256": "sha256:97a45d9a5c27c90ad7f058b20a870f11a24717f0eb4585f141948d25b74c4d89",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "mdn/content (MDN)"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-03",
+        "OD-04"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "Older CC-BY-SA version and CC0 are not in the allow-list; REVIEW until OD-03/OD-04. Stage 1B: CC-BY-SA-2.5 is not allow-listed (OD-04); CC0 and MIT mentions concern OD-03. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "mdn-content",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "web_platform"
+    },
+    {
+      "category": "software_docs",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": "ab01d184746b3ea383f69317c16fc726d885c968",
+        "evidence_ref": "artifacts/rep_corpus_10m_v1/00_source_license_evidence.json#python-docs-cpython-doc",
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "PSF-2.0 (LICENSE and Doc/license.rst); text also mentions other licenses",
+        "license_text_sha256": "sha256:b0e25a78cffb43f4d92de8b61ccfa1f1f98ecbc22330b54b5251e7b6ba010231",
+        "license_used_for_eligibility": null,
+        "pin_kind": "COMMIT",
+        "project": "CPython Doc/ (Python documentation)"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-02"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "no .gitmodules at the frozen commit (Stage 1B evidence); Stage 2 must still verify at acquisition"
+      },
+      "reason": "PSF license is not in the allow-list; REVIEW until the owner decides OD-02. Documentation license is evaluated separately from code license; not assumed. Stage 1B: PSF license is not allow-listed: OD-02. Doc/license.rst lists third-party notices. Status unchanged (no silent promotion).",
+      "registry_status": "REVIEW",
+      "source_id": "python-docs-cpython-doc",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "python"
+    },
+    {
+      "category": "nepali",
+      "eligibility": {
+        "model_training": true,
+        "tokenizer_fit": true,
+        "validation": true
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "PARTIAL",
+        "license_expression": "GFDL AND/OR CC-BY-SA-3.0 as stated by the card (card metadata: cc-by-sa-3.0, gfdl)",
+        "license_text_sha256": null,
+        "license_used_for_eligibility": "CC-BY-SA-3.0",
+        "pin_kind": "SNAPSHOT_LABEL",
+        "project": "wikimedia/wikipedia (20231101.ne)"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [
+        "OD-06",
+        "OD-09"
+      ],
+      "proposal": {
+        "excluded_path_patterns": [
+          "**/vendor/**",
+          "**/node_modules/**",
+          "**/third_party/**",
+          "**/ThirdParty/**",
+          "**/target/**",
+          "**/*.min.js",
+          "**/*.min.css",
+          "**/package-lock.json",
+          "**/yarn.lock",
+          "**/Cargo.lock",
+          "**/go.sum",
+          "**/*.pb.go",
+          "**/*_pb2.py",
+          "**/*_pb2_grpc.py",
+          "**/*.g.cs",
+          "**/*.g.i.cs",
+          "**/*.Designer.cs",
+          "**/*.generated.*",
+          "**/*.Generated.*"
+        ],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 10000,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Only source with prior evidence; prior registry marks ACCEPT as a PROPOSAL with the final legal call left to the owner; status carried over unchanged.",
+      "registry_status": "ACCEPT",
+      "source_id": "hf-wikipedia-ne-20231101",
+      "stage1c_status": "ACCEPT",
+      "status_authority": "REGISTRY_CARRIED_OVER",
+      "subcategory": "wikipedia"
+    },
+    {
+      "category": "nepali",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "Nepali news, government and book sources"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "No license evidence; not proposed.",
+      "registry_status": "UNKNOWN",
+      "source_id": "ne-news-gov-books",
+      "stage1c_status": "UNKNOWN",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "news_gov_books"
+    },
+    {
+      "category": "nepali",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "Nepali Wikisource / Wikibooks / Wikinews"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Volume and licenses unknown.",
+      "registry_status": "UNKNOWN",
+      "source_id": "ne-wikimedia-other-projects",
+      "stage1c_status": "UNKNOWN",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "other_wikimedia"
+    },
+    {
+      "category": "nepali",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "Web-crawl-derived Nepali corpora (CC-100 / OSCAR / mC4 ne)"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Unclear per-document licensing; status unchanged. Proposal: no contribution even if cleared, until quality evidence exists.",
+      "registry_status": "REVIEW",
+      "source_id": "web-crawl-nepali",
+      "stage1c_status": "REVIEW",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": "web_crawl"
+    },
+    {
+      "category": "nepali_english_codeswitch",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "Natural English-Nepali code-switching corpus"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "No source with verified license and provenance exists.",
+      "registry_status": "UNKNOWN",
+      "source_id": "natural-codeswitch-none",
+      "stage1c_status": "UNKNOWN",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": null
+    },
+    {
+      "category": "nepali_english_codeswitch",
+      "eligibility": {
+        "model_training": false,
+        "tokenizer_fit": false,
+        "validation": false
+      },
+      "facts": {
+        "commit": null,
+        "evidence_ref": null,
+        "file_level_license_uniformity": "UNKNOWN",
+        "license_expression": null,
+        "license_text_sha256": null,
+        "license_used_for_eligibility": null,
+        "pin_kind": "NONE",
+        "project": "Hand-written synthetic code-switching lines"
+      },
+      "od08_language": null,
+      "owner_decision_ids": [],
+      "proposal": {
+        "excluded_path_patterns": [],
+        "generated_file_handling": "exclude by path pattern now; Stage 3 must also drop files whose header contains: Code generated; DO NOT EDIT; <auto-generated; @generated; This file was generated",
+        "repo_cap_bp_of_category_target": 0,
+        "submodule_handling": "not a GitHub-evidenced source; handled at acquisition design"
+      },
+      "reason": "Diagnostic only: excluded from tokenizer fitting, training and primary scoring; may be measured separately as a labelled synthetic set.",
+      "registry_status": "BLOCKED",
+      "source_id": "synthetic-codeswitch-diagnostic",
+      "stage1c_status": "BLOCKED",
+      "status_authority": "NOT_PROMOTED",
+      "subcategory": null
+    }
+  ],
+  "status_authority_note": "stage1c_status is the operative status for acquisition. Promotions are auditor decisions that take effect only when the owner accepts these files; the registry (Stage 1A/1B) is unchanged.",
+  "tokenizer_training_authorized": false,
+  "unresolved": {
+    "capacity_shortfalls_at_proposed_cap": {
+      "code_languages": {
+        "_total": {
+          "ceiling_bytes": 5904000,
+          "ceiling_pct_of_code_category": 60.0
+        },
+        "c_cpp": {
+          "accepted_repos": 0,
+          "ceiling_bytes": 0,
+          "ceiling_pct_of_language_target": 0.0,
+          "target_bytes": 1476000,
+          "target_pct_of_code": 15
+        },
+        "go": {
+          "accepted_repos": 2,
+          "ceiling_bytes": 984000,
+          "ceiling_pct_of_language_target": 100.0,
+          "target_bytes": 984000,
+          "target_pct_of_code": 10
+        },
+        "javascript_typescript": {
+          "accepted_repos": 2,
+          "ceiling_bytes": 1476000,
+          "ceiling_pct_of_language_target": 100.0,
+          "target_bytes": 1476000,
+          "target_pct_of_code": 15
+        },
+        "python": {
+          "accepted_repos": 1,
+          "ceiling_bytes": 984000,
+          "ceiling_pct_of_language_target": 28.6,
+          "target_bytes": 3444000,
+          "target_pct_of_code": 35
+        },
+        "rust": {
+          "accepted_repos": 3,
+          "ceiling_bytes": 2460000,
+          "ceiling_pct_of_language_target": 100.0,
+          "target_bytes": 2460000,
+          "target_pct_of_code": 25
+        }
+      },
+      "note": "C/C++ has no approved source; Python has one. These shortfalls are reported, not backfilled (OD-15)."
+    },
+    "held_stage1b_proposals": [
+      {
+        "owner_decision_ids": [
+          "OD-13"
+        ],
+        "reason": "Dart is not in the frozen OD-08 language mix; unknown languages cannot enter the code category.",
+        "source_id": "gh-flame-engine-flame"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-13"
+        ],
+        "reason": "Java is not in the frozen OD-08 language mix; unknown languages cannot enter the code category.",
+        "source_id": "gh-google-guava"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-14"
+        ],
+        "reason": "Two license files (MIT, Apache-2.0) with no statement of their relationship in the fetched README.",
+        "source_id": "gh-rust-lang-reference"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-14"
+        ],
+        "reason": "Two license files (MIT, Apache-2.0) with no statement of their relationship in the fetched README.",
+        "source_id": "gh-rust-lang-rustc-dev-guide"
+      }
+    ],
+    "not_promoted": [
+      {
+        "owner_decision_ids": [
+          "OD-01"
+        ],
+        "reason": "Expected BSD-3-Clause is not in the allow-list; REVIEW until the owner decides OD-01 and the LICENSE is read. Stage 1B: BSD-3-Clause is not allow-listed: OD-01. Status unchanged (no silent promotion).",
+        "source_id": "gh-encode-httpx",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-08",
+          "OD-13"
+        ],
+        "reason": "Held at REVIEW: Dart is not in the frozen OD-08 language mix; unknown languages cannot enter the code category.",
+        "source_id": "gh-flame-engine-flame",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-13"
+        ],
+        "reason": "Held at REVIEW: Java is not in the frozen OD-08 language mix; unknown languages cannot enter the code category.",
+        "source_id": "gh-google-guava",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Stage 1B: README states bundled third-party components under MIT; exclusions needed before promotion. Status unchanged (no silent promotion).",
+        "source_id": "gh-nlohmann-json",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-01"
+        ],
+        "reason": "Expected BSD-3-Clause is not in the allow-list; REVIEW until the owner decides OD-01 and the LICENSE is read. Stage 1B: BSD-3-Clause is not allow-listed: OD-01. Status unchanged (no silent promotion).",
+        "source_id": "gh-pallets-flask",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Stage 1B: THIRD-PARTY-NOTICES.TXT present and README says the repo is MIT: vendored and third-party paths must be excluded first. Status unchanged (no silent promotion).",
+        "source_id": "gh-dotnet-runtime",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Stage 1B: [SOURCE-DERIVED] README says one component is under a dual MSPL/LGPL license; submodules present. LGPL-covered files must be excluded and the license read by a human. Status unchanged (no silent promotion).",
+        "source_id": "gh-fna-xna-fna",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Stage 1B: LICENSE also contains BSD-2-Clause text, which is not allow-listed (OD-01). Status unchanged (no silent promotion).",
+        "source_id": "gh-messagepack-csharp",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Stage 1B: README says MIT unless stated otherwise (some files copied from other projects, with a third-party list): exclusions needed. Status unchanged (no silent promotion).",
+        "source_id": "gh-stride3d-stride",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Unity Reference-Only License is not a training-use grant.",
+        "source_id": "gh-unity-csreference",
+        "status": "BLOCKED"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-07"
+        ],
+        "reason": "Unity-authored; prior registry records Apache-2.0 but the owner's Unity policy is not visible; status held unchanged. Stage 1B: License evidence is allow-listed, but this is Unity-authored material: status held under OD-07; submodules present. Status unchanged (no silent promotion).",
+        "source_id": "gh-unity-ml-agents",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Directive: must not be used.",
+        "source_id": "unity-asset-store-academy",
+        "status": "BLOCKED"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Not established as training-safe; must not be scraped.",
+        "source_id": "unity-docs",
+        "status": "BLOCKED"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "New record (no prior entry): Unity Learn content is not acquired unless explicit training-use rights are independently established.",
+        "source_id": "unity-learn",
+        "status": "BLOCKED"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Not inspected.",
+        "source_id": "common-corpus",
+        "status": "UNKNOWN"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Subsets and per-subset licenses not inspected.",
+        "source_id": "cp-other-subsets",
+        "status": "UNKNOWN"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-06"
+        ],
+        "reason": "Same Wikipedia license basis as the Nepali record; REVIEW until the owner settles OD-06.",
+        "source_id": "hf-wikipedia-en-20231101",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Public-domain status varies by jurisdiction and edition; no evidence gathered.",
+        "source_id": "public-domain-books",
+        "status": "UNKNOWN"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "No license evidence for the documentation content; do not infer from the repository code license. Stage 1B: Repository-level license does not establish the documentation license (rule: do not assume). Status unchanged (no silent promotion).",
+        "source_id": "docker-docs",
+        "status": "UNKNOWN"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-11"
+        ],
+        "reason": "Mixed docs/code licensing expected; path-level license handling needed (OD-11). Documentation license is evaluated separately from code license; not assumed. Stage 1B: Both licenses are allow-listed, but which paths each covers is not evidenced: OD-11. Status unchanged (no silent promotion).",
+        "source_id": "gh-dotnet-docs",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-11"
+        ],
+        "reason": "Expected license is allow-listed but no LICENSE evidence has been read; REVIEW until it is read at a pinned commit. Documentation license is evaluated separately from code license; not assumed. Stage 1B: Only a CC-BY-4.0 license was evidenced; the claimed Apache-2.0 code license was NOT found. Submodules present. Status unchanged (no silent promotion).",
+        "source_id": "gh-kubernetes-website",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-10",
+          "OD-14"
+        ],
+        "reason": "Held at REVIEW: Two license files (MIT, Apache-2.0) with no statement of their relationship in the fetched README.",
+        "source_id": "gh-rust-lang-reference",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-10",
+          "OD-14"
+        ],
+        "reason": "Held at REVIEW: Two license files (MIT, Apache-2.0) with no statement of their relationship in the fetched README.",
+        "source_id": "gh-rust-lang-rustc-dev-guide",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-03",
+          "OD-04"
+        ],
+        "reason": "Older CC-BY-SA version and CC0 are not in the allow-list; REVIEW until OD-03/OD-04. Stage 1B: CC-BY-SA-2.5 is not allow-listed (OD-04); CC0 and MIT mentions concern OD-03. Status unchanged (no silent promotion).",
+        "source_id": "mdn-content",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [
+          "OD-02"
+        ],
+        "reason": "PSF license is not in the allow-list; REVIEW until the owner decides OD-02. Documentation license is evaluated separately from code license; not assumed. Stage 1B: PSF license is not allow-listed: OD-02. Doc/license.rst lists third-party notices. Status unchanged (no silent promotion).",
+        "source_id": "python-docs-cpython-doc",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "No license evidence; not proposed.",
+        "source_id": "ne-news-gov-books",
+        "status": "UNKNOWN"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Volume and licenses unknown.",
+        "source_id": "ne-wikimedia-other-projects",
+        "status": "UNKNOWN"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Unclear per-document licensing; status unchanged. Proposal: no contribution even if cleared, until quality evidence exists.",
+        "source_id": "web-crawl-nepali",
+        "status": "REVIEW"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "No source with verified license and provenance exists.",
+        "source_id": "natural-codeswitch-none",
+        "status": "UNKNOWN"
+      },
+      {
+        "owner_decision_ids": [],
+        "reason": "Diagnostic only: excluded from tokenizer fitting, training and primary scoring; may be measured separately as a labelled synthetic set.",
+        "source_id": "synthetic-codeswitch-diagnostic",
+        "status": "BLOCKED"
+      }
+    ],
+    "open_owner_decisions": [
+      {
+        "affects": [
+          "gh-google-guava",
+          "gh-flame-engine-flame"
+        ],
+        "id": "OD-13",
+        "question": "Add languages (for example Java, Dart) to the frozen OD-08 mix, or keep them out?",
+        "title": "Amend OD-08 language set?"
+      },
+      {
+        "affects": [
+          "gh-rust-lang-reference",
+          "gh-rust-lang-rustc-dev-guide",
+          "gh-rust-lang-book"
+        ],
+        "id": "OD-14",
+        "question": "Both licenses are allow-listed, so eligibility is the same however they combine. Promote rust-lang/reference and rustc-dev-guide, and keep rust-lang/book (ACCEPT since before Stage 1B), or require an explicit relationship statement (which would also affect rust-lang/book)?",
+        "title": "Sources with two license files and no stated relationship"
+      },
+      {
+        "affects": [
+          "all categories"
+        ],
+        "id": "OD-15",
+        "question": "When approved sources cannot fill a category or language target: report the shortfall (default here), backfill from other languages or categories, or shrink the corpus?",
+        "title": "Under-fill policy"
+      }
+    ]
+  }
+}

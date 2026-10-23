@@ -28,7 +28,7 @@ POLICY BOUNDARIES (enforced by ``validate_registry``)
 STAGE 1B (real-fetch license verification)
   For GitHub-hosted sources, license files were fetched at the recorded commit by
   ``rep_corpus_license_verify`` and their SHA-256 recorded in
-  ``artifacts/rep_corpus_10m_v1/00_source_license_evidence.json``. Facts copied into this
+  ``training/resources/phase1/rep_corpus_10m_v1/00_source_license_evidence.json``. Facts copied into this
   module are in ``_STAGE1B_FACTS``. NO status was changed by Stage 1B: where evidence
   makes a REVIEW source technically eligible, ``proposed_status`` says so and the owner
   decides. The allow-list is untouched.

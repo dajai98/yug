@@ -49,11 +49,11 @@ SUBTOPICS = {
 
 def build(root):
     root=Path(root)
-    oldpath='artifacts/rep_corpus_10m_v1/01_source_policy.json'
+    oldpath='training/resources/phase1/rep_corpus_10m_v1/01_source_policy.json'
     old=json.loads((root/oldpath).read_text())
     deny=list(GLOBAL_EXCLUDED_PATTERNS)+['**/.git/**','**/dist/**','**/build/**','**/*.dll','**/*.exe','**/*.bin','**/*.fbx','**/*.blend','**/*.png','**/*.jpg','**/*.glb','**/*.obj']
     sources=[]
-    prior={s['source_id']:s for s in json.loads((root/'artifacts/tokenizer_fit_sample_gate_v1/source_registry.json').read_text())}
+    prior={s['source_id']:s for s in json.loads((root/'training/resources/phase1/tokenizer_fit_sample_gate_v1/source_registry.json').read_text())}
     for s in old['source_policy']:
         cat='nepali' if s['category']=='nepali_english_codeswitch' else s['category']
         facts=s['facts']; status={'BLOCKED':'REJECT','UNKNOWN':'REVIEW'}.get(s['stage1c_status'],s['stage1c_status'])
@@ -63,7 +63,7 @@ def build(root):
         source=dict(source_id=s['source_id'],name=facts['project'],category=cat,
             subcategory=s['subcategory'] or 'curated_subset',status=status,prior_status=s['stage1c_status'],
             status_reason=s['reason'],status_authority='retained Stage 1C; CC BY-SA and MS-PL conditional under production request',
-            license_id=lic,license_evidence=facts.get('evidence_ref'),license_text_sha256=facts.get('license_text_sha256'),
+            license_id=lic,license_evidence=(facts.get('evidence_ref') or '').replace('artifacts/rep_corpus_10m_v1/', 'training/resources/phase1/rep_corpus_10m_v1/') or None,license_text_sha256=facts.get('license_text_sha256'),
             revision=facts.get('commit') or prior.get(s['source_id'],{}).get('revision'),locator=prior.get(s['source_id'],{}).get('canonical_id'),
             target_cap_tokens=0 if status=='REJECT' else QUOTAS[cat]//10,
             cap_basis='v1 planning ceiling; not a yield estimate',
@@ -124,10 +124,10 @@ def build(root):
         source['origin_verified']=False
         source['historical_scope_note']='Retained sample/source evidence only; production file scope and canonical origin clearance pending.'
     registry=seal(dict(schema='yug-production-source-registry-v1',sources=sorted(sources,key=lambda s:s['source_id'])))
-    evidence_paths=[oldpath,'artifacts/rep_corpus_10m_v1/00_source_license_evidence.json',
-        'artifacts/tokenizer_fit_sample_gate_v1/source_registry.json','artifacts/tokenizer_fit_sample_gate_v1/acquisition.json',
-        'artifacts/model_initialization_gate_v1/model_config.json','artifacts/model_initialization_gate_v1/freeze.json',
-        'artifacts/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json',
+    evidence_paths=[oldpath,'training/resources/phase1/rep_corpus_10m_v1/00_source_license_evidence.json',
+        'training/resources/phase1/tokenizer_fit_sample_gate_v1/source_registry.json','training/resources/phase1/tokenizer_fit_sample_gate_v1/acquisition.json',
+        'training/resources/phase1/model_initialization_gate_v1/model_config.json','training/resources/phase1/model_initialization_gate_v1/freeze.json',
+        'training/resources/phase1/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json',
         'training/production_corpus.py','training/token_shards.py','training/corpus_prep.py',
         'training/experiments/representative_mini_corpus.py','training/experiments/rep_corpus_policy.py',
         'training/experiments/rep_corpus_sources.py','training/checkpoint.py','training/loss.py',

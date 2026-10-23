@@ -229,7 +229,7 @@ def test_production_yug_does_not_import_training():
 
 # ---------------- Stage 1B additions ----------------
 
-_ARTIFACT = Path(__file__).resolve().parents[1] / "artifacts" / "rep_corpus_10m_v1" / "00_source_license_evidence.json"
+_ARTIFACT = Path(__file__).resolve().parents[1] / "training" / "resources" / "phase1" / "rep_corpus_10m_v1" / "00_source_license_evidence.json"
 
 
 def test_stage1b_changed_no_statuses():

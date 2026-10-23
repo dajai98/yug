@@ -18,13 +18,14 @@ from training.production_corpus import atomic_json, file_digest
 from training.production_spec import need, seal, verify_seal
 from training.source_prepare import ROOT, LICENSES, classify
 from training.token_shards import _writer_lock
+from training.conditional_license import CONDITIONAL
 
 VERSION = 'deterministic-source-expansion-v1'
 
 
 def screen(source, spec):
     """Conservative discovery screen; source ACCEPT never clears any payload."""
-    if source.get('license_id') not in LICENSES:
+    if source.get('license_id') not in LICENSES | CONDITIONAL.keys():
         return 'REJECTED', 'license absent, ambiguous, or outside preparation allowlist'
     eligibility = classify(source)
     if eligibility != 'CACHE_READY':

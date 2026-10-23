@@ -43,25 +43,25 @@ temp/
 *.ckpt
 *.safetensors
 *.bin
-checkpoints/
-checkpoint/
-models/
-weights/
+/checkpoints/
+/checkpoint/
+/models/
+/weights/
 
 # Large corpus and downloaded datasets
-data/
-datasets/
-corpus/
-corpora/
-downloads/
-downloaded/
-raw_data/
-processed_data/
-prepared_data/
-token_cache/
-tokenized/
-shards/
-spool/
+/data/
+/datasets/
+/corpus/
+/corpora/
+/downloads/
+/downloaded/
+/raw_data/
+/processed_data/
+/prepared_data/
+/token_cache/
+/tokenized/
+/shards/
+/spool/
 
 # Production acquisition / review working directories
 production/downloads/
@@ -72,9 +72,9 @@ production/token_cache/
 production/spool/
 production/shards/
 
-review_downloads/
-review_cache/
-acquisition_cache/
+/review_downloads/
+/review_cache/
+/acquisition_cache/
 
 # Large database/state files generated during corpus processing
 *.sqlite
@@ -96,8 +96,8 @@ acquisition_cache/
 *.rar
 
 # Training outputs
-runs/
-outputs/
+/runs/
+/outputs/
 wandb/
 tensorboard/
 lightning_logs/
@@ -116,7 +116,22 @@ artifacts/**/*.safetensors
 artifacts/**/*.sqlite
 artifacts/**/*.db
 # Generated YUG experiment/acquisition artifacts
-artifacts/
+/artifacts/
 
 # Historical/local source snapshot
-SOURCE/
+/SOURCE/
+
+# Additional local transfer, state and credential protection
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite-journal
+*.sqlite3-journal
+*.db-journal
+*.gguf
+*.part
+/.aws/
+/.ssh/
+id_rsa
+id_ed25519

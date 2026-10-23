@@ -1,0 +1,2316 @@
+{
+  "dataset_sources": [
+    {
+      "caveats": [
+        "dumps.wikimedia.org/legal.html could not be fetched (cache-only domain), so any newer Wikimedia licensing statement is UNKNOWN.",
+        "The existing /rows acquisition path has no revision parameter in this repository's code, so it reads the unpinned main branch; a concrete dataset commit exists but is not what the acquisition uses.",
+        "Per-article license metadata is not part of the dataset schema (id, url, title, text)."
+      ],
+      "config": "20231101.ne",
+      "config_row_count_on_card": "32.9k (matches the 32,885 reported by the earlier /rows probe)",
+      "dataset_repo_head_commit_at_retrieval": "b04c8d1ceb2f5cd4588862100d08de323dccfbaa",
+      "declared_license_metadata": [
+        "cc-by-sa-3.0",
+        "gfdl"
+      ],
+      "not_found_in_card": [
+        "any mention of CC BY-SA 4.0"
+      ],
+      "retrieval_method": "web_fetch of the dataset card and the repository tree page",
+      "source_id": "hf-wikipedia-ne-20231101",
+      "statement_summary": [
+        "Card states original textual content is licensed under GFDL and CC BY-SA 3.0.",
+        "Card says some text may be available only under the Creative Commons license (see the Wikimedia Terms of Use).",
+        "Card says text by some authors may carry additional licenses or be public domain.",
+        "Card points to dumps.wikimedia.org/legal.html for copyright licensing information."
+      ],
+      "urls": [
+        "https://huggingface.co/datasets/wikimedia/wikipedia",
+        "https://huggingface.co/datasets/wikimedia/wikipedia/tree/main"
+      ],
+      "verification_result": "PARTIAL: CC-BY-SA-3.0 and GFDL are supported by the card; the card's own caveats and the missing immutable pin keep the owner decision OD-06 open."
+    },
+    {
+      "caveats": [
+        "Card says the dumps are from March 2025, while the sample records show an 'added' date of 2024-07-27: provenance statements are internally inconsistent.",
+        "The pinned revision 0641bb84... appears as a pinned revision in a third-party dataset listing; its existence on Hugging Face was not verified directly.",
+        "Licensing is per record, so only records whose license string maps exactly to CC-BY-SA-4.0 may be treated as ACCEPT (existing code behaviour)."
+      ],
+      "declared_license_metadata": [],
+      "retrieval_method": "web_fetch of the dataset card; a third-party listing found by web_search",
+      "source_id": "cp-wikimedia-filtered",
+      "statement_summary": [
+        "No dataset-level license field appears in the card header; licensing is per record (metadata.license).",
+        "Sample records carry the exact string 'Creative Commons - Attribution Share-Alike - https://creativecommons.org/licenses/by-sa/4.0/'.",
+        "Card says official Wikimedia wikis are released under a CC BY-SA license and lists eight wikis (Wikipedia, Wikinews, Wikibooks, Wikiquote, Wikisource, Wikiversity, Wikivoyage, Wiktionary).",
+        "The first sample records are from wikibooks.com and mix namespaces (0, 1, 2, 4, 102, 103).",
+        "Card has a 'License Issues' section warning that license laundering or inaccurate metadata can cause wrong license assignment for some documents."
+      ],
+      "urls": [
+        "https://huggingface.co/datasets/common-pile/wikimedia_filtered"
+      ],
+      "verification_result": "PARTIAL: per-record licensing and the license-laundering caveat verified; no blanket dataset license; revision existence corroborated by a third party only."
+    }
+  ],
+  "fetcher": {
+    "allowed_hosts": [
+      "github.com",
+      "raw.githubusercontent.com"
+    ],
+    "license_paths": [
+      "LICENSE",
+      "LICENSE.md",
+      "LICENSE.txt",
+      "LICENCE",
+      "COPYING",
+      "COPYING.md",
+      "LICENSE-MIT",
+      "LICENSE-APACHE",
+      "UNLICENSE",
+      "LICENSE-CODE",
+      "LICENSE-DOCS",
+      "license.txt"
+    ],
+    "max_bytes": 262144,
+    "notice_paths": [
+      "NOTICE",
+      "NOTICE.md",
+      "THIRD-PARTY-NOTICES.TXT",
+      "ThirdPartyNotices.txt"
+    ],
+    "readme_paths": [
+      "README.md",
+      "README.rst",
+      "README.txt",
+      "README"
+    ],
+    "redirects": "refused",
+    "timeout_seconds": 20.0
+  },
+  "fingerprint": "sha256:bbc2fe55f3f9b2942ae9a3f1c38f6464cfa80e2465b02939b49aefa4df4315fb",
+  "nb13_assigned": false,
+  "not_a_milestone": true,
+  "retrieved_at_utc": "2026-10-01T18:53:43Z",
+  "schema": "rep-corpus-license-evidence-v1",
+  "sources": [
+    {
+      "caveats": [],
+      "commit": "4d3cbcd0f78327cfc6ec5f357e3af512fcbe53f3",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "Apache-2.0"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 11309,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "apache license",
+            "version 2.0, january 2004"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:089009c932d3cc296355e429fa9d6faf80ac89597da866e2424b4ea09add64b1",
+          "statement_excerpts": [
+            "by You to the Licensor shall be under the terms and conditions of",
+            "Licensed under the Apache License, Version 2.0 (the \"License\");"
+          ],
+          "title_line": "Apache License",
+          "url": "https://raw.githubusercontent.com/docker/docs/4d3cbcd0f78327cfc6ec5f357e3af512fcbe53f3/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 1619,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:7dc75f7e46ca270d70a314a14ff213141941ea44c8cf5a462576b7665bba57bd",
+        "url": "https://raw.githubusercontent.com/docker/docs/4d3cbcd0f78327cfc6ec5f357e3af512fcbe53f3/README.md"
+      },
+      "repository": "docker/docs",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "docker-docs"
+    },
+    {
+      "caveats": [
+        "license text not recognised by phrase rules: ['COPYING']",
+        "multiple license files: scope (OR / per-directory / docs vs code) must be read by a human"
+      ],
+      "commit": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
+      "commit_origin": "pinned_in_registry",
+      "detected_licenses": [
+        "MIT",
+        "Unlicense"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 126,
+          "detected": null,
+          "matched_phrases": [],
+          "path": "COPYING",
+          "sha256": "sha256:01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+          "statement_excerpts": [
+            "This project is dual-licensed under the Unlicense and MIT licenses.",
+            "You may use this code under the terms of either license."
+          ],
+          "title_line": "This project is dual-licensed under the Unlicense and MIT licenses.",
+          "url": "https://raw.githubusercontent.com/BurntSushi/ripgrep/3fce3b5bb0236da2df6d99672afb8a719642eca7/COPYING"
+        },
+        {
+          "also_mentions": [],
+          "bytes": 1081,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE-MIT",
+          "sha256": "sha256:0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f",
+          "statement_excerpts": [],
+          "title_line": "The MIT License (MIT)",
+          "url": "https://raw.githubusercontent.com/BurntSushi/ripgrep/3fce3b5bb0236da2df6d99672afb8a719642eca7/LICENSE-MIT"
+        },
+        {
+          "also_mentions": [],
+          "bytes": 1211,
+          "detected": "Unlicense",
+          "matched_phrases": [
+            "this is free and unencumbered software released into the public domain"
+          ],
+          "path": "UNLICENSE",
+          "sha256": "sha256:7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c",
+          "statement_excerpts": [],
+          "title_line": "This is free and unencumbered software released into the public domain.",
+          "url": "https://raw.githubusercontent.com/BurntSushi/ripgrep/3fce3b5bb0236da2df6d99672afb8a719642eca7/UNLICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING.md",
+        "LICENSE-APACHE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 21599,
+        "license_statement_excerpts": [
+          "Dual-licensed under MIT or the [UNLICENSE](https://unlicense.org)."
+        ],
+        "path": "README.md",
+        "sha256": "sha256:945622d974f65e4e141ef9726c948c2640eebd222c5b101afb6445728283921e",
+        "url": "https://raw.githubusercontent.com/BurntSushi/ripgrep/3fce3b5bb0236da2df6d99672afb8a719642eca7/README.md"
+      },
+      "repository": "BurntSushi/ripgrep",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-burntsushi-ripgrep"
+    },
+    {
+      "caveats": [],
+      "commit": "ceac8d6946b1125fe782cd171fbcb245b567dbf9",
+      "commit_origin": "pinned_in_registry",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1098,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:b0e6aada5cdff8e90865b150498b81af955343f1d8f091e5b609fd94c4d4b3d0",
+          "statement_excerpts": [],
+          "title_line": "The MIT License (MIT)",
+          "url": "https://raw.githubusercontent.com/Cysharp/UniTask/ceac8d6946b1125fe782cd171fbcb245b567dbf9/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 53313,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:8c9c62045836dce4bb4295c81f82b13ae24adc7135d5237b015ed0b9731a7bec",
+        "url": "https://raw.githubusercontent.com/Cysharp/UniTask/ceac8d6946b1125fe782cd171fbcb245b567dbf9/README.md"
+      },
+      "repository": "Cysharp/UniTask",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-cysharp-unitask"
+    },
+    {
+      "caveats": [
+        "multiple license files: scope (OR / per-directory / docs vs code) must be read by a human"
+      ],
+      "commit": "1443883303ca8a9e515a13c1c39c7224bb2cfa33",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "CC-BY-4.0",
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 18649,
+          "detected": "CC-BY-4.0",
+          "matched_phrases": [
+            "attribution 4.0 international"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:243f341367f0ee35271c8924aaf5d075157c62538042e2f3c11ff9a1fcc5539c",
+          "statement_excerpts": [
+            "warranties regarding its licenses, any material licensed under their",
+            "Licensed Rights under the terms and conditions of this",
+            "licensed under this Public License, nor are publicity,"
+          ],
+          "title_line": "\ufeffAttribution 4.0 International",
+          "url": "https://raw.githubusercontent.com/dotnet/docs/1443883303ca8a9e515a13c1c39c7224bb2cfa33/LICENSE"
+        },
+        {
+          "also_mentions": [],
+          "bytes": 1090,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE-CODE",
+          "sha256": "sha256:91f7258203fd43ba6d6f7f72b644eaedee9e3430f035c053beb6f34052f045e2",
+          "statement_excerpts": [],
+          "title_line": "The MIT License (MIT)",
+          "url": "https://raw.githubusercontent.com/dotnet/docs/1443883303ca8a9e515a13c1c39c7224bb2cfa33/LICENSE-CODE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 8077,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:53a4f7d9f928c3101b284f8caa40c57d9cc28e5fc048487833e7591b9e499c2c",
+        "url": "https://raw.githubusercontent.com/dotnet/docs/1443883303ca8a9e515a13c1c39c7224bb2cfa33/README.md"
+      },
+      "repository": "dotnet/docs",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-dotnet-docs"
+    },
+    {
+      "caveats": [],
+      "commit": "a1bbcb8c7337ff9c51e642bdb9564577a3d928b9",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1115,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "License.txt",
+          "sha256": "sha256:ae48df11a335dc1a615f4f938b69cba73bcf4485c4f97af49b38efb0f216353b",
+          "statement_excerpts": [],
+          "title_line": "The MIT License (MIT)",
+          "url": "https://raw.githubusercontent.com/dotnet/roslyn/a1bbcb8c7337ff9c51e642bdb9564577a3d928b9/License.txt"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 10980,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:5a23ccf53ac5346fa97511e192f90d979dafd0e9f414c2cc23710493808f8f99",
+        "url": "https://raw.githubusercontent.com/dotnet/roslyn/a1bbcb8c7337ff9c51e642bdb9564577a3d928b9/README.md"
+      },
+      "repository": "dotnet/roslyn",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-dotnet-roslyn"
+    },
+    {
+      "caveats": [
+        "notice files or submodules present: third-party code with separate terms is likely"
+      ],
+      "commit": "f823145d31bb750f7c91d1a25c191c6933df8938",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "PARTIAL",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1116,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE.TXT",
+          "sha256": "sha256:cfc21f5e8bd655ae997eec916138b707b1d290b83272c02a95c9f821b8c87310",
+          "statement_excerpts": [],
+          "title_line": "The MIT License (MIT)",
+          "url": "https://raw.githubusercontent.com/dotnet/runtime/f823145d31bb750f7c91d1a25c191c6933df8938/LICENSE.TXT"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [
+        {
+          "bytes": 91918,
+          "path": "THIRD-PARTY-NOTICES.TXT",
+          "sha256": "sha256:4790bb15f0edd1b105aecb05174fc6c589d4d9fad0c50616ef5f7dc365f1c8a6",
+          "url": "https://raw.githubusercontent.com/dotnet/runtime/f823145d31bb750f7c91d1a25c191c6933df8938/THIRD-PARTY-NOTICES.TXT"
+        }
+      ],
+      "readme": {
+        "bytes": 4800,
+        "license_statement_excerpts": [
+          ".NET (including the runtime repo) is licensed under the [MIT](LICENSE.TXT) license."
+        ],
+        "path": "README.md",
+        "sha256": "sha256:bcd0ca8841408b85528eb4f91a610c072eb46df2a0e89ba5ab38a60270286057",
+        "url": "https://raw.githubusercontent.com/dotnet/runtime/f823145d31bb750f7c91d1a25c191c6933df8938/README.md"
+      },
+      "repository": "dotnet/runtime",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-dotnet-runtime"
+    },
+    {
+      "caveats": [],
+      "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "BSD-3-Clause"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1508,
+          "detected": "BSD-3-Clause",
+          "matched_phrases": [
+            "redistribution and use in source and binary forms",
+            "neither the name"
+          ],
+          "path": "LICENSE.md",
+          "sha256": "sha256:4ec59d544f12b5f539a3a716fd321ac58ccd8030b465221f2c880200cdf28d8d",
+          "statement_excerpts": [],
+          "title_line": "Copyright \u00a9 2019, [Encode OSS Ltd](https://www.encode.io/).",
+          "url": "https://raw.githubusercontent.com/encode/httpx/b5addb64f0161ff6bfe94c124ef76f6a1fba5254/LICENSE.md"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 4944,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:d58f476c1273c9c06c978467c6596620d3840ea8c99ba9d32300ab3286f0e0c3",
+        "url": "https://raw.githubusercontent.com/encode/httpx/b5addb64f0161ff6bfe94c124ef76f6a1fba5254/README.md"
+      },
+      "repository": "encode/httpx",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-encode-httpx"
+    },
+    {
+      "caveats": [],
+      "commit": "7ef98448f8b38099ab1ded55e458538ad47a51e7",
+      "commit_origin": "pinned_in_registry",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1249,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:95a5762890e5c1c9808921cef095661fc482c5e1f0bba31446ac85595df6237c",
+          "statement_excerpts": [],
+          "title_line": "(The MIT License)",
+          "url": "https://raw.githubusercontent.com/expressjs/express/7ef98448f8b38099ab1ded55e458538ad47a51e7/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "README.md",
+        "README.rst",
+        "README.txt",
+        "README",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": null,
+      "repository": "expressjs/express",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-expressjs-express"
+    },
+    {
+      "caveats": [],
+      "commit": "13c34f301b370d90ac8dcb2abb5ff04ce093681e",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1067,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:a53bdfb9afc14859e8d0526dfc8880831de8cfa599b300ddbbe122441dec30e3",
+          "statement_excerpts": [],
+          "title_line": "MIT License",
+          "url": "https://raw.githubusercontent.com/flame-engine/flame/13c34f301b370d90ac8dcb2abb5ff04ce093681e/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 12488,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:07808409d6d737f984cc25778e0e77fee3ad6c9507c75b85e5ab8453323dd8cb",
+        "url": "https://raw.githubusercontent.com/flame-engine/flame/13c34f301b370d90ac8dcb2abb5ff04ce093681e/README.md"
+      },
+      "repository": "flame-engine/flame",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-flame-engine-flame"
+    },
+    {
+      "caveats": [
+        "license text not recognised by phrase rules: ['licenses/lzxdecoder.LICENSE']",
+        "multiple license files: scope (OR / per-directory / docs vs code) must be read by a human",
+        "notice files or submodules present: third-party code with separate terms is likely"
+      ],
+      "commit": "651c0ffdf4db43cd112865ad368c5d6cc3dc7558",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "MIT",
+        "MS-PL"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "PARTIAL",
+      "gitmodules_present": true,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 2710,
+          "detected": "MS-PL",
+          "matched_phrases": [
+            "microsoft public license (ms-pl)"
+          ],
+          "path": "licenses/LICENSE",
+          "sha256": "sha256:9f59f590c7697491a8846391b73eea7cd6f47a7e3b7e512b17813e85f94964f6",
+          "statement_excerpts": [],
+          "title_line": "Microsoft Public License (Ms-PL)",
+          "url": "https://raw.githubusercontent.com/FNA-XNA/FNA/651c0ffdf4db43cd112865ad368c5d6cc3dc7558/licenses/LICENSE"
+        },
+        {
+          "also_mentions": [],
+          "bytes": 1111,
+          "detected": null,
+          "matched_phrases": [],
+          "path": "licenses/lzxdecoder.LICENSE",
+          "sha256": "sha256:7a53e82fccc27ee1934bcb009b0b2df01c43e42dc948a358023fdc754b907d9b",
+          "statement_excerpts": [
+            "This source file is Dual licensed; meaning the end-user of this source file"
+          ],
+          "title_line": "LzxDecoder.cs was derived from libmspack",
+          "url": "https://raw.githubusercontent.com/FNA-XNA/FNA/651c0ffdf4db43cd112865ad368c5d6cc3dc7558/licenses/lzxdecoder.LICENSE"
+        },
+        {
+          "also_mentions": [],
+          "bytes": 1091,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "licenses/monoxna.LICENSE",
+          "sha256": "sha256:96fd21a0b6a9c3cd8ec3f6b3c263c7c99cd1a744b2c033c3b3dd3103337c4247",
+          "statement_excerpts": [],
+          "title_line": "MIT License",
+          "url": "https://raw.githubusercontent.com/FNA-XNA/FNA/651c0ffdf4db43cd112865ad368c5d6cc3dc7558/licenses/monoxna.LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "README.md",
+        "README.rst",
+        "README.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 700,
+        "license_statement_excerpts": [],
+        "path": "README",
+        "sha256": "sha256:3e480a8553123946826c2d2ed765f4f99662d7bd5130dcbf45da95ddc8b709c2",
+        "url": "https://raw.githubusercontent.com/FNA-XNA/FNA/651c0ffdf4db43cd112865ad368c5d6cc3dc7558/README"
+      },
+      "repository": "FNA-XNA/FNA",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-fna-xna-fna"
+    },
+    {
+      "caveats": [],
+      "commit": "1bd0ecf2d3e08da37efa270bb7be20c1eddb0d68",
+      "commit_origin": "pinned_in_registry",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1099,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:b104efb2c7700691650f27034e8541c5ae0ed9af54d884287f19a7467ca2fe7f",
+          "statement_excerpts": [],
+          "title_line": "The MIT License (MIT)",
+          "url": "https://raw.githubusercontent.com/gin-gonic/gin/1bd0ecf2d3e08da37efa270bb7be20c1eddb0d68/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 11827,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:f8a8b236019587b81d1fc69292c146a40910c3295c3ec0ba3855910664a97738",
+        "url": "https://raw.githubusercontent.com/gin-gonic/gin/1bd0ecf2d3e08da37efa270bb7be20c1eddb0d68/README.md"
+      },
+      "repository": "gin-gonic/gin",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-gin-gonic-gin"
+    },
+    {
+      "caveats": [],
+      "commit": "3bb3ec25b3b0199f4940b1aa75f0ac5c5753301c",
+      "commit_origin": "pinned_in_registry",
+      "detected_licenses": [
+        "CC-BY-3.0"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 19466,
+          "detected": "CC-BY-3.0",
+          "matched_phrases": [
+            "attribution 3.0 unported"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:11dbf7126ae9794e4a7dc54334f3c82a67efcf22df888d396dc2ed707b2a3f9b",
+          "statement_excerpts": [
+            "THE WORK (AS DEFINED BELOW) IS PROVIDED UNDER THE TERMS OF THIS CREATIVE",
+            "offer(s) the Work under the terms of this License.",
+            "f. \"Work\" means the literary and/or artistic work offered under the terms"
+          ],
+          "title_line": "Creative Commons Legal Code",
+          "url": "https://raw.githubusercontent.com/google/eng-practices/3bb3ec25b3b0199f4940b1aa75f0ac5c5753301c/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 1568,
+        "license_statement_excerpts": [
+          "The documents in this project are licensed under the"
+        ],
+        "path": "README.md",
+        "sha256": "sha256:fc8e999b9e95bc77c1b626fd9a22508cbc6341f15fd5b03da40787165d7298c8",
+        "url": "https://raw.githubusercontent.com/google/eng-practices/3bb3ec25b3b0199f4940b1aa75f0ac5c5753301c/README.md"
+      },
+      "repository": "google/eng-practices",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-google-eng-practices"
+    },
+    {
+      "caveats": [],
+      "commit": "5dc4cd1ad452811629cb2ebe72c2c21142c22c1b",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "Apache-2.0"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 11358,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "apache license",
+            "version 2.0, january 2004"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "statement_excerpts": [
+            "by You to the Licensor shall be under the terms and conditions of",
+            "Licensed under the Apache License, Version 2.0 (the \"License\");"
+          ],
+          "title_line": "Apache License",
+          "url": "https://raw.githubusercontent.com/google/guava/5dc4cd1ad452811629cb2ebe72c2c21142c22c1b/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 6290,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:e4264d57cff1cb7ccaa16a1515fc35703416af8b198530fd25ae255b639ade17",
+        "url": "https://raw.githubusercontent.com/google/guava/5dc4cd1ad452811629cb2ebe72c2c21142c22c1b/README.md"
+      },
+      "repository": "google/guava",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-google-guava"
+    },
+    {
+      "caveats": [
+        "notice files or submodules present: third-party code with separate terms is likely"
+      ],
+      "commit": "7a1c866f252e2d62a0bcdd3ea23a0052e6674679",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "CC-BY-4.0"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "PARTIAL",
+      "gitmodules_present": true,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 18657,
+          "detected": "CC-BY-4.0",
+          "matched_phrases": [
+            "attribution 4.0 international"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "statement_excerpts": [
+            "warranties regarding its licenses, any material licensed under their",
+            "Licensed Rights under the terms and conditions of this",
+            "licensed under this Public License, nor are publicity,"
+          ],
+          "title_line": "Attribution 4.0 International",
+          "url": "https://raw.githubusercontent.com/kubernetes/website/7a1c866f252e2d62a0bcdd3ea23a0052e6674679/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 9325,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:137204e113b46747a754fb8d850a57f5260158179cdd349a3fc85be022cae6e9",
+        "url": "https://raw.githubusercontent.com/kubernetes/website/7a1c866f252e2d62a0bcdd3ea23a0052e6674679/README.md"
+      },
+      "repository": "kubernetes/website",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-kubernetes-website"
+    },
+    {
+      "caveats": [],
+      "commit": "2b5e6f7399a7b48005140b5d5c6bc6c0e62919a8",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1952,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:f71e8ed126b46346494aad5486874cd8f0aafe95092ed67d2e3cb6110f939abc",
+          "statement_excerpts": [],
+          "title_line": "Copyright OpenJS Foundation and other contributors <https://openjsf.org/>",
+          "url": "https://raw.githubusercontent.com/lodash/lodash/2b5e6f7399a7b48005140b5d5c6bc6c0e62919a8/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 3623,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:882ff84de79568af63234100cfc6497f091195c358cb27b91dc2c4b27692be03",
+        "url": "https://raw.githubusercontent.com/lodash/lodash/2b5e6f7399a7b48005140b5d5c6bc6c0e62919a8/README.md"
+      },
+      "repository": "lodash/lodash",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-lodash-lodash"
+    },
+    {
+      "caveats": [
+        "LICENSE: also contains/mentions ['BSD-2-Clause', 'MIT']"
+      ],
+      "commit": "f2bfa97ef56c3e0eda92d7df34856467afcda865",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "Apache-2.0"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [
+            "BSD-2-Clause",
+            "MIT"
+          ],
+          "bytes": 3032,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "licensed under the apache license, version 2.0",
+            "apache.org/licenses/license-2.0"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:580852521f6e48cb1d210fcb228e7179a21433a32ebe3fbb46ec8c10255e7451",
+          "statement_excerpts": [
+            "Licensed under the Apache License, Version 2.0 (the \"License\");"
+          ],
+          "title_line": "MessagePack for C#",
+          "url": "https://raw.githubusercontent.com/MessagePack-CSharp/MessagePack-CSharp/f2bfa97ef56c3e0eda92d7df34856467afcda865/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 84337,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:88770771b3befe882513c7f82b8575ec24589f695404dff4ead6e6fd8b0cdc50",
+        "url": "https://raw.githubusercontent.com/MessagePack-CSharp/MessagePack-CSharp/f2bfa97ef56c3e0eda92d7df34856467afcda865/README.md"
+      },
+      "repository": "MessagePack-CSharp/MessagePack-CSharp",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-messagepack-csharp"
+    },
+    {
+      "caveats": [],
+      "commit": "a7022a299442a8352431874e63ec4dff548a1b81",
+      "commit_origin": "pinned_in_registry",
+      "detected_licenses": [
+        "CC-BY-4.0"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 251,
+          "detected": "CC-BY-4.0",
+          "matched_phrases": [
+            "attribution 4.0 international"
+          ],
+          "path": "license.txt",
+          "sha256": "sha256:e5795f98ce65fbcdb6311f8ae468038bb58d0049d6b913493752aad2099eea04",
+          "statement_excerpts": [
+            "This work is licensed under the Creative Commons Attribution 4.0 International License."
+          ],
+          "title_line": "This work is licensed under the Creative Commons Attribution 4.0 International License.",
+          "url": "https://raw.githubusercontent.com/microsoft/api-guidelines/a7022a299442a8352431874e63ec4dff548a1b81/license.txt"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 2087,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:a3702d249e51f919aa0a3547e44433f959daf6400912625be92f914c3d53c35e",
+        "url": "https://raw.githubusercontent.com/microsoft/api-guidelines/a7022a299442a8352431874e63ec4dff548a1b81/README.md"
+      },
+      "repository": "microsoft/api-guidelines",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-microsoft-api-guidelines"
+    },
+    {
+      "caveats": [],
+      "commit": "c4f3739966e151f405be1762d33502794fd034ff",
+      "commit_origin": "pinned_in_registry",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1149,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:74819ab7f08d5e3b91f0392fc41a3146e27bbefe4af90dfafbf71b9c470a9560",
+          "statement_excerpts": [],
+          "title_line": "MIT License",
+          "url": "https://raw.githubusercontent.com/MirrorNetworking/Mirror/c4f3739966e151f405be1762d33502794fd034ff/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 31659,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:757b351408b806caeeb8dc6297a1f594bb7471dc6a8acdc59bf8d3ed80078761",
+        "url": "https://raw.githubusercontent.com/MirrorNetworking/Mirror/c4f3739966e151f405be1762d33502794fd034ff/README.md"
+      },
+      "repository": "MirrorNetworking/Mirror",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-mirrornetworking-mirror"
+    },
+    {
+      "caveats": [
+        "LICENSE.txt: also contains/mentions ['MIT']",
+        "notice files or submodules present: third-party code with separate terms is likely"
+      ],
+      "commit": "9cce5c73ad5869a8abe54dad9ed201d0678fa8fe",
+      "commit_origin": "pinned_in_registry",
+      "detected_licenses": [
+        "MS-PL"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "PARTIAL",
+      "gitmodules_present": true,
+      "license_files": [
+        {
+          "also_mentions": [
+            "MIT"
+          ],
+          "bytes": 3882,
+          "detected": "MS-PL",
+          "matched_phrases": [
+            "microsoft public license (ms-pl)"
+          ],
+          "path": "LICENSE.txt",
+          "sha256": "sha256:67301fd0f95a7e4ffb3cccde3dafed6ada739f32585c0f7b70adeb2fb904504b",
+          "statement_excerpts": [],
+          "title_line": "\ufeffMicrosoft Public License (Ms-PL)",
+          "url": "https://raw.githubusercontent.com/MonoGame/MonoGame/9cce5c73ad5869a8abe54dad9ed201d0678fa8fe/LICENSE.txt"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 9231,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:cc592c3f617582a05d5be2dcf4d151fedc4cff746f5db735f0547c6662a146e2",
+        "url": "https://raw.githubusercontent.com/MonoGame/MonoGame/9cce5c73ad5869a8abe54dad9ed201d0678fa8fe/README.md"
+      },
+      "repository": "MonoGame/MonoGame",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-monogame-monogame"
+    },
+    {
+      "caveats": [],
+      "commit": "6baeccf6c544c155497164327cca72f28163a578",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1082,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:8d12196d9689ef80cb99e5ca166ceb9613ff0fe62098de7ba110c413bd4c7b14",
+          "statement_excerpts": [],
+          "title_line": "The MIT License (MIT)",
+          "url": "https://raw.githubusercontent.com/neuecc/UniRx/6baeccf6c544c155497164327cca72f28163a578/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 43566,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:fc1d8e615c5b8df504f5ffaadd79770fff1c5db0619d867cb48b52585a645d96",
+        "url": "https://raw.githubusercontent.com/neuecc/UniRx/6baeccf6c544c155497164327cca72f28163a578/README.md"
+      },
+      "repository": "neuecc/UniRx",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-neuecc-unirx"
+    },
+    {
+      "caveats": [],
+      "commit": "11e75a54280b3474cb18c2f24d42660dc385596d",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1076,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE.MIT",
+          "sha256": "sha256:d64d1b4d948aa7751cfb613c02dc246aab7b358d760053e6580f01affe946906",
+          "statement_excerpts": [],
+          "title_line": "MIT License",
+          "url": "https://raw.githubusercontent.com/nlohmann/json/11e75a54280b3474cb18c2f24d42660dc385596d/LICENSE.MIT"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 124532,
+        "license_statement_excerpts": [
+          "The class is licensed under the [MIT License](https://opensource.org/licenses/MIT):",
+          "- The class contains the UTF-8 Decoder from Bjoern Hoehrmann which is licensed under the [MIT License](https://opensource.org/licenses/MIT) (see above). Copyright &copy; 2008-2009 [Bj\u00f6rn Hoehrmann](https://bjoern.hoehrmann.de/) <bjoern@hoeh",
+          "- The class contains a slightly modified version of the Grisu2 algorithm from Florian Loitsch which is licensed under the [MIT License](https://opensource.org/licenses/MIT) (see above). Copyright &copy; 2009 [Florian Loitsch](https://floria"
+        ],
+        "path": "README.md",
+        "sha256": "sha256:c969554b59fe277fd02f48db2431b84093e8b3481f8039e78b61ddef2e6a7c12",
+        "url": "https://raw.githubusercontent.com/nlohmann/json/11e75a54280b3474cb18c2f24d42660dc385596d/README.md"
+      },
+      "repository": "nlohmann/json",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-nlohmann-json"
+    },
+    {
+      "caveats": [],
+      "commit": "d73fa1cdcbd8b1465c151db8924ba58b1dd14e35",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "BSD-3-Clause"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1475,
+          "detected": "BSD-3-Clause",
+          "matched_phrases": [
+            "redistribution and use in source and binary forms",
+            "neither the name"
+          ],
+          "path": "LICENSE.txt",
+          "sha256": "sha256:489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea",
+          "statement_excerpts": [],
+          "title_line": "Copyright 2010 Pallets",
+          "url": "https://raw.githubusercontent.com/pallets/flask/d73fa1cdcbd8b1465c151db8924ba58b1dd14e35/LICENSE.txt"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 1639,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:1f2de14735b1ee9d3a342fa7c5d5e87b95727276c0a56c8a9d77221f37880602",
+        "url": "https://raw.githubusercontent.com/pallets/flask/d73fa1cdcbd8b1465c151db8924ba58b1dd14e35/README.md"
+      },
+      "repository": "pallets/flask",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-pallets-flask"
+    },
+    {
+      "caveats": [
+        "notice files or submodules present: third-party code with separate terms is likely"
+      ],
+      "commit": "611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60",
+      "commit_origin": "pinned_in_registry",
+      "detected_licenses": [
+        "Apache-2.0"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "PARTIAL",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 10142,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "apache license",
+            "version 2.0, january 2004"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b",
+          "statement_excerpts": [
+            "by You to the Licensor shall be under the terms and conditions of"
+          ],
+          "title_line": "Apache License",
+          "url": "https://raw.githubusercontent.com/psf/requests/611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [
+        {
+          "bytes": 38,
+          "path": "NOTICE",
+          "sha256": "sha256:f5110972dedad2b4e9d314518daf3b7d72d6e02e499acd802181de6f74571dcc",
+          "url": "https://raw.githubusercontent.com/psf/requests/611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60/NOTICE"
+        }
+      ],
+      "readme": {
+        "bytes": 2906,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:2a9268c9be5f4dc9abe9105740be7c5234babc3dd2b25eb11ca376c538a0c67b",
+        "url": "https://raw.githubusercontent.com/psf/requests/611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60/README.md"
+      },
+      "repository": "psf/requests",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-psf-requests"
+    },
+    {
+      "caveats": [
+        "multiple license files: scope (OR / per-directory / docs vs code) must be read by a human"
+      ],
+      "commit": "1500248d8f230566e4ec9f27fcbb8fe9e2898ab1",
+      "commit_origin": "pinned_in_registry",
+      "detected_licenses": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1071,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE-MIT",
+          "sha256": "sha256:0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720",
+          "statement_excerpts": [],
+          "title_line": "Copyright (c) 2010 The Rust Project Developers",
+          "url": "https://raw.githubusercontent.com/rust-lang/book/1500248d8f230566e4ec9f27fcbb8fe9e2898ab1/LICENSE-MIT"
+        },
+        {
+          "also_mentions": [],
+          "bytes": 10847,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "apache license",
+            "version 2.0, january 2004"
+          ],
+          "path": "LICENSE-APACHE",
+          "sha256": "sha256:0f2763086f981043fb18879abfa15e75ecfc188219ef9eba4483f45ce7438e1c",
+          "statement_excerpts": [
+            "by You to the Licensor shall be under the terms and conditions of",
+            "Licensed under the Apache License, Version 2.0 (the \"License\");"
+          ],
+          "title_line": "Apache License",
+          "url": "https://raw.githubusercontent.com/rust-lang/book/1500248d8f230566e4ec9f27fcbb8fe9e2898ab1/LICENSE-APACHE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 3769,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:186a00068c8d3626a8844650c8424895254ef97094bd9332939f794d70be3870",
+        "url": "https://raw.githubusercontent.com/rust-lang/book/1500248d8f230566e4ec9f27fcbb8fe9e2898ab1/README.md"
+      },
+      "repository": "rust-lang/book",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-rust-lang-book"
+    },
+    {
+      "caveats": [
+        "multiple license files: scope (OR / per-directory / docs vs code) must be read by a human"
+      ],
+      "commit": "a286e1ecb8ce193d50056e4bb042eea9b23876ef",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1071,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE-MIT",
+          "sha256": "sha256:0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720",
+          "statement_excerpts": [],
+          "title_line": "Copyright (c) 2010 The Rust Project Developers",
+          "url": "https://raw.githubusercontent.com/rust-lang/reference/a286e1ecb8ce193d50056e4bb042eea9b23876ef/LICENSE-MIT"
+        },
+        {
+          "also_mentions": [],
+          "bytes": 10847,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "apache license",
+            "version 2.0, january 2004"
+          ],
+          "path": "LICENSE-APACHE",
+          "sha256": "sha256:a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "statement_excerpts": [
+            "by You to the Licensor shall be under the terms and conditions of",
+            "Licensed under the Apache License, Version 2.0 (the \"License\");"
+          ],
+          "title_line": "Apache License",
+          "url": "https://raw.githubusercontent.com/rust-lang/reference/a286e1ecb8ce193d50056e4bb042eea9b23876ef/LICENSE-APACHE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 263,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:47dba2d903608e968801b18ca1329eda2f21ad57f9ce27590ae46c6cfba2a82e",
+        "url": "https://raw.githubusercontent.com/rust-lang/reference/a286e1ecb8ce193d50056e4bb042eea9b23876ef/README.md"
+      },
+      "repository": "rust-lang/reference",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-rust-lang-reference"
+    },
+    {
+      "caveats": [
+        "multiple license files: scope (OR / per-directory / docs vs code) must be read by a human"
+      ],
+      "commit": "dcc14f912bf8790792a2df082eddc82ab2539229",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1058,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE-MIT",
+          "sha256": "sha256:4594f18866be94a3ce309ed8f94d92699f5b87739b76e1216addca75f5253fa7",
+          "statement_excerpts": [],
+          "title_line": "Copyright (c) 2014 Jorge Aparicio",
+          "url": "https://raw.githubusercontent.com/rust-lang/rust-by-example/dcc14f912bf8790792a2df082eddc82ab2539229/LICENSE-MIT"
+        },
+        {
+          "also_mentions": [],
+          "bytes": 10847,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "apache license",
+            "version 2.0, january 2004"
+          ],
+          "path": "LICENSE-APACHE",
+          "sha256": "sha256:a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "statement_excerpts": [
+            "by You to the Licensor shall be under the terms and conditions of",
+            "Licensed under the Apache License, Version 2.0 (the \"License\");"
+          ],
+          "title_line": "Apache License",
+          "url": "https://raw.githubusercontent.com/rust-lang/rust-by-example/dcc14f912bf8790792a2df082eddc82ab2539229/LICENSE-APACHE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 2727,
+        "license_statement_excerpts": [
+          "Rust by Example is licensed under either of",
+          "at your option."
+        ],
+        "path": "README.md",
+        "sha256": "sha256:f290c71569cb20ca17f19f9b83b9fd0f500c213b7cbb3804ad660a644252015b",
+        "url": "https://raw.githubusercontent.com/rust-lang/rust-by-example/dcc14f912bf8790792a2df082eddc82ab2539229/README.md"
+      },
+      "repository": "rust-lang/rust-by-example",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-rust-lang-rust-by-example"
+    },
+    {
+      "caveats": [
+        "multiple license files: scope (OR / per-directory / docs vs code) must be read by a human"
+      ],
+      "commit": "be8854f66df1b5450349061e45374ac072abd109",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1023,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE-MIT",
+          "sha256": "sha256:23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "statement_excerpts": [],
+          "title_line": "Permission is hereby granted, free of charge, to any",
+          "url": "https://raw.githubusercontent.com/rust-lang/rustc-dev-guide/be8854f66df1b5450349061e45374ac072abd109/LICENSE-MIT"
+        },
+        {
+          "also_mentions": [],
+          "bytes": 10847,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "apache license",
+            "version 2.0, january 2004"
+          ],
+          "path": "LICENSE-APACHE",
+          "sha256": "sha256:a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "statement_excerpts": [
+            "by You to the Licensor shall be under the terms and conditions of",
+            "Licensed under the Apache License, Version 2.0 (the \"License\");"
+          ],
+          "title_line": "Apache License",
+          "url": "https://raw.githubusercontent.com/rust-lang/rustc-dev-guide/be8854f66df1b5450349061e45374ac072abd109/LICENSE-APACHE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 3681,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:256a42f0dfe7f09f202cc0a9c4928a410f03f46cf7c6ed926706ae220f2c6d31",
+        "url": "https://raw.githubusercontent.com/rust-lang/rustc-dev-guide/be8854f66df1b5450349061e45374ac072abd109/README.md"
+      },
+      "repository": "rust-lang/rustc-dev-guide",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-rust-lang-rustc-dev-guide"
+    },
+    {
+      "caveats": [
+        "multiple license files: scope (OR / per-directory / docs vs code) must be read by a human"
+      ],
+      "commit": "6693a89cca77e0151437da1c7f890090b9ebf04c",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1023,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE-MIT",
+          "sha256": "sha256:23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+          "statement_excerpts": [],
+          "title_line": "Permission is hereby granted, free of charge, to any",
+          "url": "https://raw.githubusercontent.com/serde-rs/serde/6693a89cca77e0151437da1c7f890090b9ebf04c/LICENSE-MIT"
+        },
+        {
+          "also_mentions": [],
+          "bytes": 9723,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "apache license",
+            "version 2.0, january 2004"
+          ],
+          "path": "LICENSE-APACHE",
+          "sha256": "sha256:62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "statement_excerpts": [
+            "by You to the Licensor shall be under the terms and conditions of"
+          ],
+          "title_line": "Apache License",
+          "url": "https://raw.githubusercontent.com/serde-rs/serde/6693a89cca77e0151437da1c7f890090b9ebf04c/LICENSE-APACHE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 4358,
+        "license_statement_excerpts": [
+          "Licensed under either of <a href=\"LICENSE-APACHE\">Apache License, Version",
+          "2.0</a> or <a href=\"LICENSE-MIT\">MIT license</a> at your option.",
+          "dual licensed as above, without any additional terms or conditions."
+        ],
+        "path": "README.md",
+        "sha256": "sha256:0a33359b87747c0ae2437374c1dd4fc4d151ae3122b3931e2757b45d0ed519b8",
+        "url": "https://raw.githubusercontent.com/serde-rs/serde/6693a89cca77e0151437da1c7f890090b9ebf04c/README.md"
+      },
+      "repository": "serde-rs/serde",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-serde-rs-serde"
+    },
+    {
+      "caveats": [],
+      "commit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "Apache-2.0"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 10140,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "apache license",
+            "version 2.0, january 2004"
+          ],
+          "path": "LICENSE.txt",
+          "sha256": "sha256:5e3400b93bbb099e83e52bab885e7441750673c21f97988ca3f1240639b63283",
+          "statement_excerpts": [
+            "by You to the Licensor shall be under the terms and conditions of"
+          ],
+          "title_line": "Apache License",
+          "url": "https://raw.githubusercontent.com/spf13/cobra/adbc8813901bba65827259daa8e22ff94ec1f30e/LICENSE.txt"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 4949,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:50473243fcb2851020fc25bcd7ad372fc969825588b9994beec4d9e33523a0c0",
+        "url": "https://raw.githubusercontent.com/spf13/cobra/adbc8813901bba65827259daa8e22ff94ec1f30e/README.md"
+      },
+      "repository": "spf13/cobra",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-spf13-cobra"
+    },
+    {
+      "caveats": [],
+      "commit": "a7fa31ced680c7d4a919f1fe233051cf508f6060",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1304,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE.md",
+          "sha256": "sha256:46d821d4ede6fab226ec02b0392f8c2633ad3d9d2cc2cbd709e54a7a8b0a79f1",
+          "statement_excerpts": [],
+          "title_line": "\ufeffThe MIT License (MIT)",
+          "url": "https://raw.githubusercontent.com/stride3d/stride/a7fa31ced680c7d4a919f1fe233051cf508f6060/LICENSE.md"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 38078,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:dc65ec029b7e21d2a7dd9426f811b6cd035dd55c917d229801702664a1737bd4",
+        "url": "https://raw.githubusercontent.com/stride3d/stride/a7fa31ced680c7d4a919f1fe233051cf508f6060/README.md"
+      },
+      "repository": "stride3d/stride",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-stride3d-stride"
+    },
+    {
+      "caveats": [],
+      "commit": "e6e84a4d4a5e11d5d0f419444a634ee07203b3e5",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "MIT"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 1070,
+          "detected": "MIT",
+          "matched_phrases": [
+            "permission is hereby granted, free of charge, to any person obtaining a copy",
+            "the above copyright notice and this permission notice shall be included"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:253cd04c6714889df2d32f3f64d669179a1c95c76ac43c40882c52eb06bc3552",
+          "statement_excerpts": [],
+          "title_line": "MIT License",
+          "url": "https://raw.githubusercontent.com/tokio-rs/tokio/e6e84a4d4a5e11d5d0f419444a634ee07203b3e5/LICENSE"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 9380,
+        "license_statement_excerpts": [
+          "This project is licensed under the [MIT license]."
+        ],
+        "path": "README.md",
+        "sha256": "sha256:3f24b4c356fe631e222aa1baccb02c29f573e1b33fa2dc26f9f4fb423b5e73b9",
+        "url": "https://raw.githubusercontent.com/tokio-rs/tokio/e6e84a4d4a5e11d5d0f419444a634ee07203b3e5/README.md"
+      },
+      "repository": "tokio-rs/tokio",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-tokio-rs-tokio"
+    },
+    {
+      "caveats": [
+        "LICENSE.md: short Apache-2.0 notice, not the full license text",
+        "notice files or submodules present: third-party code with separate terms is likely"
+      ],
+      "commit": "3e2237ef0c8bca470d8a0277b17e78e1411166d4",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "Apache-2.0"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "PARTIAL",
+      "gitmodules_present": true,
+      "license_files": [
+        {
+          "also_mentions": [],
+          "bytes": 572,
+          "detected": "Apache-2.0",
+          "matched_phrases": [
+            "licensed under the apache license, version 2.0",
+            "apache.org/licenses/license-2.0"
+          ],
+          "path": "LICENSE.md",
+          "sha256": "sha256:21169a6cd5de3af010f89d5bf5e679c0cc33e5ab1163464b6507b3634e3ca6e4",
+          "statement_excerpts": [
+            "Licensed under the Apache License, Version 2.0 (the \"License\");"
+          ],
+          "title_line": "ML Agents copyright \u00a9 2017 Unity Technologies",
+          "url": "https://raw.githubusercontent.com/Unity-Technologies/ml-agents/3e2237ef0c8bca470d8a0277b17e78e1411166d4/LICENSE.md"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "README.md",
+        "README.rst",
+        "README.txt",
+        "README",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt"
+      ],
+      "notice_files": [],
+      "readme": null,
+      "repository": "Unity-Technologies/ml-agents",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "gh-unity-ml-agents"
+    },
+    {
+      "caveats": [
+        "LICENSE.md: also contains/mentions ['CC0-1.0', 'MIT']"
+      ],
+      "commit": "ac295ae8d3435f587b5233a9fe46bb55d92c1a5d",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "CC-BY-SA-2.5"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [
+            "CC0-1.0",
+            "MIT"
+          ],
+          "bytes": 23775,
+          "detected": "CC-BY-SA-2.5",
+          "matched_phrases": [
+            "attribution-sharealike 2.5"
+          ],
+          "path": "LICENSE.md",
+          "sha256": "sha256:97a45d9a5c27c90ad7f058b20a870f11a24717f0eb4585f141948d25b74c4d89",
+          "statement_excerpts": [
+            "THE WORK (AS DEFINED BELOW) IS PROVIDED UNDER THE TERMS OF THIS CREATIVE COMMONS PUBLIC LICENSE (\"CCPL\" OR \"LICENSE\"). THE WORK IS PROTECTED BY COPYRIGHT AND/OR OTHER APPLICABLE LAW. ANY USE OF THE WORK OTHER THAN AS AUTHORIZED UNDER THIS L",
+            "c. \"Licensor\" means the individual or entity that offers the Work under the terms of this License.",
+            "e. \"Work\" means the copyrightable work of authorship offered under the terms of this License."
+          ],
+          "title_line": "# Licenses for MDN content",
+          "url": "https://raw.githubusercontent.com/mdn/content/ac295ae8d3435f587b5233a9fe46bb55d92c1a5d/LICENSE.md"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 2919,
+        "license_statement_excerpts": [],
+        "path": "README.md",
+        "sha256": "sha256:1a30428bc6e27ee4dbf928e8426a567bafebf9ef186fe02fedced017d849ee60",
+        "url": "https://raw.githubusercontent.com/mdn/content/ac295ae8d3435f587b5233a9fe46bb55d92c1a5d/README.md"
+      },
+      "repository": "mdn/content",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "mdn-content"
+    },
+    {
+      "caveats": [
+        "LICENSE: also contains/mentions ['GPL-family']",
+        "Doc/license.rst: also contains/mentions ['Apache-2.0', 'BSD-3-Clause', 'GPL-family', 'MIT']",
+        "multiple license files: scope (OR / per-directory / docs vs code) must be read by a human"
+      ],
+      "commit": "ab01d184746b3ea383f69317c16fc726d885c968",
+      "commit_origin": "resolved_head_at_retrieval",
+      "detected_licenses": [
+        "PSF-2.0"
+      ],
+      "errors": [],
+      "file_level_license_uniformity": "UNKNOWN",
+      "gitmodules_present": false,
+      "license_files": [
+        {
+          "also_mentions": [
+            "GPL-family"
+          ],
+          "bytes": 13804,
+          "detected": "PSF-2.0",
+          "matched_phrases": [
+            "python software foundation license version 2"
+          ],
+          "path": "LICENSE",
+          "sha256": "sha256:b0e25a78cffb43f4d92de8b61ccfa1f1f98ecbc22330b54b5251e7b6ba010231",
+          "statement_excerpts": [
+            "Python software and documentation are licensed under the",
+            "the documentation are dual licensed under the PSF License Version 2"
+          ],
+          "title_line": "A. HISTORY OF THE SOFTWARE",
+          "url": "https://raw.githubusercontent.com/python/cpython/ab01d184746b3ea383f69317c16fc726d885c968/LICENSE"
+        },
+        {
+          "also_mentions": [
+            "Apache-2.0",
+            "BSD-3-Clause",
+            "GPL-family",
+            "MIT"
+          ],
+          "bytes": 62002,
+          "detected": "PSF-2.0",
+          "matched_phrases": [
+            "python software foundation license version 2"
+          ],
+          "path": "Doc/license.rst",
+          "sha256": "sha256:98fc7a7b57de66d782629477d7b94e0c12a1f9b655ada36168b641268fa4152d",
+          "statement_excerpts": [
+            "Python software and documentation are licensed under the",
+            "the documentation are dual licensed under the PSF License Version 2",
+            "err... reserved and offered to the public under the terms of the"
+          ],
+          "title_line": ".. highlight:: none",
+          "url": "https://raw.githubusercontent.com/python/cpython/ab01d184746b3ea383f69317c16fc726d885c968/Doc/license.rst"
+        }
+      ],
+      "not_found_paths": [
+        "LICENSE.md",
+        "LICENSE.txt",
+        "LICENCE",
+        "COPYING",
+        "COPYING.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "UNLICENSE",
+        "LICENSE-CODE",
+        "LICENSE-DOCS",
+        "license.txt",
+        "README.md",
+        "NOTICE",
+        "NOTICE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "ThirdPartyNotices.txt",
+        ".gitmodules"
+      ],
+      "notice_files": [],
+      "readme": {
+        "bytes": 8912,
+        "license_statement_excerpts": [],
+        "path": "README.rst",
+        "sha256": "sha256:10e00b4e0bbd30b7eef0c65f492347e8d976ef8cbdfc85635492a840ff4ccf8f",
+        "url": "https://raw.githubusercontent.com/python/cpython/ab01d184746b3ea383f69317c16fc726d885c968/README.rst"
+      },
+      "repository": "python/cpython",
+      "repository_license_verified": true,
+      "retrieval_status": "OK",
+      "source_id": "python-docs-cpython-doc"
+    }
+  ]
+}

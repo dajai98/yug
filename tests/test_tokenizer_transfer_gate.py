@@ -6,7 +6,7 @@ import pytest
 
 @pytest.fixture
 def probe():
-    path = Path(__file__).resolve().parents[1] / 'artifacts/tokenizer_transfer_gate_v1/probe.py'
+    path = Path(__file__).resolve().parents[1] / 'tests/fixtures/phase1/transfer_probe.py'
     spec = importlib.util.spec_from_file_location('transfer_probe', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -34,5 +34,5 @@ def test_transfer_rejects_modified_payload_before_encoding(probe, tmp_path, monk
     (tmp_path / 'manifest.json').write_text(json.dumps({'documents_sha256': 'incorrect'}))
     (tmp_path / 'documents.jsonl').write_text('{}\n')
     with pytest.raises(AssertionError):
-        probe.evaluate('must-not-exist.json')
+        probe.verify_payload()
     assert not (tmp_path / 'must-not-exist.json').exists()

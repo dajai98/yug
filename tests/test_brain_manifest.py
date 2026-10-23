@@ -11,8 +11,7 @@ from yug.brain.manifest import ModelManifest, get_manifest, load_manifests
 
 # Resolved from the imported package's own location rather than a
 # filesystem path relative to this test file. The top-level test tree
-# (tests/) and the source tree (SOURCE/yug/) are not siblings in this
-# repo's layout, so a Path(__file__)-relative guess is layout-fragile;
+# and source tree can differ in installed distributions;
 # going through the package's __file__ is correct under any layout,
 # including an installed distribution.
 _SHIPPED_MANIFEST_PATH = Path(_brain_pkg.__file__).parent / "model_zoo" / "manifests.json"

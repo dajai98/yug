@@ -205,3 +205,28 @@ def test_cli_flags(inputs, monkeypatch, capsys):
     assert evidence.main() == 0
     monkeypatch.setattr(sys, 'argv', base+['--resume'])
     assert evidence.main() == 0
+
+
+def test_new_source_without_approved_registry_entry_stays_review(inputs):
+    directory = next(inputs['cache'].iterdir())
+    request = json.loads((directory/'request.json').read_bytes())
+    source = dict(request['source'], source_id='new-source', split_group='new-source',
+                  locator='https://github.com/example/new-source', target_cap_tokens=0)
+    request = seal(dict(request, source=source))
+    (directory/'request.json').write_bytes(canonical(request))
+    def change(rows, directory):
+        for row in rows:
+            row.update(source_id=source['source_id'], locator=source['locator'])
+    rewrite_rows(inputs, change)
+    done = json.loads((directory/'complete.json').read_bytes())
+    (directory/'complete.json').write_bytes(canonical(seal(dict(done, request_identity=request['identity']))))
+    base = json.loads(inputs['root_registry'].read_bytes())
+    path = inputs['root']/'discovered.json'
+    path.write_bytes(canonical(seal(dict(base, sources=[source]))))
+    args = dict(inputs, root_registry=path)
+    result = evidence.build(**args)
+    assert result['counts'] == {'EVIDENCED': 0, 'EXCLUDED': 1, 'REVIEW': 2}
+    out = inputs['root']/'new-admission'
+    admitted = admit(**dict(args, output=out), evidence=inputs['output'])
+    assert admitted['counts'] == {'CLEARED': 0, 'EXCLUDED': 1, 'REVIEW': 2}
+    assert admitted['newly_authorized_files'] == 0
