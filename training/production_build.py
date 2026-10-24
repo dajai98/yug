@@ -153,7 +153,9 @@ def execute(args):
             current=build.db.execute("SELECT coalesce(sum(tokens),0) FROM totals WHERE kind='category'").fetchone()[0]
             need(args.target_tokens>=current,'Target is below already committed tokens; accounting cannot be rolled back')
             if args.dry_run:
-                result=build.dry_run(plan);atomic_json(directory/'runner/progress.json',seal(result));return 0
+                result=build.dry_run(plan)
+                build.authorize_use(getattr(args,'intended_use','production_preparation'),getattr(args,'decision_receipts',None))
+                atomic_json(directory/'runner/progress.json',seal(result));return 0
             # Conservative estimate, not an OS reservation or a guarantee for all source distributions.
             pending_bytes=sum(json.loads(r[0])['bytes'] for r in build.db.execute("SELECT record FROM items WHERE stage='PENDING'")) if build.get('plan_registered') else inventory['raw_bytes']
             pending_count=build.db.execute("SELECT count(*) FROM items WHERE stage='PENDING'").fetchone()[0] if build.get('plan_registered') else inventory['scheduled']
@@ -162,7 +164,8 @@ def execute(args):
             retry=0
             while True:
                 disk_preflight(directory,reserve)
-                try:progress=build.run(plan,tokenizer,fetch=fetch,max_items=args.chunk_items,target_tokens=args.target_tokens)
+                try:progress=build.run(plan,tokenizer,fetch=fetch,max_items=args.chunk_items,target_tokens=args.target_tokens,
+                                      intended_use=getattr(args,'intended_use','production_preparation'),decision_receipts=getattr(args,'decision_receipts',None))
                 except (urllib.error.URLError,TimeoutError,ConnectionError):
                     retry+=1
                     if retry>2:raise
@@ -177,7 +180,8 @@ def execute(args):
             for row in build.db.execute('SELECT item,stage,reason,normalized_sha,token_sha,token_count FROM items ORDER BY item'):
                 ledger.update(canonical(list(row))+b'\n')
             destination=directory/'exports'/f'tokens-{total}-{ledger.hexdigest()[:16]}'
-            shards=build.export_shards(destination)
+            shards=build.export_shards(destination,intended_use=getattr(args,'intended_use','production_preparation'),
+                                       decision_receipts=getattr(args,'decision_receipts',None))
             result.update(export_directory=str(destination),shard_manifest_identity=shards['manifest_identity'],
                           target_satisfied=total>=args.target_tokens,inventory_exhausted=progress['state']=='COMPLETE' and total<args.target_tokens)
             atomic_json(directory/'runner/progress.json',seal(result))
@@ -191,6 +195,8 @@ def main():
     p.add_argument('--plan',type=Path);p.add_argument('--directory',default=str(ROOT/'artifacts/autonomous_production_v1'))
     p.add_argument('--references',default=str(ROOT/'artifacts/acquisition_readiness_gate_v1/heldout_references.jsonl'))
     p.add_argument('--prior-production',type=Path,help='Required for admission: sealed yug-prior-production-v1 complete inventory of prior state.sqlite paths and SHA256 hashes; explicit genesis=true with builds=[] only for an authorized first build')
+    p.add_argument('--intended-use',choices=('production_preparation','evaluation','commercial_training'),default='production_preparation',help='Preparation never implies training permission')
+    p.add_argument('--decision-receipts',type=Path,help='Sealed corpus decision bundle required for evaluation/training use')
     p.add_argument('--tokenizer',default=str(ROOT/'training/resources/phase1/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json'))
     p.add_argument('--target-tokens',type=int,required=True);p.add_argument('--resume',action='store_true');p.add_argument('--dry-run',action='store_true')
     p.add_argument('--chunk-items',type=int,default=50);p.add_argument('--reserve-mib',type=int,default=512);p.add_argument('--request-interval',type=float,default=.25)

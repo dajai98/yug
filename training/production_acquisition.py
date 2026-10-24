@@ -21,7 +21,8 @@ from training.production_corpus import (canonical, identity, file_digest, atomic
 from training.corpus_prep import normalize_text, check_quality, QualityConfig
 from training.experiments.representative_mini_corpus import normalize_structured_text
 from training.production_dedup import DedupIndex, POLICY
-from training.token_shards import _writer_lock, _pack, build_token_shards, TokenShardStream
+from training.token_shards import _writer_lock, _pack, build_token_shards, TokenShardStream, DEFAULT_SHARD_TOKENS
+from training import content_screening
 
 MAX_ITEM_BYTES=POLICY['max_document_bytes']
 
@@ -108,7 +109,7 @@ class ProductionBuild:
         if old is not None:need(old==request,'Incompatible production build resume')
         else:self.put('request',request);self.put('state','PARTIAL');self.db.commit()
         self.dedup=DedupIndex(self.db)
-        for name in ('raw','normalized','tokens','clearances','quarantine'):(self.directory/name).mkdir(exist_ok=True)
+        for name in ('raw','normalized','tokens','clearances','quarantine','screening'):(self.directory/name).mkdir(exist_ok=True)
 
     def close(self):self.db.close()
     def __enter__(self):return self
@@ -254,7 +255,10 @@ class ProductionBuild:
             need(item_key(record)==item,'Item key corrupt');verify_seal(record)
             need(json.loads(self.path('clearances',item,'.json').read_bytes())==record,'Clearance changed')
             if stage!='PENDING':need(file_digest(self.path('raw',item))==record['sha256'],'Committed raw payload corrupt')
+            if stage in ('PREPARED','ACCEPTED','DUPLICATE','QUOTA_REJECTED'):
+                need(isinstance(nsha,str) and nsha,'Missing normalized eligibility identity')
             if nsha:need(file_digest(self.path('normalized',item))==nsha,'Committed normalized payload corrupt')
+            if nsha:self._verify_screening(item,record)
             if tsha:
                 need(file_digest(self.path('tokens',item,'.bin'))==tsha,'Committed tokens corrupt')
                 need(self.path('tokens',item,'.bin').stat().st_size==count*4,'Committed token size corrupt')
@@ -268,6 +272,30 @@ class ProductionBuild:
                 self.db.execute('INSERT INTO expected_totals VALUES (?,?,?) ON CONFLICT(kind,key) DO UPDATE SET tokens=tokens+excluded.tokens',(kind,key,count))
         need(self.db.execute('SELECT * FROM totals EXCEPT SELECT * FROM expected_totals').fetchone() is None and self.db.execute('SELECT * FROM expected_totals EXCEPT SELECT * FROM totals').fetchone() is None,'Committed accounting totals corrupt')
         self.db.commit()
+
+    def _verify_screening(self,item,record):
+        # Recompute rather than trusting a resealable local result. Bound reads,
+        # sanitized errors: scanner exceptions must never leak matched content.
+        try:
+            path=self.path('screening',item,'.json')
+            need(path.stat().st_size<=1024*1024,'Oversized screening evidence')
+            raw_path=self.path('raw',item);normal_path=self.path('normalized',item)
+            need(raw_path.stat().st_size<=MAX_ITEM_BYTES and normal_path.stat().st_size<=MAX_ITEM_BYTES,'Screening input bound')
+            raw=raw_path.read_bytes();normalized=normal_path.read_bytes().decode('utf-8')
+            need(digest(raw)==record['sha256'],'Screening raw mismatch')
+            decoded=raw.decode('utf-8-sig')
+            expected=normalize_structured_text(decoded) if record['content_type'] in ('code','markdown') else normalize_text(decoded)
+            need(normalized==expected,'Screening normalization mismatch')
+            return content_screening.verify_result(json.loads(path.read_bytes()),raw,normalized,item)
+        except Exception:
+            raise ValueError('Screening verification failed; eligibility withheld') from None
+
+    def _screening_identity(self):
+        sha=hashlib.sha256()
+        for item,encoded in self.db.execute("SELECT item,record FROM items WHERE stage='ACCEPTED' ORDER BY item"):
+            sha.update(canonical([item,self._verify_screening(item,json.loads(encoded))])+b'\n')
+        return dict(policy=content_screening.POLICY,detector=content_screening.DETECTOR,
+                    results_sha256='sha256:'+sha.hexdigest())
 
     def _acquire(self,item,record,fetch):
         final=self.path('raw',item);temp=final.with_suffix('.part')
@@ -300,6 +328,16 @@ class ProductionBuild:
         if '\x00' in text:return 'binary',None
         if any(marker.casefold() in text[:4096].casefold() for marker in self.spec['filters']['generated_markers']):return 'generated',None
         normalized=normalize_structured_text(text) if record['content_type'] in ('code','markdown') else normalize_text(text)
+        try:
+            screening=content_screening.screen(raw,normalized,item)
+            path=self.path('screening',item,'.json')
+            if path.exists():
+                need(path.stat().st_size<=1024*1024,'Oversized screening evidence')
+                need(json.loads(path.read_bytes())==screening,'Existing screening evidence differs')
+            else:atomic_json(path,screening)
+        except Exception:
+            raise ValueError('Screening failed; eligibility withheld') from None
+        if screening['outcome']!='ACCEPT':return 'screening_'+screening['outcome'],None
         reason=check_quality(normalized,QualityConfig())
         if reason:return reason.value,None
         data=normalized.encode('utf-8');out=self.path('normalized',item);temp=out.with_suffix('.part')
@@ -339,6 +377,7 @@ class ProductionBuild:
         return limits
 
     def _account(self,item,record,count):
+        self._verify_screening(item,record)
         limits=self._limits(record)
         for kind,key,limit in limits:
             current=self.db.execute('SELECT tokens FROM totals WHERE kind=? AND key=?',(kind,key)).fetchone()
@@ -368,7 +407,28 @@ class ProductionBuild:
                 self.db.rollback()
                 raise
 
-    def run(self,plan,tokenizer,*,fetch=None,max_items=None,target_tokens=None):
+    def authorize_use(self,intended_use,decision_receipts,*,accepted_only=False):
+        from training.corpus_gate import load_receipts, verify_receipt
+        need(intended_use in ('production_preparation','evaluation','commercial_training'), 'Unsupported production intended use')
+        if intended_use=='production_preparation' and decision_receipts is None:
+            need(self.get('use_authorization') is None,'Bound use authorization required on resume')
+            return None  # Legacy preparation only; never a training grant.
+        need(not self.diagnostic,'Diagnostic builds cannot authorize production use')
+        bundle,receipts=load_receipts(decision_receipts)
+        request=dict(intended_use=intended_use,decision_bundle=bundle)
+        old=self.get('use_authorization')
+        need(old is None or old==request,'Use authorization changed on resume')
+        query="SELECT record FROM items"+(" WHERE stage='ACCEPTED'" if accepted_only else '')+" ORDER BY item"
+        for (encoded,) in self.db.execute(query):
+            r=json.loads(encoded)
+            validate_clearance(r,self.sources[r['source_id']],self.spec,self.root)
+            # A training-corpus export also carries validation; authorize its use separately.
+            use='evaluation' if intended_use=='commercial_training' and r['split']=='validation' else intended_use
+            verify_receipt(receipts.get(r['identity']),r,self.sources[r['source_id']],self.spec,self.root,use)
+        return request
+
+    def run(self,plan,tokenizer,*,fetch=None,max_items=None,target_tokens=None,
+            intended_use='production_preparation',decision_receipts=None):
         need(target_tokens is None or (type(target_tokens) is int and 0<target_tokens<=sum(QUOTAS.values())),'Invalid target token ceiling')
         need(max_items is None or (type(max_items) is int and max_items>0),'max_items must be a positive integer or None')
         need(tokenizer.identity==TOKENIZER and tokenizer.vocab_size==4096,'Frozen tokenizer mismatch')
@@ -376,6 +436,9 @@ class ProductionBuild:
             try:
                 self.register_prior_production()
                 self.register_references();self.register(plan);self.verify();done=0
+                authorization=self.authorize_use(intended_use,decision_receipts)
+                if authorization is not None:
+                    self.put('use_authorization',authorization);self.db.commit()
                 for item,encoded,stage in self.db.execute("SELECT item,record,stage FROM items WHERE stage IN ('PENDING','ACQUIRED') ORDER BY item"):
                     if max_items is not None and done>=max_items:return self.checkpoint('PARTIAL')
                     record=json.loads(encoded)
@@ -444,37 +507,97 @@ class ProductionBuild:
         if state!='FAILED':self.put('last_error',None)
         self.db.commit();report=self.progress(state);atomic_json(self.directory/'progress.json',report);return report
 
-    def export_shards(self,output_directory=None):
-        try:return self._export_shards(output_directory)
+    def export_shards(self,output_directory=None,*,intended_use='production_preparation',decision_receipts=None):
+        try:return self._export_shards(output_directory,intended_use=intended_use,decision_receipts=decision_receipts)
         except Exception as exc:
             self.db.rollback();self.put('last_error',type(exc).__name__+': '+str(exc));self.db.commit();self.checkpoint('FAILED');raise
 
-    def _export_shards(self,output_directory=None):
+    def _export_shards(self,output_directory=None,*,intended_use='production_preparation',decision_receipts=None):
         destination=Path(output_directory).resolve() if output_directory is not None else self.directory
         need(destination.is_relative_to(self.directory),'Export must stay inside build directory')
         destination.mkdir(parents=True,exist_ok=True)
         need(self.get('state') in ('COMPLETE','TARGET_REACHED','TARGET_BOUNDARY') and self.get('dedup_settled'),'Build not complete')
         with _writer_lock(self.directory/'coordinator'):
             self.verify()
-            accepted=destination/'admission.jsonl'
-            temp=accepted.with_suffix('.part')
-            with temp.open('wb') as out:
+            authorization=self.authorize_use(intended_use,decision_receipts,accepted_only=True)
+            if (destination/'prepared.json').exists():
+                previous=json.loads((destination/'prepared.json').read_bytes())
+                need(previous.get('use_authorization')==authorization,
+                     'Export use differs; choose a new destination, never rewrite historical evidence')
+            # Calculate the candidate before touching any existing export bytes.
+            # Iterate twice to retain bounded memory without an export-side temp file.
+            def admission_rows():
                 for item,record,stage,reason,nsha,tsha,count in self.db.execute('SELECT item,record,stage,reason,normalized_sha,token_sha,token_count FROM items ORDER BY item'):
-                    out.write(canonical(dict(item=item,clearance=json.loads(record),stage=stage,reason=reason,normalized_sha256=nsha,token_sha256=tsha,tokens=count))+b'\n')
-                out.flush();os.fsync(out.fileno())
-            atomic_replace(temp,accepted)
+                    yield canonical(dict(item=item,clearance=json.loads(record),stage=stage,reason=reason,normalized_sha256=nsha,token_sha256=tsha,tokens=count))+b'\n'
+            admission_digest=hashlib.sha256()
+            for row in admission_rows():admission_digest.update(row)
+            admission_hash='sha256:'+admission_digest.hexdigest()
+            accepted=destination/'admission.jsonl'
             counts={split:self.db.execute("SELECT count(*) FROM items WHERE stage='ACCEPTED' AND split=?",(split,)).fetchone()[0] for split in ('train','validation')}
-            split_id=identity(dict(plan=self.get('plan_identity'),rule='source-group-v1-validation-priority-clusters',admission_hash=file_digest(accepted)))
+            split_id=identity(dict(plan=self.get('plan_identity'),rule='source-group-v1-validation-priority-clusters',admission_hash=admission_hash))
             manifest=dict(schema_version='yug-admitted-production-v1',tokenizer_identity=TOKENIZER,split_identity=split_id,
                 spec_identity=self.spec['identity'],registry_identity=self.registry['identity'],plan_identity=self.get('plan_identity'),diagnostic=self.diagnostic,reference_identity=self.get('request')['reference_identity'],
-                dedup_policy=POLICY,admission_sha256=file_digest(accepted),counts=counts)
+                dedup_policy=POLICY,admission_sha256=admission_hash,counts=counts)
+            if authorization is not None:manifest['use_authorization']=authorization
+            manifest['screening']=self._screening_identity()
             manifest['prepared_corpus_identity']=identity(manifest)
+            existing=[destination/'prepared.json',accepted,destination/'shards',
+                      accepted.with_suffix('.part'),destination/'prepared.json.tmp']
+            if any(p.exists() for p in existing):
+                # Completed exports are immutable. Incomplete or incompatible
+                # publication requires a fresh destination, never in-place repair.
+                need(all(p.exists() for p in existing[:3]) and not any(p.exists() for p in existing[3:]),
+                     'Incomplete export; choose a fresh destination')
+                need(canonical(json.loads(existing[0].read_bytes()))==canonical(manifest),
+                     'Incompatible prepared manifest; choose a fresh destination')
+                need(file_digest(accepted)==admission_hash,'Incompatible admission export')
+                result=None
+                for split in ('train','validation'):
+                    stream=TokenShardStream(destination/'shards',split=split,tokenizer_identity=TOKENIZER,
+                                            prepared_corpus_identity=manifest['prepared_corpus_identity'])
+                    result=stream.manifest
+                    need(canonical(result.get('prepared_manifest'))==canonical(manifest),
+                         'Embedded prepared manifest mismatch')
+                request_keys=('schema_version','prepared_corpus_identity','tokenizer_identity','vocab_size',
+                              'split_identity','shard_tokens','token_dtype','endianness','tokenization_semantics')
+                need(result['vocab_size']==4096 and result['shard_tokens']==DEFAULT_SHARD_TOKENS,
+                     'Incompatible export token configuration')
+                need(json.loads((destination/'shards/request.json').read_bytes())=={k:result[k] for k in request_keys},
+                     'Incompatible resume request')
+                return result
+            temp=accepted.with_suffix('.part')
+            with temp.open('wb') as out:
+                for row in admission_rows():out.write(row)
+                out.flush();os.fsync(out.fileno())
+            atomic_replace(temp,accepted)
             atomic_json(destination/'prepared.json',manifest)
             prepared=_Prepared(self,manifest);cache=_TokenCache(self)
             result=build_token_shards(prepared,cache,destination/'shards')
             for split in ('train','validation'):
                 TokenShardStream(destination/'shards',split=split,tokenizer_identity=TOKENIZER,prepared_corpus_identity=prepared.identity)
             return result
+
+    def replay_for_use(self,output_directory,*,split,intended_use,decision_receipts):
+        """Authorized production consumer boundary; generic shard decoding is not approval."""
+        destination=Path(output_directory).resolve()
+        need(destination.is_relative_to(self.directory),'Replay must stay inside build directory')
+        need(intended_use in ('commercial_training','evaluation'),'Explicit consumer use required')
+        need(split=='validation' or intended_use=='commercial_training','Evaluation cannot consume training split')
+        with _writer_lock(self.directory/'coordinator'):
+            self.verify()
+            authorization=self.authorize_use(intended_use,decision_receipts,accepted_only=True)
+            prepared=json.loads((destination/'prepared.json').read_bytes())
+            body=dict(prepared)
+            prepared_identity=body.pop('prepared_corpus_identity',None)
+            need(prepared_identity==identity(body),'Local prepared manifest identity mismatch')
+            need(prepared.get('use_authorization')==authorization,'Export not authorized for requested use')
+            need(prepared.get('admission_sha256')==file_digest(destination/'admission.jsonl'),'Admission export corrupt')
+            need(prepared.get('screening')==self._screening_identity(),'Export screening evidence missing/stale')
+            stream=TokenShardStream(destination/'shards',split=split,tokenizer_identity=TOKENIZER,
+                                    prepared_corpus_identity=prepared_identity)
+            need(canonical(prepared)==canonical(stream.manifest.get('prepared_manifest')),
+                 'Local and shard-embedded prepared manifests disagree')
+            return stream
 
 class _Prepared:
     def __init__(self,build,manifest):
