@@ -128,6 +128,7 @@ def retained_heldout_inventory(root=ROOT):
     Output is exclusion evidence, never source clearance or training admission.
     """
     from training.production_acquisition import read_plan, digest
+    from training.protected_references import make_reference, validate_records
     sources=[('artifacts/tokenizer_fit_sample_gate_v1/validation.jsonl','fit_validation'),
              ('artifacts/tokenizer_transfer_gate_v1/documents.jsonl','transfer_evaluation')]
     records=[];inputs=[]
@@ -145,9 +146,16 @@ def retained_heldout_inventory(root=ROOT):
                 source_path=row['path'];rid=row['id'];language=''
                 content_type='markdown' if Path(source_path).suffix.lower() in ('.md','.rst','.txt') else 'code'
             if Path(source_path).suffix.lower()=='.py':language='python'
-            records.append(dict(reference_id=kind+':'+rid,text=text,content_type=content_type,language=language,
-                provenance=dict(artifact=relative,artifact_sha256=sha,original={k:v for k,v in row.items() if k!='text'})))
-    return records,inputs
+            origin=row.get('provenance',row)
+            work=origin.get('source') or row.get('source_id') or row.get('repo') or kind
+            version=origin.get('revision') or row.get('commit') or sha
+            records.append(make_reference(work_id=work,work_version=version,item_id=rid,
+                reference_id=kind+':'+rid,role='reference',
+                protected_split='validation' if kind=='fit_validation' else 'evaluation',
+                text=text,content_type=content_type,language=language or 'und',
+                provenance=dict(artifact=relative,artifact_sha256=sha,
+                                original={k:v for k,v in row.items() if k!='text'})))
+    return list(validate_records(records)),inputs
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--output',type=Path,required=True);args=p.parse_args()

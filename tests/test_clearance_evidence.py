@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from tests.test_source_admission import inputs
+from tests.test_production_acquisition import fixture_reference
 from training import clearance_evidence as evidence
 from training.production_acquisition import read_plan
 from training.production_corpus import canonical, file_digest
@@ -168,7 +169,8 @@ def test_evidence_cannot_promote_ungranted_file(inputs):
 def test_holdout_source_exclusion(inputs):
     records = list(read_plan(inputs['approved_plan']))
     inputs['approved_plan'].write_bytes(canonical(records[1])+b'\n')
-    inputs['references'].write_bytes(canonical(dict(provenance={'source_id': records[0]['source_id']}))+b'\n')
+    inputs['references'].write_bytes(canonical(fixture_reference('Synthetic held-out source record.',
+        provenance={'source_id':records[0]['source_id']}))+b'\n')
     assert evidence.build(**inputs)['counts'] == {'EVIDENCED': 0, 'EXCLUDED': 3, 'REVIEW': 0}
 
 
@@ -230,3 +232,72 @@ def test_new_source_without_approved_registry_entry_stays_review(inputs):
     admitted = admit(**dict(args, output=out), evidence=inputs['output'])
     assert admitted['counts'] == {'CLEARED': 0, 'EXCLUDED': 1, 'REVIEW': 2}
     assert admitted['newly_authorized_files'] == 0
+
+
+def review_only_inputs(inputs):
+    """A prepared discovery catalog with a stale, immutable grant snapshot."""
+    policy = inputs['root']/'policy.py'
+    policy.write_bytes(b'current verified policy\n')
+    current = json.loads(inputs['root_spec'].read_bytes())
+    current['evidence'].append(dict(path='policy.py', sha256=file_digest(policy)))
+    inputs['root_spec'].write_bytes(canonical(seal(current)))
+    historical = dict(current)
+    historical['evidence'] = [dict(entry, sha256='sha256:'+'0'*64)
+                              if entry['path'] == 'policy.py' else entry
+                              for entry in current['evidence']]
+    inputs['approved_spec'] = inputs['root']/'historical_spec.json'
+    inputs['approved_spec'].write_bytes(canonical(seal(historical)))
+    catalog = inputs['root']/'discovery_catalog.json'
+    catalog.write_bytes(inputs['root_registry'].read_bytes())
+    directory = next(p for p in inputs['cache'].iterdir() if p.is_dir())
+    request = json.loads((directory/'request.json').read_bytes())
+    status = seal(dict(policy='local-source-review-cache-v1', dry_run=False,
+                       registry_identity=json.loads(catalog.read_bytes())['identity'],
+                       spec_identity=json.loads(inputs['root_spec'].read_bytes())['identity'],
+                       sources=[dict(source_id=request['source']['source_id'], status='CACHED',
+                                     result=dict(request_identity=request['identity']))]))
+    (inputs['cache']/'status.json').write_bytes(canonical(status))
+    return dict(inputs, cache_registry=catalog, review_only=True), policy
+
+
+def test_review_only_uses_current_evidence_without_rewriting_history(inputs):
+    args, _ = review_only_inputs(inputs)
+    historical = {key: file_digest(inputs[key]) for key in
+                  ('approved_registry', 'approved_spec', 'approved_plan')}
+    with pytest.raises(SpecificationError, match='Changed evidence: policy.py'):
+        evidence.build(**inputs, dry_run=True)
+    result = evidence.build(**args, dry_run=True)
+    assert result['complete'] and result['counts']['EVIDENCED'] == 0
+    assert not inputs['output'].exists()
+    assert historical == {key: file_digest(inputs[key]) for key in historical}
+
+
+def test_review_only_genuinely_changed_current_evidence_fails(inputs):
+    args, policy = review_only_inputs(inputs)
+    policy.write_bytes(b'changed policy\n')
+    with pytest.raises(SpecificationError, match='Changed evidence: policy.py'):
+        evidence.build(**args, dry_run=True)
+
+
+@pytest.mark.parametrize('damage', ['catalog', 'spec', 'status', 'receipt'])
+def test_review_only_cache_catalog_spec_binding_fails_closed(inputs, damage):
+    args, _ = review_only_inputs(inputs)
+    directory = next(p for p in inputs['cache'].iterdir() if p.is_dir())
+    if damage == 'catalog':
+        catalog = json.loads(args['cache_registry'].read_bytes())
+        catalog['sources'][0]['revision'] = 'a'*40
+        args['cache_registry'].write_bytes(canonical(seal(catalog)))
+    elif damage == 'spec':
+        spec = json.loads(inputs['root_spec'].read_bytes())
+        spec['filters']['manual_quality'].append('changed')
+        inputs['root_spec'].write_bytes(canonical(seal(spec)))
+    elif damage == 'status':
+        status = json.loads((inputs['cache']/'status.json').read_bytes())
+        status['registry_identity'] = 'sha256:'+'0'*64
+        (inputs['cache']/'status.json').write_bytes(canonical(seal(status)))
+    else:
+        receipt = json.loads((directory/'complete.json').read_bytes())
+        receipt['request_identity'] = 'sha256:'+'0'*64
+        (directory/'complete.json').write_bytes(canonical(seal(receipt)))
+    with pytest.raises(SpecificationError):
+        evidence.build(**args, dry_run=True)

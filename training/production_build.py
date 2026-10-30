@@ -79,7 +79,7 @@ def compile_inventory(spec,registry,root,directory,plan=None):
                     from training.conditional_license import CONDITIONAL
                     if f.get('license_id') not in SAFE_LICENSES | CONDITIONAL.keys():skip(sid,f['path'],'unsupported/ambiguous per-file license');continue
                     owner=f['owner'];category=next(c for c in spec['categories'] if c['id']==owner)
-                    sub=f.get('subcategory',source['subcategory'])
+                    sub=f.get('subcategory')
                     if sub not in category['subcategories']:skip(sid,f['path'],'subcategory needs approved routing');continue
                     from training.production_spec import path_allowed
                     rules=[rule for rule in source['allow_paths'] if path_allowed(f['path'],[rule],source['deny_paths'])]
@@ -88,7 +88,10 @@ def compile_inventory(spec,registry,root,directory,plan=None):
                            content_type=f['content_type'],license_id=f['license_id'],clearance_status='ACCEPT',quality_review='ACCEPT',
                            subcategory=sub,split=source['split'],split_group=source['split_group'],split_unit_kind='source',
                            allow_rule=rules[0],deny_rules_checked=source['deny_paths'],language=f.get('language',sub),
-                           license_evidence=f.get('license_evidence',grant['evidence']),attribution=grant['attribution'])
+                           license_evidence=f.get('license_evidence',grant['evidence']),attribution=grant['attribution'],
+                           source_clearance_identity=grant['identity'])
+                    r['ownership_decision']=f.get('ownership_decision')
+                    if 'tags' in f:r['tags']=f['tags']
                     for key in ('input_path','three_d_topic','three_d_form','conditional_approval_identity'):
                         if key in f:r[key]=f[key]
                     accept(seal(r))
@@ -143,13 +146,33 @@ def execute(args):
     need(0<args.target_tokens<=sum(QUOTAS.values()),'Target must be between 1 and 2,000,000,000')
     need(args.chunk_items>0 and args.reserve_mib>=0 and args.request_interval>=0,'Invalid resource limits')
     need(args.resume or not (directory/'state.sqlite').exists(),'Existing build: use --resume')
+    approved_plan=getattr(args,'approved_plan_sha256',None)
+    need(args.dry_run or approved_plan is not None,
+         'Production admission requires --approved-plan-sha256 from the external approval record')
+    approval_path=getattr(args,'ownership_approval',None)
+    approval_sha=getattr(args,'approved_ownership_approval_sha256',None)
+    need(args.dry_run or (approval_path is not None and approval_sha is not None),
+         'Production admission requires externally pinned ownership approval artifact')
     with _writer_lock(directory/'runner'):
         plan,inventory=compile_inventory(spec,registry,root,directory/'runner',args.plan)
+        need(approved_plan is None or approved_plan==inventory['plan_sha256'],
+             'Compiled plan differs from external approved plan SHA256')
         need(inventory['scheduled']>0,'No cleared files scheduled. See runner/unresolved.jsonl; no licensing guesses or downloads were made.')
         tokenizer=ByteLevelBpeTokenizer.load(args.tokenizer);need(tokenizer.identity==TOKENIZER,'Frozen tokenizer mismatch')
         fetch=Fetcher(root,registry,args.request_interval)
         with ProductionBuild(directory,spec,registry,repository_root=root,reference_plan=args.references,
-                             prior_production=args.prior_production) as build:
+                             prior_production=args.prior_production,
+                             diagnostic=args.dry_run and approval_path is None,
+                             expected_plan_sha256=approved_plan or inventory['plan_sha256'],
+                             ownership_approval=approval_path,
+                             expected_ownership_approval_sha256=approval_sha,
+                             corpus_ledger=getattr(args,'corpus_ledger',None),
+                             expected_corpus_head=getattr(args,'approved_corpus_head',None),
+                             approved_historical_import_identity=getattr(args,'approved_historical_import_identity',None),
+                             approved_historical_manifest_identity=getattr(args,'approved_historical_manifest_identity',None),
+                             approved_historical_manifest_sha256=getattr(args,'approved_historical_manifest_sha256',None),
+                             governance_log=getattr(args,'governance_log',None),
+                             expected_governance_sha256=getattr(args,'approved_governance_sha256',None)) as build:
             current=build.db.execute("SELECT coalesce(sum(tokens),0) FROM totals WHERE kind='category'").fetchone()[0]
             need(args.target_tokens>=current,'Target is below already committed tokens; accounting cannot be rolled back')
             if args.dry_run:
@@ -171,7 +194,7 @@ def execute(args):
                     if retry>2:raise
                     time.sleep(retry);continue
                 retry=0;total=progress['accepted_clean_train_tokens']
-                result=dict(progress,target_tokens=args.target_tokens,network_files_this_process=fetch.network_files,network_bytes_this_process=fetch.network_bytes,
+                result=dict(progress,target_tokens=args.target_tokens,corpus_commit_head=build.get('corpus_commit_head'),network_files_this_process=fetch.network_files,network_bytes_this_process=fetch.network_bytes,
                             note='All inventory payloads settle global dedup before accounting; token target is not a download-byte limit.')
                 atomic_json(directory/'runner/progress.json',seal(result))
                 print(json.dumps(dict(state=progress['state'],train_tokens=total,target=args.target_tokens,stages=progress['stages'])),flush=True)
@@ -193,8 +216,18 @@ def main():
     p.add_argument('--root',default=str(ROOT));p.add_argument('--spec',default=str(ROOT/'training/specifications/production_corpus_v1.json'))
     p.add_argument('--registry',default=str(ROOT/'training/specifications/source_registry_v1.json'))
     p.add_argument('--plan',type=Path);p.add_argument('--directory',default=str(ROOT/'artifacts/autonomous_production_v1'))
+    p.add_argument('--approved-plan-sha256',help='Externally approved SHA256 of compiled plan.jsonl; required for real acquisition and every resume')
+    p.add_argument('--ownership-approval',type=Path,help='External sealed ownership approval artifact authorizing the exact plan')
+    p.add_argument('--approved-ownership-approval-sha256',help='Externally approved SHA256 of the ownership approval artifact; required for real acquisition and every resume')
+    p.add_argument('--governance-log',type=Path,help='Externally controlled append-only approval-status history')
+    p.add_argument('--approved-governance-sha256',help='Current externally approved SHA256 of the complete governance log')
     p.add_argument('--references',default=str(ROOT/'artifacts/acquisition_readiness_gate_v1/heldout_references.jsonl'))
     p.add_argument('--prior-production',type=Path,help='Required for admission: sealed yug-prior-production-v1 complete inventory of prior state.sqlite paths and SHA256 hashes; explicit genesis=true with builds=[] only for an authorized first build')
+    p.add_argument('--corpus-ledger',type=Path,help='Shared persistent cumulative accounting ledger, outside any build directory')
+    p.add_argument('--approved-corpus-head',help='Externally trusted current corpus ledger head; genesis only for the first ledger-backed build')
+    p.add_argument('--approved-historical-import-identity',help='External approved identity of retained historical corpus import, required when ledger contains historical genesis')
+    p.add_argument('--approved-historical-manifest-identity',help='External approved canonical historical manifest identity')
+    p.add_argument('--approved-historical-manifest-sha256',help='External approved exact historical manifest file SHA256')
     p.add_argument('--intended-use',choices=('production_preparation','evaluation','commercial_training'),default='production_preparation',help='Preparation never implies training permission')
     p.add_argument('--decision-receipts',type=Path,help='Sealed corpus decision bundle required for evaluation/training use')
     p.add_argument('--tokenizer',default=str(ROOT/'training/resources/phase1/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json'))

@@ -7,7 +7,7 @@ from training.corpus_gate import SCHEMA, POLICY, BUNDLE, binding, verify_receipt
 from training.production_spec import seal, SpecificationError
 from training.production_corpus import canonical, file_digest
 from training.production_acquisition import ProductionBuild
-from tests.test_production_acquisition import Tokenizer, prior_inventory
+from tests.test_production_acquisition import Tokenizer, prior_inventory, approval_kwargs
 from tests.test_production_cross_batch import setup
 from tests.test_conditional_license import approved
 
@@ -82,7 +82,9 @@ def bundle(root,data,uses=None):
 
 def builder(root,data):
     return ProductionBuild(root/'build',data[0],data[1],repository_root=root,
-                           reference_plan=data[2],prior_production=prior_inventory(root))
+                           reference_plan=data[2],prior_production=prior_inventory(root),
+                           expected_plan_sha256=file_digest(data[3][0]),
+                           **approval_kwargs(root,file_digest(data[3][0])))
 
 
 def test_runner_missing_receipt_prevents_fetch_and_accounting(case):
@@ -118,6 +120,7 @@ def test_legacy_preparation_not_training_and_separate_export(case):
         with pytest.raises(SpecificationError):b.export_shards(root/'build/missing',intended_use='commercial_training')
         b.run(data[3][0],Tokenizer())  # Existing FAILED export state requires explicit replay recovery.
         p=bundle(root,data)
+        b.expected_governance_sha256=approval_kwargs(root,file_digest(data[3][0]))['expected_governance_sha256']
         with pytest.raises(SpecificationError,match='not authorized'):b.replay_for_use(root/'build/legacy',split='train',intended_use='commercial_training',decision_receipts=p)
         b.export_shards(root/'build/authorized',intended_use='commercial_training',decision_receipts=p)
         assert file_digest(root/'build/legacy/prepared.json')==original
@@ -139,6 +142,7 @@ def test_validation_requires_own_use(tmp_path):
         with pytest.raises(SpecificationError,match='not explicitly authorized'):
             b.run(data[3][0],Tokenizer(),intended_use='commercial_training',decision_receipts=p)
         p=bundle(tmp_path,data,['commercial_training','evaluation'])
+        b.expected_governance_sha256=approval_kwargs(tmp_path,file_digest(data[3][0]))['expected_governance_sha256']
         b.run(data[3][0],Tokenizer(),intended_use='commercial_training',decision_receipts=p)
 
 
@@ -189,10 +193,16 @@ def test_cli_runner_does_not_drop_use(case,monkeypatch,dry_run):
         (root/(name+'.json')).write_bytes(canonical(value))
     monkeypatch.setattr(runner.ByteLevelBpeTokenizer,'load',lambda _:Tokenizer())
     monkeypatch.setattr(runner.Fetcher,'__call__',lambda *args:pytest.fail('network'))
+    authority=approval_kwargs(root,file_digest(data[3][0]))
     args=SimpleNamespace(root=root,directory=root/'cli',spec=root/'spec.json',registry=root/'registry.json',
         target_tokens=100000,chunk_items=1,reserve_mib=0,request_interval=0,resume=False,
         plan=data[3][0],tokenizer='unused',references=data[2],prior_production=prior_inventory(root),
-        dry_run=dry_run,intended_use='commercial_training',decision_receipts=None)
+        dry_run=dry_run,intended_use='commercial_training',decision_receipts=None,
+        approved_plan_sha256=file_digest(data[3][0]),
+        ownership_approval=authority['ownership_approval'],
+        approved_ownership_approval_sha256=authority['expected_ownership_approval_sha256'],
+        governance_log=authority['governance_log'],
+        approved_governance_sha256=authority['expected_governance_sha256'])
     with pytest.raises(SpecificationError,match='receipts required'):runner.execute(args)
 
 

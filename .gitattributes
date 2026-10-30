@@ -3,6 +3,10 @@
 /tests/fixtures/phase1/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /docs/evidence/phase1/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 
+# Phase 3 discovery inputs are hash-bound; preserve their exact bytes on every checkout.
+/training/specifications/phase3_github_seeds_batch01.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/training/specifications/phase3_source_candidate_registry_v1.json -text
+
 # Specification evidence hashes cover exact source bytes. Pin checkout line endings.
 /training/production_corpus.py text eol=lf
 /training/token_shards.py text eol=lf

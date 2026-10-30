@@ -3,7 +3,7 @@ import copy
 import json
 from pathlib import Path
 import pytest
-from tests.test_production_acquisition import fixture_plan,Tokenizer,prior_inventory
+from tests.test_production_acquisition import fixture_plan,fixture_reference,Tokenizer,prior_inventory,approval_kwargs
 from training.production_spec import seal,SpecificationError
 from training.production_corpus import canonical,file_digest
 from training.source_admission import build
@@ -18,7 +18,9 @@ def write(path,value):path.write_bytes(canonical(value))
 def inputs(tmp_path):
     spec,reg,plan,records=fixture_plan(tmp_path)
     write(tmp_path/'spec.json',spec);write(tmp_path/'reg.json',reg)
-    refs=tmp_path/'refs.jsonl';refs.write_bytes(canonical(dict(reference_id='retained',text='A genuinely separate text on stars and astronomy observations.',content_type='prose',language='en',provenance={'source_id':'not-in-registry'}))+b'\n')
+    refs=tmp_path/'refs.jsonl';refs.write_bytes(canonical(fixture_reference(
+        'A genuinely separate text on stars and astronomy observations.',
+        provenance={'source_id':'not-in-registry'}))+b'\n')
     cache=tmp_path/'cache';d=cache/records[0]['source_id'];(d/'files').mkdir(parents=True)
     source=reg['sources'][0];rows=[]
     for name,payload in [(records[0]['path'],(tmp_path/records[0]['input_path']).read_bytes()),('src/unknown.py',b'# SPDX-License-Identifier: MIT\nprint("Not automatically authorized")\n'),('vendor/copied.py',b'copied code')]:
@@ -37,7 +39,8 @@ def test_exact_grants_only_and_production_compatibility(inputs):
     out=inputs['output'];spec=json.loads((out/'spec.json').read_bytes());reg=json.loads((out/'registry.json').read_bytes())
     plan,receipt=compile_inventory(spec,reg,inputs['root'],out/'runner',out/'plan.jsonl')
     assert receipt['scheduled']==2
-    with ProductionBuild(out/'fixture_production',spec,reg,repository_root=inputs['root'],reference_plan=inputs['references'],prior_production=prior_inventory(inputs['root'])) as b:
+    with ProductionBuild(out/'fixture_production',spec,reg,repository_root=inputs['root'],reference_plan=inputs['references'],prior_production=prior_inventory(inputs['root']),
+                         expected_plan_sha256=receipt['plan_sha256'],**approval_kwargs(inputs['root'],receipt['plan_sha256'])) as b:
         assert b.run(plan,Tokenizer())['stages']=={'ACCEPTED':2}
 
 
@@ -62,7 +65,8 @@ def test_corruption_rejected(inputs,damage):
 
 def test_source_holdout_overrides_grant(inputs):
     r=next(read_plan(inputs['approved_plan']))
-    inputs['references'].write_bytes(canonical(dict(reference_id='retained',text='retained',content_type='prose',language='en',provenance={'original':{'source_id':r['source_id']}}))+b'\n')
+    inputs['references'].write_bytes(canonical(fixture_reference('retained',
+        provenance={'original':{'source_id':r['source_id']}}))+b'\n')
     with pytest.raises(SpecificationError,match='holdout group'):build(**inputs)
 
 
@@ -87,7 +91,8 @@ def test_interrupted_output_resumes(inputs,monkeypatch):
 def test_holdout_project_excluded_without_grant(inputs):
     records=list(read_plan(inputs['approved_plan']));sid=records[0]['source_id']
     inputs['approved_plan'].write_bytes(canonical(records[1])+b'\n')
-    inputs['references'].write_bytes(canonical(dict(reference_id='retained',text='retained',content_type='prose',language='en',provenance={'original':{'source_id':sid}}))+b'\n')
+    inputs['references'].write_bytes(canonical(fixture_reference('retained',
+        provenance={'original':{'source_id':sid}}))+b'\n')
     result=build(**inputs)
     assert result['counts']=={'CLEARED':0,'EXCLUDED':3,'REVIEW':0}
     assert result['production_plan_files']==1

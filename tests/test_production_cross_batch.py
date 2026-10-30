@@ -2,7 +2,7 @@
 import json
 import sqlite3
 import pytest
-from tests.test_production_acquisition import fixture_plan, prior_inventory, Tokenizer, BASE
+from tests.test_production_acquisition import fixture_plan, fixture_reference, prior_inventory, Tokenizer, BASE, approval_kwargs
 from training.production_acquisition import ProductionBuild
 from training.production_corpus import canonical, file_digest
 from training.production_spec import SpecificationError, seal
@@ -11,17 +11,20 @@ from training.production_spec import SpecificationError, seal
 def setup(root, texts=None, splits=None):
     spec,reg,_,rows=fixture_plan(root,texts or [BASE,BASE],splits)
     refs=root/'references.jsonl'
-    refs.write_bytes(canonical(dict(reference_id='separate',text='Independent astronomical spectra of distant stars.',
-        content_type='prose',language='en',provenance={'source':'test'}))+b'\n')
+    refs.write_bytes(canonical(fixture_reference('Independent astronomical spectra of distant stars.',
+        'separate', {'source':'test'}))+b'\n')
     plans=[]
     for i,r in enumerate(rows):
         p=root/f'plan-{i}.jsonl';p.write_bytes(canonical(r)+b'\n');plans.append(p)
     return spec,reg,refs,plans
 
 
-def run(root, data, name, plan, history, tokenizer=None):
+def run(root, data, name, plan, history, tokenizer=None, **historical_approval):
     spec,reg,refs,_=data
-    with ProductionBuild(root/name,spec,reg,repository_root=root,reference_plan=refs,prior_production=history) as b:
+    approval=approval_kwargs(root,file_digest(plan))
+    approval.update(historical_approval)
+    with ProductionBuild(root/name,spec,reg,repository_root=root,reference_plan=refs,prior_production=history,
+                         expected_plan_sha256=file_digest(plan),**approval) as b:
         return b.run(plan,tokenizer or Tokenizer())
 
 
@@ -53,7 +56,8 @@ def test_distinct_content_and_replay_without_fetch_encode(tmp_path):
         def encode(self,*args):raise AssertionError('Retokenization')
     def no_fetch(*args):raise AssertionError('Fetch')
     spec,reg,refs,_=data
-    with ProductionBuild(tmp_path/'b',spec,reg,repository_root=tmp_path,reference_plan=refs,prior_production=history) as b:
+    with ProductionBuild(tmp_path/'b',spec,reg,repository_root=tmp_path,reference_plan=refs,prior_production=history,
+                         expected_plan_sha256=file_digest(plans[1]),**approval_kwargs(tmp_path,file_digest(plans[1]))) as b:
         before=list(b.db.execute('SELECT * FROM totals'));shards=b.export_shards()
         assert b.run(plans[1],NoEncode(),fetch=no_fetch)['stages']=={'ACCEPTED':1}
         assert list(b.db.execute('SELECT * FROM totals'))==before

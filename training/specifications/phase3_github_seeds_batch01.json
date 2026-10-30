@@ -1,0 +1,62 @@
+[
+  {
+    "locator": "https://github.com/AllAlgorithms/python",
+    "branch": "master",
+    "category": "algorithms",
+    "subcategory": "pending_review"
+  },
+  {
+    "locator": "https://github.com/godotengine/godot-demo-projects",
+    "branch": "master",
+    "category": "csharp_gamedev",
+    "subcategory": "pending_review"
+  },
+  {
+    "locator": "https://github.com/godotengine/godot-docs",
+    "branch": "master",
+    "category": "software_docs",
+    "subcategory": "pending_review"
+  },
+  {
+    "locator": "https://github.com/KhronosGroup/glTF-Blender-IO",
+    "branch": "main",
+    "category": "graphics",
+    "subcategory": "pending_review"
+  },
+  {
+    "locator": "https://github.com/KhronosGroup/UnityGLTF",
+    "branch": "main",
+    "category": "csharp_gamedev",
+    "subcategory": "pending_review"
+  },
+  {
+    "locator": "https://github.com/KhronosGroup/Vulkan-Samples",
+    "branch": "main",
+    "category": "graphics",
+    "subcategory": "pending_review"
+  },
+  {
+    "locator": "https://github.com/OWASP/wstg",
+    "branch": "master",
+    "category": "security",
+    "subcategory": "pending_review"
+  },
+  {
+    "locator": "https://github.com/psf/black",
+    "branch": "main",
+    "category": "software_engineering",
+    "subcategory": "pending_review"
+  },
+  {
+    "locator": "https://github.com/python-attrs/attrs",
+    "branch": "main",
+    "category": "software_engineering",
+    "subcategory": "pending_review"
+  },
+  {
+    "locator": "https://github.com/python/cpython",
+    "branch": "main",
+    "category": "code",
+    "subcategory": "pending_review"
+  }
+]

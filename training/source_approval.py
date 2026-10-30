@@ -281,15 +281,27 @@ def build(cache, catalog, evidence, registry, spec, plan, references, output, *,
                  training_allowed_after_clearance=True,origin_verified=True,
                  file_manifest=(output/(sid+'-files.json')).relative_to(root).as_posix(),
                  clearance_record=(output/(sid+'-clearance.json')).relative_to(root).as_posix())
-        files=[dict(path=r['path'],sha256=r['sha256'],bytes=r['bytes'],owner=s['category'],content_type='code',license_id=s['license_id']) for r in selected]
+        from training.category_ownership import decision as ownership_decision
+        files=[]
+        for r in selected:
+            f=dict(path=r['path'],sha256=r['sha256'],bytes=r['bytes'],owner=s['category'],
+                   subcategory=s['subcategory'],content_type='code',license_id=s['license_id'])
+            f['ownership_decision']=ownership_decision(source_id=sid,revision=s['revision'],
+                path=r['path'],sha256=r['sha256'],owner=f['owner'],subcategory=f['subcategory'],
+                decision_type='structural',rationale_ref='approved-source-and-extension-v1',
+                normalized_sha256='sha256:'+hashlib.sha256(normalize_structured_text(
+                    payload(directory,r).decode('utf-8-sig')).encode('utf-8')).hexdigest())
+            files.append(f)
         manifest=seal(dict(source_id=sid,revision=s['revision'],files=files)); publish(root/s['file_manifest'],manifest)
         evidence_refs=scope['evidence']+[dict(path=inventory.relative_to(root).as_posix(),sha256=done['inventory_sha256']),dict(path=(output/'request.json').relative_to(root).as_posix(),sha256=file_digest(output/'request.json'))]
         attribution=scope['attribution']+'; '+s['license_id']+'; preserve license and notices.'
-        publish(root/s['clearance_record'],seal(dict(source_id=sid,revision=s['revision'],file_manifest_identity=manifest['identity'],decision='ACCEPT',evidence=evidence_refs,attribution=attribution)))
+        clearance=seal(dict(source_id=sid,revision=s['revision'],file_manifest_identity=manifest['identity'],decision='ACCEPT',evidence=evidence_refs,attribution=attribution))
+        publish(root/s['clearance_record'],clearance)
         for row,f in zip(selected,files):
-            record=seal(dict(source_id=sid,revision=s['revision'],**f,clearance_status='ACCEPT',subcategory=s['subcategory'],split=s['split'],
+            record=seal(dict(source_id=sid,revision=s['revision'],**f,clearance_status='ACCEPT',split=s['split'],
                              split_group=s['split_group'],split_unit_kind='repository',allow_rule=row['path'],deny_rules_checked=s['deny_paths'],
-                             language='python',license_evidence=evidence_refs,attribution=attribution,quality_review='ACCEPT',
+                             language='python',license_evidence=evidence_refs,attribution=attribution,
+                             source_clearance_identity=clearance['identity'],quality_review='ACCEPT',
                              input_path=(directory/row['local_blob']).relative_to(root).as_posix()))
             validate_clearance(record,s,policy,root,f); records.append(record)
         reg['sources'].append(s); known.add(sid); known_origins.add(s['locator'].casefold().rstrip('/')); source_caps[sid]=bounded
@@ -307,7 +319,9 @@ def build(cache, catalog, evidence, registry, spec, plan, references, output, *,
         (output/'plan.part').write_bytes(plan_bytes)
         atomic_replace(output/'plan.part',output/'plan.jsonl')
     if prior is None:
-        with ProductionBuild(output/'dry_run',policy,reg,repository_root=root,reference_plan=references) as b:
+        with ProductionBuild(output/'dry_run',policy,reg,repository_root=root,reference_plan=references,
+                             diagnostic=True,
+                             expected_plan_sha256=file_digest(output/'plan.jsonl')) as b:
             preflight=b.dry_run(output/'plan.jsonl')
         # Database page allocation is diagnostic, not deterministic evidence.
         preflight.pop('storage_bytes',None)

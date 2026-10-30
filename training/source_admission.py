@@ -17,6 +17,7 @@ POLICY='exact-evidenced-cache-admission-v1'
 
 
 def holdout_groups(references,registry):
+    from training.protected_references import read_inventory
     ids=set();repos=set()
     def visit(value):
         if isinstance(value,dict):
@@ -29,7 +30,7 @@ def holdout_groups(references,registry):
                 visit(item)
         elif isinstance(value,list):
             for item in value:visit(item)
-    for row in read_plan(references):visit(row['provenance'])
+    for row in read_inventory(references):visit(row['provenance'])
     groups=set()
     for s in registry['sources']:
         repo=urlsplit(s.get('locator') or '').path.strip('/').casefold().removesuffix('.git')
@@ -161,7 +162,9 @@ def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved
         with (output/'plan.jsonl').open('wb') as stream:
             for encoded, in db.execute('SELECT record FROM grants ORDER BY item'):stream.write(encoded.encode()+b'\n')
         # Read-only production preflight: no payload copying, normalization, tokenization or accounting.
-        with ProductionBuild(output/'dry_run',spec,registry,repository_root=root,reference_plan=references) as coordinator:
+        with ProductionBuild(output/'dry_run',spec,registry,repository_root=root,reference_plan=references,
+                             diagnostic=True,
+                             expected_plan_sha256=file_digest(output/'plan.jsonl')) as coordinator:
             preflight=coordinator.dry_run(output/'plan.jsonl')
         atomic_json(output/'dry_run.json',preflight)
         result=seal(dict(policy=POLICY,request_identity=request['identity'],counts={k:counts[k] for k in ('CLEARED','EXCLUDED','REVIEW')},reasons=dict(reasons),per_source=per_source,cached_sources=len(caches),reviewed_files=sum(counts.values()),cleared_cache_matches=matched,newly_authorized_files=0,production_plan_files=db.execute('SELECT count(*) FROM grants').fetchone()[0],holdout_source_groups=sorted(groups),new_production_tokens=0,note='Plan preserves entire approved universe. Use a fresh build directory; never append this plan to an existing production database.',artifacts={name:file_digest(output/name) for name in ('decisions.jsonl','registry.json','spec.json','plan.jsonl','dry_run.json')}))

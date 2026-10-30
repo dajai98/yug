@@ -9,10 +9,81 @@ from training.production_corpus import canonical, file_digest, identity
 from training.production_spec import seal, SpecificationError, TOKENIZER
 from training.production_dedup import DedupIndex, features, POLICY
 from training.production_acquisition import ProductionBuild, item_key
+from training.protected_references import make_reference
+from training.category_ownership import decision as ownership_decision
+from training.category_ownership import approval as ownership_approval
+from training.cumulative_accounting import GENESIS
 from training.experiments.production_corpus_spec import build
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE=' '.join('word'+str(i) for i in range(90))
+
+
+def approval_kwargs(root, plan_sha256):
+    """Synthetic external authority pin for isolated production-path tests."""
+    path=root/('ownership-approval-'+plan_sha256[7:16]+'.json')
+    if not path.exists():
+        path.write_bytes(canonical(ownership_approval(plan_sha256=plan_sha256,
+            approver='fixture external approver',approved_at='2026-10-26T00:00:00Z')))
+    from training.approval_governance import Governance, event
+    plans=sorted(p for p in root.rglob('*.jsonl') if p.is_file() and file_digest(p)==plan_sha256)
+    assert plans, 'Synthetic governance requires the exact plan bytes'
+    records=[json.loads(line) for line in plans[0].read_bytes().splitlines() if line]
+    governance=root/('governance-'+plan_sha256[7:16]+'.jsonl')
+    if governance.exists():
+        history=Governance(governance,file_digest(governance))
+        current=dict(history.current);known=set(history.states)
+        previous=history.head
+    else:
+        current={};known=set();previous=None
+    events=[]
+    def add(kind, aid, scope):
+        nonlocal previous
+        key=(kind,canonical(scope))
+        if current.get(key)==aid:return
+        assert aid not in known, 'Fixture cannot reactivate historical approval'
+        old=current.get(key)
+        row=event(approval_type=kind,approval_identity=old or aid,scope=scope,
+            previous_status='ACTIVE' if old else 'NONE',
+            new_status='SUPERSEDED' if old else 'ACTIVE',
+            replaced_by=aid if old else None,replacement_scope=scope if old else None,
+            transition_at='2026-10-27T00:00:00Z',reason_ref='synthetic fixture',
+            previous_event_identity=previous)
+        events.append(row);previous=row['identity'];current[key]=aid;known.add(aid)
+    add('production_plan',plan_sha256,dict(plan_sha256=plan_sha256))
+    add('ownership_approval',json.loads(path.read_bytes())['identity'],dict(plan_sha256=plan_sha256))
+    for record in records:
+        add('source_clearance',record['source_clearance_identity'],
+            dict(source_id=record['source_id'],revision=record['revision']))
+        add('file_clearance',record['identity'],
+            dict(source_id=record['source_id'],revision=record['revision'],
+                 path=record['path'],sha256=record['sha256']))
+        if record.get('conditional_approval_identity'):
+            add('conditional_approval',record['conditional_approval_identity'],
+                dict(source_id=record['source_id'],revision=record['revision'],
+                     license_id=record['license_id']))
+    decisions=root/'decisions.json'
+    if decisions.exists():
+        for receipt in json.loads(decisions.read_bytes())['receipts']:
+            add('decision_receipt',receipt['identity'],
+                dict(clearance_identity=receipt['binding']['clearance_identity']))
+    with governance.open('ab') as stream:
+        for row in events:stream.write(canonical(row)+b'\n')
+    ledger=root/'corpus-ledger.sqlite'
+    with sqlite3.connect(ledger) if ledger.exists() else sqlite3.connect(':memory:') as db:
+        head=db.execute('SELECT value FROM meta WHERE key=?',('head',)).fetchone()[0] if ledger.exists() else GENESIS
+    return dict(ownership_approval=path,
+                expected_ownership_approval_sha256=file_digest(path),
+                governance_log=governance,expected_governance_sha256=file_digest(governance),
+                corpus_ledger=ledger,expected_corpus_head=head)
+
+
+def fixture_reference(text, reference_id='retained', provenance=None, *,
+                      work_id='diagnostic-work', item_id='diagnostic-item'):
+    return make_reference(work_id=work_id, work_version='v1', item_id=item_id,
+        reference_id=reference_id, role='reference', protected_split='validation',
+        text=text, content_type='prose', language='en',
+        provenance=provenance or {'source':'synthetic fixture'})
 
 def prior_inventory(root, builds=(), name='prior.json'):
     path=root/name
@@ -114,14 +185,26 @@ def fixture_plan(tmp_path,texts=None,splits=None):
             file_manifest=f'files{i}.json',clearance_record=f'clear{i}.json',allow_paths=['src/**'])
         payload=text.encode();payload_file=tmp_path/f'input{i}.txt';payload_file.write_bytes(payload)
         owner='code' if i==0 else 'software_engineering'
-        f=dict(path=f'src/doc{i}.txt',owner=owner,content_type='prose',sha256=file_digest(payload_file),bytes=len(payload),license_id='MIT')
+        subcategory='python' if i==0 else 'testing'
+        f=dict(path=f'src/doc{i}.txt',owner=owner,subcategory=subcategory,
+               content_type='prose',sha256=file_digest(payload_file),bytes=len(payload),license_id='MIT')
+        rationale='Synthetic fixture ownership; no production clearance'
+        ownership_evidence=seal(dict(source_id=source['source_id'],revision=source['revision'],
+            path=f['path'],sha256=f['sha256'],owner=owner,subcategory=subcategory,
+            decision_type='manual_review',rationale_ref=rationale,reviewer='test fixture'))
+        evidence_path=tmp_path/f'ownership{i}.json';evidence_path.write_bytes(canonical(ownership_evidence))
+        f['ownership_decision']=ownership_decision(source_id=source['source_id'],revision=source['revision'],
+            path=f['path'],sha256=f['sha256'],owner=owner,subcategory=subcategory,
+            decision_type='manual_review',rationale_ref=rationale,
+            evidence_ref=dict(path=evidence_path.name,sha256=file_digest(evidence_path)))
         m=seal(dict(source_id=source['source_id'],revision=source['revision'],files=[f]));(tmp_path/f'files{i}.json').write_text(json.dumps(m))
         c=seal(dict(source_id=source['source_id'],revision=source['revision'],file_manifest_identity=m['identity'],decision='ACCEPT',evidence=evidence,attribution='Fixture'))
         (tmp_path/f'clear{i}.json').write_text(json.dumps(c))
         record=seal(dict(source_id=source['source_id'],revision=source['revision'],**f,
-            clearance_status='ACCEPT',subcategory='python' if i==0 else 'testing',split=split,split_group=source['split_group'],
+            clearance_status='ACCEPT',split=split,split_group=source['split_group'],
             split_unit_kind='repository',allow_rule='src/**',deny_rules_checked=source['deny_paths'],
-            language='en',license_evidence=evidence,attribution='Fixture',quality_review='ACCEPT',input_path=payload_file.name))
+            language='en',license_evidence=evidence,attribution='Fixture',
+            source_clearance_identity=c['identity'],quality_review='ACCEPT',input_path=payload_file.name))
         records.append(record)
     registry['sources']=sources[:len(texts)];registry=seal(registry);spec['registry_identity']=registry['identity'];spec=seal(spec)
     plan=tmp_path/'plan.jsonl';plan.write_bytes(b''.join(canonical(r)+b'\n' for r in records))
@@ -133,7 +216,8 @@ def test_production_resume_no_refetch_or_reencode(tmp_path):
     def fetch(r):calls.append(r['identity']);yield (tmp_path/r['input_path']).read_bytes()
     with ProductionBuild(tmp_path/'out',spec,registry,repository_root=tmp_path,diagnostic=True) as b:
         assert b.run(plan,tok,fetch=fetch,max_items=1)['state']=='PARTIAL'
-    with ProductionBuild(tmp_path/'out',spec,registry,repository_root=tmp_path,diagnostic=True) as b:
+    with ProductionBuild(tmp_path/'out',spec,registry,repository_root=tmp_path,diagnostic=True,
+                         expected_plan_sha256=file_digest(plan)) as b:
         result=b.run(plan,tok,fetch=fetch)
         assert result['state']=='COMPLETE' and result['plan_complete']
         assert len(calls)==2 and tok.calls==2
@@ -218,8 +302,10 @@ def test_heldout_inventory_exclusion_and_mandatory_pin(tmp_path):
     with pytest.raises(SpecificationError,match='requires pinned'):
         ProductionBuild(tmp_path/'no-reference',spec,registry,repository_root=tmp_path)
     refs=tmp_path/'heldout.jsonl'
-    refs.write_bytes(canonical(dict(reference_id='heldout-test',text=BASE.replace('word30','variant30'),content_type='prose',language='en',provenance={'source':'diagnostic heldout'}))+b'\n')
-    with ProductionBuild(tmp_path/'out',spec,registry,repository_root=tmp_path,reference_plan=refs,prior_production=prior_inventory(tmp_path)) as b:
+    refs.write_bytes(canonical(fixture_reference(BASE.replace('word30','variant30'),
+        'heldout-test', {'source':'diagnostic heldout'}))+b'\n')
+    with ProductionBuild(tmp_path/'out',spec,registry,repository_root=tmp_path,reference_plan=refs,prior_production=prior_inventory(tmp_path),
+                         expected_plan_sha256=file_digest(plan),**approval_kwargs(tmp_path,file_digest(plan))) as b:
         result=b.run(plan,Tokenizer())
         assert result['accepted_clean_train_tokens']==0 and result['stages']['DUPLICATE']==1
         assert result['heldout_references']==1
@@ -277,7 +363,9 @@ def test_streamed_manifest_inventory(tmp_path):
     inventory=tmp_path/'inventory.jsonl';inventory.write_bytes(b''.join(canonical(f)+b'\n' for f in files))
     m=seal(dict(m,files_jsonl='inventory.jsonl',files_sha256=file_digest(inventory),file_count=1))
     (tmp_path/'files0.json').write_text(json.dumps(m))
-    c=json.loads((tmp_path/'clear0.json').read_text());c['file_manifest_identity']=m['identity'];(tmp_path/'clear0.json').write_text(json.dumps(seal(c)))
+    c=json.loads((tmp_path/'clear0.json').read_text());c['file_manifest_identity']=m['identity'];c=seal(c);(tmp_path/'clear0.json').write_text(json.dumps(c))
+    records[0]=seal(dict(records[0],source_clearance_identity=c['identity']))
+    plan.write_bytes(canonical(records[0])+b'\n')
     with ProductionBuild(tmp_path/'out',spec,registry,repository_root=tmp_path,diagnostic=True) as b:
         assert b.run(plan,Tokenizer())['state']=='COMPLETE'
 
@@ -319,7 +407,8 @@ def test_structure_preserving_normalization_route(tmp_path):
     r=records[0];r['content_type']='code';r['language']='python';r=seal(r)
     m=json.loads((tmp_path/'files0.json').read_text());m['files'][0]['content_type']='code';m=seal(m)
     (tmp_path/'files0.json').write_text(json.dumps(m))
-    c=json.loads((tmp_path/'clear0.json').read_text());c['file_manifest_identity']=m['identity'];(tmp_path/'clear0.json').write_text(json.dumps(seal(c)))
+    c=json.loads((tmp_path/'clear0.json').read_text());c['file_manifest_identity']=m['identity'];c=seal(c);(tmp_path/'clear0.json').write_text(json.dumps(c))
+    r=seal(dict(r,source_clearance_identity=c['identity']))
     plan.write_bytes(canonical(r)+b'\n')
     from training.experiments.representative_mini_corpus import normalize_structured_text
     with ProductionBuild(tmp_path/'out',spec,registry,repository_root=tmp_path,diagnostic=True) as b:

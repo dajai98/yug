@@ -3,9 +3,10 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sqlite3
 import sys
 import pytest
-from tests.test_production_acquisition import fixture_plan,Tokenizer,ROOT,prior_inventory
+from tests.test_production_acquisition import fixture_plan,Tokenizer,ROOT,prior_inventory,approval_kwargs
 from training.production_acquisition import ProductionBuild,item_key
 from training.production_build import compile_inventory,Fetcher,disk_preflight
 from training.production_corpus import canonical,file_digest
@@ -88,7 +89,8 @@ def test_interrupted_stage_recovery(tmp_path,monkeypatch,stage):
                 raise KeyboardInterrupt()
             monkeypatch.setattr(b,stage,crash)
             with pytest.raises(KeyboardInterrupt):b.run(plan,tok)
-    with ProductionBuild(tmp_path/'out',spec,reg,repository_root=tmp_path,diagnostic=True) as b:
+    with ProductionBuild(tmp_path/'out',spec,reg,repository_root=tmp_path,diagnostic=True,
+                         expected_plan_sha256=file_digest(plan)) as b:
         assert b.run(plan,tok)['state']=='COMPLETE'
         assert b.export_shards()['total_token_count']>0
         assert tok.calls==2
@@ -100,11 +102,13 @@ def test_fresh_process_crash_resume(tmp_path):
     script='''import json,sys,os
 from pathlib import Path
 from training.production_acquisition import ProductionBuild
+from training.production_corpus import file_digest
 from training.production_build import Fetcher
 from yug.tokenizer.bpe import ByteLevelBpeTokenizer
 root=Path(sys.argv[1]);spec,reg=json.loads((root/'config.json').read_bytes())
 tok=ByteLevelBpeTokenizer.load(sys.argv[2])
-with ProductionBuild(root/'out',spec,reg,repository_root=root,diagnostic=True) as b:
+with ProductionBuild(root/'out',spec,reg,repository_root=root,diagnostic=True,
+                     expected_plan_sha256=file_digest(root/'plan.jsonl')) as b:
  if sys.argv[3]=='crash':
   original=b._prepare
   def crash(*args):
@@ -151,9 +155,19 @@ def test_cli_dry_run_resume_complete_and_no_repeat(tmp_path):
     spec,reg,plan,records=fixture_plan(tmp_path)
     (tmp_path/'spec.json').write_bytes(canonical(spec));(tmp_path/'registry.json').write_bytes(canonical(reg))
     refs=tmp_path/'heldout.jsonl'
-    refs.write_bytes(canonical(dict(reference_id='unrelated-heldout',text='Independent historic observations of planetary spectroscopy and stellar spectra.',content_type='prose',language='en',provenance={'source':'fixture'}))+b'\n')
+    from tests.test_production_acquisition import fixture_reference
+    refs.write_bytes(canonical(fixture_reference('Independent historic observations of planetary spectroscopy and stellar spectra.',
+        'unrelated-heldout', {'source':'fixture'}))+b'\n')
     args=[sys.executable,'-B','-m','training.production_build','--root',str(tmp_path),'--spec',str(tmp_path/'spec.json'),'--registry',str(tmp_path/'registry.json'),'--plan',str(plan),'--directory',str(tmp_path/'out'),'--references',str(refs),'--tokenizer',str(ROOT/'training/resources/phase1/bpe_fitter_optimization_gate_v1/comparison/run-4096-0/tokenizer.json'),'--target-tokens','100000','--reserve-mib','0','--chunk-items','1']
-    args+=['--prior-production',str(prior_inventory(tmp_path))]
+    args+=['--prior-production',str(prior_inventory(tmp_path)),
+           '--approved-plan-sha256',file_digest(plan)]
+    approval=approval_kwargs(tmp_path,file_digest(plan))
+    args+=['--ownership-approval',str(approval['ownership_approval']),
+               '--approved-ownership-approval-sha256',approval['expected_ownership_approval_sha256'],
+               '--governance-log',str(approval['governance_log']),
+               '--approved-governance-sha256',approval['expected_governance_sha256'],
+               '--corpus-ledger',str(approval['corpus_ledger']),
+               '--approved-corpus-head',approval['expected_corpus_head']]
     dry=subprocess.run(args+['--dry-run'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True,text=True)
     assert dry.returncode==0,dry.stdout+dry.stderr
     assert not list((tmp_path/'out/raw').glob('*.txt'))
@@ -163,6 +177,11 @@ def test_cli_dry_run_resume_complete_and_no_repeat(tmp_path):
     progress=json.loads((tmp_path/'out/runner/progress.json').read_bytes())
     verify_seal(progress)
     assert progress['inventory_exhausted'] and progress['network_bytes_this_process']==0
+    stale=subprocess.run(args+['--resume'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True,text=True)
+    assert stale.returncode==2 and 'Stale or untrusted corpus head' in stale.stdout
+    with sqlite3.connect(approval['corpus_ledger']) as ledger:
+        current_head=ledger.execute("SELECT value FROM meta WHERE key='head'").fetchone()[0]
+    args[args.index('--approved-corpus-head')+1]=current_head
     second=subprocess.run(args+['--resume'],cwd=ROOT,stdin=subprocess.DEVNULL,capture_output=True,text=True)
     assert second.returncode==3,second.stdout+second.stderr
     after={str(p):p.stat().st_mtime_ns for folder in ('raw','normalized','tokens') for p in (tmp_path/'out'/folder).glob('*')}

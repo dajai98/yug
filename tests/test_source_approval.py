@@ -127,8 +127,9 @@ def test_interrupted_publication_resumes(setup,monkeypatch):
 
 def test_holdout_source_never_materialized(setup):
     args,_,_,classify=setup
-    args['references'].write_bytes(canonical(dict(reference_id='held',text='Retained benchmark text about algorithms.',
-                                                  content_type='prose',language='en',provenance={'source_id':'new-package'}))+b'\n')
+    from tests.test_production_acquisition import fixture_reference
+    args['references'].write_bytes(canonical(fixture_reference('Retained benchmark text about algorithms.',
+        'held', {'source_id':'new-package'}))+b'\n')
     classify(); result=approval.build(**args)
     assert result['counts']=={'APPROVED':0,'EXCLUDED':5,'REVIEW':0}
 
