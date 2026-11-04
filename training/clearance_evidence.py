@@ -119,37 +119,38 @@ def build(cache, output, *, root=ROOT, resume=False, dry_run=False, limit=None,
         need(cache_registry is not None, 'Review-only evidence requires a pinned cache registry')
         for key in ('approved_registry', 'approved_spec', 'approved_plan'):
             inputs.pop(key)
+    if cache_registry is not None:
         inputs['cache_registry'] = Path(cache_registry).resolve()
         inputs['cache_status'] = cache/'status.json'
-    else:
-        need(cache_registry is None, 'Cache registry requires explicit review-only mode')
     _check_output(root, cache, output, inputs)
     base_reg = json.loads(Path(inputs['root_registry']).read_bytes())
     base_spec = json.loads(Path(inputs['root_spec']).read_bytes())
     verify_seal(base_reg); verify_seal(base_spec)
-    if review_only:
-        # A newly discovered catalog is review-cache authority only. Validate the
-        # current production policy, then bind the catalog to source_prepare's
-        # completed status. No historical grant or approval is imported.
+    if cache_registry is not None:
+        # The discovery catalog is cache identity only. In grant-backed mode,
+        # authority still comes solely from the separately validated plan.
         validate(base_spec, base_reg, root)
-        registry = json.loads(Path(inputs['cache_registry']).read_bytes())
-        verify_seal(registry)
-        need(registry['schema'] == 'yug-production-source-registry-v1', 'Wrong cache registry schema')
-        spec = base_spec
+        cache_catalog = json.loads(Path(inputs['cache_registry']).read_bytes())
+        verify_seal(cache_catalog)
+        need(cache_catalog['schema'] == 'yug-production-source-registry-v1', 'Wrong cache registry schema')
         status = json.loads(Path(inputs['cache_status']).read_bytes())
         verify_seal(status)
         need(status['policy'] == CACHE_POLICY and status['dry_run'] is False
-             and status['registry_identity'] == registry['identity']
-             and status['spec_identity'] == spec['identity'],
+             and status['registry_identity'] == cache_catalog['identity']
+             and status['spec_identity'] == base_spec['identity'],
              'Cache catalog/spec identity mismatch')
+    if review_only:
+        registry = cache_catalog
+        spec = base_spec
     else:
         registry = json.loads(Path(inputs['approved_registry']).read_bytes())
         spec = json.loads(Path(inputs['approved_spec']).read_bytes())
         validate(spec, registry, root)
         need(spec['categories'] == base_spec['categories'] and spec['three_d'] == base_spec['three_d'], 'Allocation differs')
-    caches = list(cached_sources(cache, registry if review_only else base_reg, base_spec, root))
+    caches = list(cached_sources(cache, cache_catalog if cache_registry is not None else
+                                  (registry if review_only else base_reg), base_spec, root))
     need(caches, 'No completed cache receipts')
-    if review_only:
+    if cache_registry is not None:
         reported = {s['source_id']: s for s in status['sources']}
         need(len(reported) == len(status['sources'])
              and all(reported.get(source['source_id'], {}).get('status') == 'CACHED'
@@ -159,10 +160,13 @@ def build(cache, output, *, root=ROOT, resume=False, dry_run=False, limit=None,
     approved_sources = {s['source_id']: s for s in registry['sources']}
     for directory, source, inventory, done in caches:
         approved = approved_sources.get(source['source_id'])
-        # Newly discovered sources have no production grants. They still need
-        # screening, but cannot become EVIDENCED through _grants/_decision.
+        # A cache catalog never promotes an item by itself.
         if approved is not None:
-            need(source['locator'] == approved['locator'], 'Grant repository origin mismatch')
+            need(all(source.get(k) == approved.get(k) for k in
+                     ('source_id','name','locator','revision','license_id',
+                      'license_evidence','repository_group','domain_group',
+                      'split_group','category','subcategory','deny_paths')),
+                 'Grant/cache source identity mismatch')
         for p in (inventory, directory/'request.json', directory/'complete.json'):
             hashes[p.relative_to(root).as_posix()] = file_digest(p)
     request = seal(dict(policy_version=POLICY, inputs=hashes))
@@ -183,7 +187,9 @@ def build(cache, output, *, root=ROOT, resume=False, dry_run=False, limit=None,
                      'CREATE TEMP TABLE grants(item TEXT PRIMARY KEY,payload TEXT);'
                      'CREATE TEMP TABLE seen(source TEXT,path TEXT,PRIMARY KEY(source,path));')
     try:
-        groups = holdout_groups(inputs['references'], base_reg) | holdout_groups(inputs['references'], registry)
+        groups = (holdout_groups(inputs['references'], base_reg) |
+                  holdout_groups(inputs['references'], registry) |
+                  (holdout_groups(inputs['references'], cache_catalog) if cache_registry is not None else set()))
         if not review_only:
             _grants(db, registry, spec, inputs['approved_plan'], root, groups)
         counts = Counter(); per_source = {}; position = 0
@@ -253,9 +259,15 @@ def main():
     parser.add_argument('--resume', action='store_true')
     parser.add_argument('--limit', type=int)
     parser.add_argument('--cache-registry', type=Path,
-                        help='Sealed source_prepare catalog for explicit review-only evidence')
+                        help='Sealed source_prepare catalog for explicit review or grant-backed cache identity')
     parser.add_argument('--references', type=Path,
                         help='Current validated protected-reference inventory')
+    parser.add_argument('--approved-registry', type=Path,
+                        help='Explicit sealed grant overlay registry')
+    parser.add_argument('--approved-spec', type=Path,
+                        help='Explicit sealed grant overlay spec')
+    parser.add_argument('--approved-plan', type=Path,
+                        help='Explicit exact-file grant plan')
     parser.add_argument('--review-only', action='store_true',
                         help='Use current spec and cache catalog; import no historical grants')
     args = parser.parse_args()
@@ -265,14 +277,20 @@ def main():
         if args.review_only:
             for key in ('approved_registry', 'approved_spec', 'approved_plan'):
                 inputs.pop(key)
-            if args.cache_registry is not None:
-                inputs['cache_registry'] = args.cache_registry
+        if args.cache_registry is not None:
+            inputs['cache_registry'] = args.cache_registry
             inputs['cache_status'] = args.cache/'status.json'
         if args.references is not None:
             inputs['references'] = args.references
+        for key in ('approved_registry','approved_spec','approved_plan'):
+            if getattr(args,key) is not None and not args.review_only:
+                inputs[key]=getattr(args,key)
         _check_output(ROOT.resolve(), args.cache.resolve(), args.output.resolve(), inputs)
         options = vars(args)
         references = options.pop('references')
+        for key in ('approved_registry','approved_spec','approved_plan'):
+            value=options.pop(key)
+            if value is not None: options[key]=value
         if references is not None:
             options['references'] = references
         if args.dry_run:

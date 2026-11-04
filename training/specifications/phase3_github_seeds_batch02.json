@@ -1,0 +1,14 @@
+[
+  {
+    "locator": "https://github.com/stride3d/stride-docs",
+    "branch": "master",
+    "category": "software_docs",
+    "subcategory": "curated_subset"
+  },
+  {
+    "locator": "https://github.com/TheAlgorithms/Python",
+    "branch": "master",
+    "category": "algorithms",
+    "subcategory": "algorithms"
+  }
+]

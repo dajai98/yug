@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yug.local/schemas/evidence_key_governance_v1.schema.json",
+  "title": "YUG evidence key governance event v1: proposed record shape, zero authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "event_type", "key_id", "algorithm", "public_key_sha256", "previous_event_identity", "predecessor_key_id", "successor_key_id", "prior_trust_pin_identity", "effective_at", "recorded_at", "governance_owner", "custodian", "independent_reviewer", "external_approval_reference", "reason", "identity"],
+  "properties": {
+    "schema": {"const": "yug-evidence-key-governance-v1"},
+    "event_type": {"enum": ["CREATED", "ACTIVE", "RETIRED", "REVOKED", "COMPROMISED", "DESTROYED"]},
+    "key_id": {"type": "string", "pattern": "^YUG-EVIDENCE-KEY-[0-9]{3,}$"},
+    "algorithm": {"const": "Ed25519"},
+    "public_key_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "previous_event_identity": {"anyOf": [{"const": "GENESIS"}, {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}]},
+    "predecessor_key_id": {"anyOf": [{"const": "NONE"}, {"type": "string", "pattern": "^YUG-EVIDENCE-KEY-[0-9]{3,}$"}]},
+    "successor_key_id": {"anyOf": [{"const": "NONE"}, {"type": "string", "pattern": "^YUG-EVIDENCE-KEY-[0-9]{3,}$"}]},
+    "prior_trust_pin_identity": {"anyOf": [{"const": "NONE"}, {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}]},
+    "effective_at": {"type": "string", "pattern": "^.+Z$"},
+    "recorded_at": {"type": "string", "pattern": "^.+Z$"},
+    "governance_owner": {"type": "string", "minLength": 1},
+    "custodian": {"type": "string", "minLength": 1},
+    "independent_reviewer": {"type": "string", "minLength": 1},
+    "review_model": {"enum": ["INDEPENDENT_REVIEWER", "SOLO_CUSTODIAN_TWO_STEP_REVIEW"]},
+    "external_approval_reference": {"type": "string", "minLength": 1},
+    "reason": {"type": "string", "minLength": 1},
+    "identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "allOf": [{
+    "if": {"properties": {"independent_reviewer": {"const": "NOT_APPLICABLE_SOLO_OWNER"}}, "required": ["independent_reviewer"]},
+    "then": {"required": ["review_model"], "properties": {"review_model": {"const": "SOLO_CUSTODIAN_TWO_STEP_REVIEW"}}},
+    "else": {"properties": {"review_model": {"enum": ["INDEPENDENT_REVIEWER"]}}}
+  }],
+  "description": "Design-only record. The solo-owner sentinel requires an explicit two-step review model; it is not independent human review. No runtime validator, signer, approval authority, or external pin is created by this schema. The future governance process must verify canonical identity, transition legality, review evidence and external approval before activation."
+}

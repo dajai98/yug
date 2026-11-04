@@ -13,6 +13,7 @@ from training.production_corpus import canonical, file_digest
 from training.production_spec import seal, SpecificationError
 from training.source_admission import build as admit
 from training.production_build import compile_inventory
+from training.source_prepare import POLICY as CACHE_POLICY
 
 
 def rewrite_rows(inputs, change):
@@ -40,6 +41,29 @@ def test_owned_scope_and_admission_compatibility(inputs):
     registry = json.loads((out/'registry.json').read_bytes())
     _, receipt = compile_inventory(spec, registry, inputs['root'], out/'runner', out/'plan.jsonl')
     assert receipt['scheduled'] == 2
+
+
+def test_explicit_discovery_cache_binding_with_exact_grants(inputs):
+    """A catalog proves cache identity; only the separate plan supplies grants."""
+    registry = json.loads(inputs['root_registry'].read_bytes())
+    spec = json.loads(inputs['root_spec'].read_bytes())
+    directory = next(inputs['cache'].iterdir())
+    done = json.loads((directory/'complete.json').read_bytes())
+    inputs['cache_registry'] = inputs['root_registry']
+    (inputs['cache']/'status.json').write_bytes(canonical(seal(dict(
+        policy=CACHE_POLICY,dry_run=False,registry_identity=registry['identity'],
+        spec_identity=spec['identity'],sources=[dict(source_id=registry['sources'][0]['source_id'],
+        status='CACHED',result=dict(request_identity=done['request_identity']))]))))
+    result=evidence.build(**inputs)
+    assert result['counts']=={'EVIDENCED':1,'EXCLUDED':1,'REVIEW':1}
+    admitted=admit(**dict(inputs,output=inputs['root']/'admission'),
+                   evidence=inputs['output'])
+    assert admitted['counts']=={'CLEARED':1,'EXCLUDED':1,'REVIEW':1}
+    status=json.loads((inputs['cache']/'status.json').read_bytes())
+    status['registry_identity']='sha256:'+'0'*64
+    (inputs['cache']/'status.json').write_bytes(canonical(seal(status)))
+    with pytest.raises(SpecificationError,match='Cache catalog/spec identity'):
+        evidence.build(**dict(inputs,output=inputs['root']/'changed'))
 
 
 def test_deterministic_replay_and_no_cache_mutation(inputs):

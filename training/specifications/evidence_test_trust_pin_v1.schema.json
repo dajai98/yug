@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yug.local/schemas/evidence_test_trust_pin_v1.schema.json",
+  "title": "YUG evidence TEST_ONLY trust pin v1: zero authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "environment", "production_eligible", "authority", "key_id", "algorithm", "public_key_sha256", "public_key_path", "status", "identity"],
+  "properties": {
+    "schema": {"const": "yug-evidence-test-trust-pin-v1"},
+    "environment": {"const": "TEST_ONLY"},
+    "production_eligible": {"const": false},
+    "authority": {"const": "NONE"},
+    "key_id": {"type": "string", "pattern": "^YUG-EVIDENCE-TEST-KEY-[0-9]{3,}$"},
+    "algorithm": {"const": "Ed25519"},
+    "public_key_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "public_key_path": {"type": "string", "minLength": 1},
+    "status": {"const": "TEST_ONLY"},
+    "identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "description": "Test-only record. Runtime additionally checks canonical bytes, duplicate fields, path containment, content identity, an independently supplied exact test pin, and the public PEM byte hash. Production verification rejects this schema."
+}

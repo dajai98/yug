@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yug.local/schemas/evidence_trust_pin_v1.schema.json",
+  "title": "YUG evidence trust pin v1: structural contract only",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "key_id", "algorithm", "public_key_sha256", "public_key_path", "status", "valid_from", "valid_until", "predecessor_key_id", "governance_decision_identity", "identity"],
+  "properties": {
+    "schema": {"const": "yug-evidence-trust-pin-v1"},
+    "key_id": {"type": "string", "pattern": "^YUG-EVIDENCE-KEY-[0-9]{3,}$"},
+    "algorithm": {"const": "Ed25519"},
+    "public_key_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "public_key_path": {"type": "string", "minLength": 1, "pattern": "^[^/:\\\\]+(?:/[^/:\\\\]+)*$"},
+    "status": {"enum": ["ACTIVE", "RETIRED", "REVOKED", "COMPROMISED"]},
+    "valid_from": {"type": "string", "pattern": "^.+Z$"},
+    "valid_until": {"anyOf": [{"const": "UNKNOWN"}, {"type": "string", "pattern": "^.+Z$"}]},
+    "predecessor_key_id": {"anyOf": [{"const": "NONE"}, {"type": "string", "pattern": "^YUG-EVIDENCE-KEY-[0-9]{3,}$"}]},
+    "governance_decision_identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "description": "Design aid only. Runtime also rejects duplicate fields, noncanonical bytes, traversal, invalid UTC/interval, identity mismatch, wrong external pin, changed PEM bytes, and inactive or expired keys. This schema confers no trust."
+}

@@ -52,10 +52,11 @@ def cached_sources(cache,registry,spec,root):
         yield directory,source,path,done
 
 
-def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved_plan,references,output,*,root=ROOT,evidence=None):
+def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved_plan,references,output,*,root=ROOT,evidence=None,cache_registry=None):
     root=Path(root).resolve();output=Path(output).resolve();cache=Path(cache).resolve()
     need(output.is_relative_to(root) and not output.is_relative_to(cache) and not cache.is_relative_to(output),'Output must be separate from cache under repository')
-    for protected in (root_registry,root_spec,approved_registry,approved_spec,approved_plan,references):
+    for protected in (root_registry,root_spec,approved_registry,approved_spec,approved_plan,references,cache_registry):
+        if protected is None: continue
         need(not Path(protected).resolve().is_relative_to(output),'Output overlaps immutable admission inputs')
     output.mkdir(parents=True,exist_ok=True)
     base_reg=json.loads(Path(root_registry).read_bytes());base_spec=json.loads(Path(root_spec).read_bytes())
@@ -65,7 +66,35 @@ def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved
     # Only authority changes represented by existing grants are allowed. Allocation is frozen.
     need(spec['categories']==base_spec['categories'] and spec['three_d']==base_spec['three_d'],'Approved overlay changed allocation')
     inputs={str(Path(p).resolve().relative_to(root)).replace('\\','/'):file_digest(p) for p in (root_registry,root_spec,approved_registry,approved_spec,approved_plan,references)}
-    caches=list(cached_sources(cache,base_reg,base_spec,root));need(caches,'No completed cache receipts found')
+    cache_catalog=base_reg
+    if cache_registry is not None:
+        from training.source_prepare import POLICY as CACHE_POLICY
+        catalog_path=Path(cache_registry).resolve()
+        inputs[catalog_path.relative_to(root).as_posix()]=file_digest(catalog_path)
+        status_path=cache/'status.json'
+        inputs[status_path.relative_to(root).as_posix()]=file_digest(status_path)
+        cache_catalog=json.loads(catalog_path.read_bytes());verify_seal(cache_catalog)
+        need(cache_catalog['schema']=='yug-production-source-registry-v1','Wrong cache catalog schema')
+        status=json.loads(status_path.read_bytes());verify_seal(status)
+        need(status['policy']==CACHE_POLICY and status['dry_run'] is False
+             and status['registry_identity']==cache_catalog['identity']
+             and status['spec_identity']==base_spec['identity'],'Cache catalog/spec identity mismatch')
+    caches=list(cached_sources(cache,cache_catalog,base_spec,root));need(caches,'No completed cache receipts found')
+    if cache_registry is not None:
+        reported={s['source_id']:s for s in status['sources']}
+        need(len(reported)==len(status['sources']) and all(
+             reported.get(source['source_id'],{}).get('status')=='CACHED'
+             and reported[source['source_id']]['result']['request_identity']==done['request_identity']
+             for _,source,_,done in caches),'Cache status/receipt mismatch')
+        approved_sources={s['source_id']:s for s in registry['sources']}
+        for _,source,_,_ in caches:
+            approved=approved_sources.get(source['source_id'])
+            if approved is not None:
+                need(all(source.get(k)==approved.get(k) for k in
+                         ('source_id','name','locator','revision','license_id',
+                          'license_evidence','repository_group','domain_group',
+                          'split_group','category','subcategory','deny_paths')),
+                     'Grant/cache source identity mismatch')
     for directory,source,path,done in caches:
         for p in (path,directory/'request.json',directory/'complete.json'):inputs[p.relative_to(root).as_posix()]=file_digest(p)
     if evidence is not None:
@@ -100,7 +129,8 @@ def build(cache,root_registry,root_spec,approved_registry,approved_spec,approved
         grant_sources={r['source_id'] for r in read_plan(approved_plan)}
         for sid in sorted(grant_sources):
             for f in iter_manifest_files(root,source_manifest(root,sources[sid])):db.execute('INSERT INTO files VALUES (?,?,?)',(sid,f['path'],canonical(f).decode()))
-        groups=holdout_groups(references,base_reg)|holdout_groups(references,registry)
+        groups=(holdout_groups(references,base_reg)|holdout_groups(references,registry)|
+                (holdout_groups(references,cache_catalog) if cache_registry is not None else set()))
         for r in read_plan(approved_plan):
             f=db.execute('SELECT record FROM files WHERE source=? AND path=?',(r['source_id'],r['path'])).fetchone()
             need(f is not None,'Grant absent from approved manifest')
@@ -176,13 +206,14 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--cache',type=Path,required=True);p.add_argument('--output',type=Path,default=ROOT/'artifacts/source_admission_gate_v1')
     p.add_argument('--evidence',type=Path,help='Complete clearance_evidence output; exact grants remain mandatory')
+    p.add_argument('--cache-registry',type=Path,help='Pinned source_prepare catalog for discovered cache identity')
     p.add_argument('--registry',type=Path,default=ROOT/'training/specifications/source_registry_v1.json');p.add_argument('--spec',type=Path,default=ROOT/'training/specifications/production_corpus_v1.json')
     p.add_argument('--approved-registry',type=Path,default=ROOT/'artifacts/production_batch_1_v1/admission/registry.json');p.add_argument('--approved-spec',type=Path,default=ROOT/'artifacts/production_batch_1_v1/admission/spec.json');p.add_argument('--approved-plan',type=Path,default=ROOT/'artifacts/production_batch_1_v1/admission/plan.jsonl');p.add_argument('--references',type=Path,default=ROOT/'artifacts/acquisition_readiness_gate_v1/heldout_references.jsonl')
     a=p.parse_args()
     try:
         need(a.output.resolve().is_relative_to(ROOT/'artifacts'),'Output must remain under artifacts')
         with _writer_lock(a.output/'compiler'):
-            r=build(a.cache,a.registry,a.spec,a.approved_registry,a.approved_spec,a.approved_plan,a.references,a.output,evidence=a.evidence)
+            r=build(a.cache,a.registry,a.spec,a.approved_registry,a.approved_spec,a.approved_plan,a.references,a.output,evidence=a.evidence,cache_registry=a.cache_registry)
         print(json.dumps({k:r[k] for k in ('counts','reviewed_files','production_plan_files','newly_authorized_files','new_production_tokens')},sort_keys=True));return 0
     except Exception as exc:print(f'Admission stopped: {type(exc).__name__}: {exc}');return 2
 
