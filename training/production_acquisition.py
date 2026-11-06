@@ -862,6 +862,34 @@ class ProductionBuild:
         self.require_current_approvals(receipts=current_receipts)
         return request
 
+    def require_historical_item_training_use(self,item,*,link_store,
+            expected_link_store_sha256,material_paths,expected_identities,
+            retention_candidate=None,expected_retention_identity=None,
+            expected_retention_sha256=None,expected_link_head=None,
+            expected_ledger_sha256=None):
+        """Check a separately linked historical item; never adds it to this build.
+
+        This is a prospective use check only. Normal export/replay and training
+        authorization retain all of their existing independent gates.
+        """
+        need(not self.diagnostic and self.corpus_ledger_path is not None
+             and self.expected_corpus_head is not None,
+             'Production corpus head required for historical use')
+        from training.historical_authority_link import (
+            require_linked_historical_training_use,
+            verify_retention_candidate,
+        )
+        verify_retention_candidate(
+            self.root,retention_candidate,expected_retention_identity,
+            expected_retention_sha256,link_store,expected_link_store_sha256,
+            expected_link_head,self.corpus_ledger_path,expected_ledger_sha256,
+            self.expected_corpus_head,material_paths,expected_identities)
+        link=require_linked_historical_training_use(
+            self.root,item,link_store,expected_link_store_sha256,
+            self.corpus_ledger_path,self.expected_corpus_head,
+            material_paths,expected_identities)
+        return dict(status='VERIFIED_PROSPECTIVE_LINK_ONLY',authority='NONE',link=link)
+
     def run(self,plan,tokenizer,*,fetch=None,max_items=None,target_tokens=None,
             intended_use='production_preparation',decision_receipts=None):
         need(target_tokens is None or (type(target_tokens) is int and 0<target_tokens<=sum(QUOTAS.values())),'Invalid target token ceiling')
