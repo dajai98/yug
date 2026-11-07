@@ -16,10 +16,12 @@ from tests.test_production_acquisition import (
     fixture_reference,
     prior_inventory,
 )
+from tests.test_source_prepare import command as git_command
 from tests.test_source_prepare import fixture as source_prepare_fixture
 from training import corpus_workflow as workflow
 from training.corpus_gate import BUNDLE
 from training.cumulative_accounting import GENESIS, CorpusLedger
+from training.license_evidence import MIT_TERMS
 from training.production_corpus import PipelineError, atomic_json, canonical, file_digest
 from training.production_spec import TOKENIZER, seal
 from training.source_prepare import POLICY as CACHE_POLICY
@@ -153,10 +155,23 @@ def test_real_discovery_rejects_source_and_verifies_offline_resume(tmp_path,
         workflow.verify(output, root=root)
 
 
+@pytest.mark.parametrize("noassertion", [False, True])
 def test_local_git_review_cache_verifies_without_grant(tmp_path, local_git_fixture,
-                                                      monkeypatch):
+                                                      monkeypatch, noassertion):
     """Exercise the real review stages with a local fixture Git repository."""
     source, spec, fetch_git, calls = local_git_fixture
+    if noassertion:
+        license_text = ("MIT License\nCopyright (c) 2026 Fixture\n\n" +
+                        MIT_TERMS).encode()
+        upstream = tmp_path / "upstream"
+        (upstream / "LICENSE").write_bytes(license_text)
+        git_command("add", "LICENSE", cwd=upstream)
+        git_command("-c", "core.hooksPath="+str(tmp_path/"no-hooks"),
+                    "commit", "-m", "license fixture", cwd=upstream)
+        source["revision"] = git_command("rev-parse", "HEAD", cwd=upstream)
+        tree_sha = git_command("rev-parse", "HEAD^{tree}", cwd=upstream)
+        blob_sha = hashlib.sha1(f"blob {len(license_text)}\0".encode() +
+                                license_text).hexdigest()
     root = tmp_path
     (root / "artifacts").mkdir()
     specifications = root / "training/specifications"
@@ -180,13 +195,22 @@ def test_local_git_review_cache_verifies_without_grant(tmp_path, local_git_fixtu
         registry=registry.relative_to(root).as_posix(),
         spec=spec_path.relative_to(root).as_posix(),
         references=references.relative_to(root).as_posix()))
-    license_bytes = b"Fixture MIT license evidence\n"
+    license_bytes = license_text if noassertion else b"Fixture MIT license evidence\n"
 
     def metadata(url):
         if "/git/ref/heads/" in url:
             return dict(ref="refs/heads/main",
                         object=dict(type="commit", sha=source["revision"]))
-        return dict(license=dict(spdx_id="MIT"), encoding="base64", type="file",
+        if noassertion and "/git/commits/" in url:
+            return dict(sha=source["revision"], tree=dict(sha=tree_sha))
+        if noassertion and "/git/trees/" in url:
+            return dict(sha=tree_sha, truncated=False, tree=[
+                dict(path="LICENSE", type="blob", mode="100644", sha=blob_sha)])
+        if noassertion and "/git/blobs/" in url:
+            return dict(sha=blob_sha, encoding="base64", size=len(license_bytes),
+                        content=base64.b64encode(license_bytes).decode())
+        return dict(license=dict(spdx_id="NOASSERTION" if noassertion else "MIT"),
+                    encoding="base64", type="file",
                     content=base64.b64encode(license_bytes).decode(),
                     size=len(license_bytes), path="LICENSE",
                     sha=hashlib.sha1(f"blob {len(license_bytes)}\0".encode()
@@ -202,6 +226,10 @@ def test_local_git_review_cache_verifies_without_grant(tmp_path, local_git_fixtu
     assert report["training_allowed"] is False
     assert report["sources"][0]["state"] == "HUMAN_REVIEW"
     assert report["sources"][0]["file_count"] > 0
+    if noassertion:
+        assert (output / "discovery/source-00/canonical_evidence.json").is_file()
+        catalog = json.loads((output / "discovery/catalog.json").read_bytes())
+        assert catalog["sources"][0]["license_id"] == "MIT"
     assert len(calls) == 1
     assert (output / "proposals/complete.json").is_file()
     assert workflow.verify(output, root=root) == report

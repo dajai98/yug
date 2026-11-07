@@ -5,24 +5,29 @@ Resume reuses sealed responses, including the first resolved immutable commit.
 Only explicit --fetch permits HTTP; offline replay is the default.
 """
 from __future__ import annotations
+
 import argparse
 import base64
-from collections import Counter
 import hashlib
 import json
-from pathlib import Path
 import re
+import urllib.error
 import urllib.request
+from collections import Counter
+from pathlib import Path
 
-from training.production_corpus import atomic_json, canonical, file_digest
-from training.production_spec import seal, verify_seal, need
-from training.source_prepare import ROOT, LICENSES
-from training.token_shards import _writer_lock
-from training.license_evidence import resolve_license
 from training.conditional_license import CONDITIONAL, pending
+from training.license_evidence import resolve_license
+from training.production_corpus import atomic_json, canonical, file_digest
+from training.production_spec import need, seal, verify_seal
+from training.source_prepare import LICENSES, ROOT
+from training.token_shards import _writer_lock
 
 VERSION = 'bounded-source-discovery-v1'
 MAX_RESPONSE = 524288
+CANONICAL_LICENSES = frozenset(('LICENSE', 'LICENSE.TXT', 'LICENSE.MD',
+                                'COPYING', 'COPYING.TXT', 'COPYING.MD'))
+CANONICAL_COMPANIONS = frozenset(('NOTICE', 'COPYRIGHT'))
 PILOT = [dict(locator='https://github.com/'+repo, branch='main', category='code', subcategory='python')
          for repo in ('python-attrs/attrs', 'pallets/click', 'pytest-dev/pytest')]
 
@@ -33,7 +38,10 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def fetch_json(url):
-    need(re.fullmatch(r'https://api\.github\.com/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(git/ref/heads/[A-Za-z0-9_.-]+|license\?ref=[0-9a-f]{40})', url), 'Non-metadata URL rejected')
+    pattern = (r'https://api\.github\.com/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/'
+               r'(git/ref/heads/[A-Za-z0-9_.-]+|license\?ref=[0-9a-f]{40}|'
+               r'git/(?:commits|trees|blobs)/[0-9a-f]{40})')
+    need(re.fullmatch(pattern, url), 'Non-metadata URL rejected')
     request = urllib.request.Request(url, headers={'Accept': 'application/vnd.github+json',
                                                   'User-Agent': 'YUG-source-discovery-v1'})
     with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
@@ -56,6 +64,73 @@ def response(directory, name, url, fetcher):
              'Unexpected non-ref metadata fields')
     atomic_json(path, seal(dict(url=url, body=body)))
     return body
+
+
+def _canonical_fallback(directory, root, api, locator, revision, primary, fetcher):
+    """Retain only root license/notice blobs from the pinned Git tree.
+
+    This is source-level review evidence. It cannot grant owned file scope or use.
+    """
+    sid = 'gh-' + locator.removeprefix('https://github.com/').lower().replace('/', '-')
+    commit = response(directory, 'pinned_commit', api+'/git/commits/'+revision, fetcher)
+    tree_sha = (commit.get('tree') or {}).get('sha')
+    need(commit.get('sha') == revision and isinstance(tree_sha, str) and
+         re.fullmatch('[0-9a-f]{40}', tree_sha), 'Pinned commit/tree mismatch')
+    tree = response(directory, 'root_tree', api+'/git/trees/'+tree_sha, fetcher)
+    need(tree.get('sha') == tree_sha and tree.get('truncated') is False and
+         isinstance(tree.get('tree'), list), 'Incomplete or mismatched pinned root tree')
+    entries = {}
+    for row in tree['tree']:
+        path = row.get('path')
+        if (not isinstance(path, str) or
+                path.upper() not in CANONICAL_LICENSES | CANONICAL_COMPANIONS):
+            continue
+        need(path not in entries and row.get('type') == 'blob' and
+             row.get('mode') in ('100644', '100755') and
+             isinstance(row.get('sha'), str) and re.fullmatch('[0-9a-f]{40}', row['sha']),
+             'Ambiguous canonical root entry')
+        entries[path] = row['sha']
+    need(len(entries) <= len(CANONICAL_LICENSES | CANONICAL_COMPANIONS),
+         'Too many canonical root entries')
+    files = []
+    for path, blob_sha in sorted(entries.items()):
+        blob = response(directory, 'canonical_'+path.lower().replace('.', '_'),
+                        api+'/git/blobs/'+blob_sha, fetcher)
+        need(blob.get('sha') == blob_sha and blob.get('encoding') == 'base64' and
+             type(blob.get('size')) is int and 0 < blob['size'] <= 131072,
+             'Invalid canonical Git blob response')
+        data = base64.b64decode(''.join(blob['content'].split()), validate=True)
+        need(len(data) == blob['size'] and
+             hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest() == blob_sha,
+             'Canonical Git blob mismatch')
+        text = data.decode('utf-8')
+        files.append(dict(source_id=sid, locator=locator, revision=revision,
+                          path=path, git_blob=blob_sha,
+                          sha256='sha256:'+hashlib.sha256(data).hexdigest(),
+                          text=text, role=('LICENSE' if path.upper() in CANONICAL_LICENSES
+                                           else 'COMPANION'),
+                          resolver_method='pinned-root-git-blob-v1'))
+    primary_row = next((row for row in files if row['path'] == primary['path']), None)
+    if primary_row is not None:
+        need(primary_row['git_blob'] == primary['sha'] and
+             primary_row['sha256'] == 'sha256:'+hashlib.sha256(primary['data']).hexdigest(),
+             'API license and pinned root blob disagree')
+    matches = [resolve_license('NOASSERTION', row['text'].encode('utf-8'))
+               for row in files if row['role'] == 'LICENSE']
+    resolved = (matches[0] if primary_row is not None and matches and
+                all(value == matches[0] for value in matches) and
+                matches[0] in LICENSES else None)
+    record = seal(dict(policy='pinned-canonical-license-evidence-v1', source_id=sid,
+                       locator=locator, revision=revision, tree_sha=tree_sha,
+                       files=files, resolved_license=resolved, authority='NONE'))
+    path = directory/'canonical_evidence.json'
+    if path.exists():
+        need(json.loads(path.read_bytes()) == record, 'Canonical evidence changed')
+    else:
+        atomic_json(path, record)
+    reference = dict(path=path.relative_to(root).as_posix(), sha256=file_digest(path),
+                     identity=record['identity'])
+    return resolved, reference, any(row['role'] == 'COMPANION' for row in files)
 
 
 def discover(seed, directory, root, spec, fetcher):
@@ -81,15 +156,33 @@ def discover(seed, directory, root, spec, fetcher):
     need(isinstance(path, str) and re.fullmatch(r'[A-Za-z0-9_.-]+', path), 'Non-root/ambiguous license scope')
     need(license.get('html_url') == locator+'/blob/'+revision+'/'+path, 'License evidence is not revision-bound')
     conditional = license_id in CONDITIONAL
-    license_id = license_id if conditional else resolve_license(license_id, data)
+    canonical_evidence = None
+    companion_review = False
+    if license_id in (None, '', 'NOASSERTION'):
+        try:
+            license_id, canonical_evidence, companion_review = _canonical_fallback(
+                directory, root, api, locator, revision,
+                dict(path=path, sha=license['sha'], data=data), fetcher)
+        except urllib.error.URLError:
+            return dict(base, status='REVIEW', reason='pinned canonical evidence unavailable'), None
+    elif not conditional:
+        license_id = resolve_license(license_id, data)
     base['license_id'] = license_id
     if license_id not in LICENSES | CONDITIONAL.keys():
-        return dict(base, status='REVIEW', reason='retained license text unresolved; no filename or cross-file inference'), None
+        return dict(base, status='REVIEW',
+                    reason='pinned canonical license text unresolved or conflicting',
+                    canonical_evidence=canonical_evidence), None
+    if companion_review:
+        return dict(base, status='REVIEW',
+                    reason='pinned NOTICE/COPYRIGHT companion requires obligation review',
+                    canonical_evidence=canonical_evidence), None
     sid = 'gh-'+repo.lower().replace('/', '-')
     evidence = dict(path=(directory/'license.json').relative_to(root).as_posix(),
                     sha256=file_digest(directory/'license.json'), upstream_path=path,
                     text_sha256='sha256:'+hashlib.sha256(data).hexdigest(),
                     url=license['html_url'], scope='repository license evidence; no per-file clearance')
+    if canonical_evidence is not None:
+        evidence['canonical_evidence'] = canonical_evidence
     source = dict(source_id=sid, name=repo, **base, status='ACCEPT',
                   status_authority=VERSION, status_reason='Metadata/license accepted for review-cache preparation only',
                   license_evidence=evidence, license_text_sha256=evidence['text_sha256'],

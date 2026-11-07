@@ -403,17 +403,38 @@ def build(decision_path, output, *, expected_decision_sha256, cache,
              r['sha256'] == license_ref['sha256'] for r in evidence),
          'Pinned source license evidence omitted from reviewed scope')
     lic = _read(local_path(root, license_ref['path']))
+    retained_license = base64.b64decode(
+        ''.join(lic['body']['content'].split()), validate=True)
     need(lic['url'] == 'https://api.github.com/repos/'+source['name']+
          '/license?ref='+source['revision'] and
          lic['body']['path'] == license_ref['upstream_path'] and
-         lic['body']['license']['spdx_id'] == source['license_id'],
+         resolve_license(lic['body']['license']['spdx_id'], retained_license)
+         == source['license_id'],
          'Source license metadata does not bind exact revision')
+    canonical_ref = license_ref.get('canonical_evidence')
+    if canonical_ref is not None:
+        ref = {'path': canonical_ref['path'], 'sha256': canonical_ref['sha256']}
+        need(ref in evidence, 'Pinned canonical license/notice evidence omitted')
+        canonical_record = _read(_ref(root, ref, output))
+        need(canonical_record['identity'] == canonical_ref['identity'] and
+             canonical_record['policy'] == 'pinned-canonical-license-evidence-v1' and
+             canonical_record['source_id'] == source['source_id'] and
+             canonical_record['locator'] == source['locator'] and
+             canonical_record['revision'] == source['revision'] and
+             canonical_record['resolved_license'] == source['license_id'] and
+             canonical_record['authority'] == 'NONE',
+             'Pinned canonical license context changed')
+        for item in canonical_record['files']:
+            row = rows.get(item['path'])
+            need(row is not None and row['sha256'] == item['sha256'] and
+                 row['git_object'] == item['git_blob'] and
+                 payload(directory, row) == item['text'].encode('utf-8'),
+                 'Pinned canonical license/notice bytes differ from cache')
     need(license_ref['upstream_path'] in rows and
          rows[license_ref['upstream_path']]['sha256'] == license_ref['text_sha256'],
          'Pinned root license differs from verified cache')
     license_bytes = payload(directory, rows[license_ref['upstream_path']])
-    need(license_bytes == base64.b64decode(
-         ''.join(lic['body']['content'].split()), validate=True) and
+    need(license_bytes == retained_license and
          resolve_license(source['license_id'], license_bytes) == source['license_id'],
          'Root license bytes/terms differ from pinned metadata')
     output_files = []; prepared = []
