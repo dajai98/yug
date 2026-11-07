@@ -22,18 +22,20 @@ from urllib.parse import urlsplit
 
 from training.category_ownership import decision as ownership_decision
 from training.clearance_evidence import verify_bundle
+from training.license_evidence import resolve_license
 from training.production_acquisition import item_key, read_plan, validate_clearance
 from training.production_corpus import atomic_json, canonical, file_digest
-from training.production_spec import (local_path, need, path_allowed, seal,
-                                      validate, verify_seal)
+from training.production_spec import local_path, need, path_allowed, seal, validate, verify_seal
 from training.source_admission import cached_sources, holdout_groups
 from training.source_approval import payload
-from training.source_prepare import ROOT, LICENSES, screening
-from training.license_evidence import resolve_license
+from training.source_prepare import LICENSES, ROOT, git, screening
 
 POLICY = 'reviewed-first-source-clearance-v1'
 RIGHTS = 'reviewed-first-file-rights-v1'
 PROJECT_RIGHTS = 'project-authorized-permissive-v1'
+BOUNDED_RIGHTS = 'bounded-project-publication-rights-v2'
+BOUNDED_SCOPE = 'bounded-project-publication-scope-v1'
+BOUNDED_BATCH = 'bounded-publication-decision-batch-v1'
 SHA = re.compile(r'sha256:[0-9a-f]{64}\Z')
 REV = re.compile(r'[0-9a-f]{40}\Z')
 LOCAL_LINK = re.compile(r'!?\[[^\]]*\]\(([^)]+)\)')
@@ -94,11 +96,18 @@ def _already_registered(source, registry):
 
 def validate_decision_scope(decision, source, rows):
     """Pure exact-scope check; rights records and payloads are checked by build."""
-    need(type(decision) is dict and set(decision) == {
+    base_fields = {
         'schema', 'decision', 'reviewer', 'decided_at', 'source_id', 'locator',
         'revision', 'owner', 'subcategory', 'license_id', 'split', 'cap_tokens',
-        'attribution', 'obligations', 'source_scope_evidence', 'files', 'identity'},
+        'attribution', 'obligations', 'source_scope_evidence', 'files', 'identity'}
+    need(type(decision) is dict and set(decision) in
+         (base_fields, base_fields | {'candidate_batch_ref'}),
         'Incomplete first-time decision')
+    if 'candidate_batch_ref' in decision:
+        ref = decision['candidate_batch_ref']
+        need(type(ref) is dict and set(ref) == {'path', 'sha256'} and
+             type(ref['sha256']) is str and SHA.fullmatch(ref['sha256']),
+             'Invalid bounded candidate batch reference')
     verify_seal(decision)
     need(decision['schema'] == POLICY and decision['decision'] == 'APPROVE_EXACT_FILES'
          and type(decision['reviewer']) is str and bool(decision['reviewer'].strip())
@@ -239,8 +248,147 @@ def _local_links(raw, path):
 
 
 def validate_rights_record(rights, decision, approved_file, *,
-                           raw=None, git_object=None, source_license_ref=None):
+                           raw=None, git_object=None, source_license_ref=None,
+                           scope_decision=None, dossier=None, history=None,
+                           inventory_identity=None):
     """Require a pinned file review under exactly one supported rights profile."""
+    if type(rights) is dict and rights.get('schema') == BOUNDED_RIGHTS:
+        license_ref = {'path': source_license_ref['path'],
+                       'sha256': source_license_ref['sha256']}
+        need(set(rights) == {
+            'schema', 'source_id', 'locator', 'revision', 'path', 'sha256',
+            'git_blob', 'owner', 'subcategory', 'license_id', 'reviewer',
+            'basis', 'evidence', 'source_scope_ref', 'candidate_ref',
+            'file_history_ref', 'project_material_type', 'file_type',
+            'file_license_conflict', 'unresolved_copied_or_adapted',
+            'third_party', 'generated', 'binary', 'media', 'translation',
+            'linked_scope_exclusions', 'attribution', 'obligations', 'identity'},
+            'Incomplete bounded project-publication rights record')
+        verify_seal(rights)
+        need(type(scope_decision) is dict and type(dossier) is dict and
+             type(history) is dict, 'Missing reviewed scope/candidate/history')
+        for value in (scope_decision, dossier, history):
+            verify_seal(value)
+        need(set(scope_decision) == {
+            'schema', 'decision', 'reviewer', 'source_id', 'locator',
+            'revision', 'license_id', 'inventory_identity', 'subtrees',
+            'excluded_paths', 'root_license_ref', 'publication_ref',
+            'contribution_ref', 'notice_refs', 'protected_source', 'identity'},
+            'Incomplete human publication-scope decision')
+        need(scope_decision['schema'] == BOUNDED_SCOPE and
+             scope_decision['decision'] == 'APPROVE_BOUNDED_SCOPE' and
+             scope_decision['reviewer'] == decision['reviewer'] and
+             scope_decision['protected_source'] is False and
+             scope_decision['inventory_identity'] == inventory_identity and
+             all(scope_decision[k] == decision[k] for k in
+                 ('source_id', 'locator', 'revision', 'license_id')) and
+             scope_decision['root_license_ref'] == license_ref and
+             type(scope_decision['subtrees']) is list and
+             0 < len(scope_decision['subtrees']) <= 8 and
+             scope_decision['subtrees'] == sorted(set(scope_decision['subtrees'])) and
+             all(type(p) is str and re.fullmatch(
+                 r'(?:doc|docs|documentation|src|lib)/(?:[A-Za-z0-9_.-]+/)*', p)
+                 for p in scope_decision['subtrees']) and
+             type(scope_decision['excluded_paths']) is list and
+             scope_decision['excluded_paths'] == sorted(set(scope_decision['excluded_paths'])) and
+             type(scope_decision['notice_refs']) is list and
+             all(type(r) is dict and set(r) == {'path', 'sha256'}
+                 for r in scope_decision['notice_refs']),
+             'Unapproved or unbounded source publication scope')
+        need(any(approved_file['path'].startswith(p) for p in scope_decision['subtrees']) and
+             not any(approved_file['path'].startswith(p) for p in
+                     scope_decision['excluded_paths']) and
+             rights['source_scope_ref'] in decision['source_scope_evidence'] and
+             rights['project_material_type'] in ('documentation', 'source_code') and
+             rights['file_type'] == dossier['file_type'] ==
+                 ('documentation' if approved_file['content_type'] in ('markdown', 'prose')
+                  else 'code') and
+             (approved_file['content_type'] != 'code' or
+              rights['project_material_type'] == 'source_code') and
+             (approved_file['content_type'] == 'code' or
+              rights['project_material_type'] == 'documentation') and
+             (approved_file['content_type'] != 'code' or
+              approved_file['path'].lower().endswith(('.py', '.cs', '.c', '.cc',
+                                                       '.cpp', '.h', '.hpp', '.rs'))) and
+             (approved_file['content_type'] == 'code' or
+              approved_file['path'].lower().endswith(('.md', '.rst'))) and
+             (approved_file['content_type'] == 'code' or approved_file['language'] == 'en'),
+             'Exact file is outside human-approved publication scope')
+        need(dossier['policy'] == 'bounded-publication-candidates-v1' and
+             dossier['state'] == 'ROUTINE_CANDIDATE' and
+             dossier['authority'] == 'NONE' and dossier['training_allowed'] is False and
+             dossier['grantable'] is False and
+             dossier['inventory_identity'] == inventory_identity and
+             all(dossier[k] == rights[k] for k in
+                 ('source_id', 'locator', 'revision', 'path', 'sha256')) and
+             dossier['bytes'] == approved_file['bytes'] and
+             dossier['git_blob'] == rights['git_blob'] == git_object and
+             dossier['root_license_evidence'] == source_license_ref and
+             any(r['path'] == scope_decision['publication_ref']['path'] and
+                 r['sha256'] == scope_decision['publication_ref']['sha256']
+                 for r in dossier['publication_evidence']) and
+             any(r['path'] == scope_decision['contribution_ref']['path'] and
+                 r['sha256'] == scope_decision['contribution_ref']['sha256']
+                 for r in dossier['contribution_evidence']) and
+             sorted(scope_decision['notice_refs'], key=lambda r: r['path']) ==
+             sorted([{'path': r['path'], 'sha256': r['sha256']}
+                     for r in dossier['notice_copyright_evidence']],
+                    key=lambda r: r['path']) and
+             history['identity'] == dossier['file_history_identity'] and
+             history['adequate'] is True and
+             all(history[k] == rights[k] for k in
+                 ('source_id', 'revision', 'path')) and
+             history['git_blob'] == git_object,
+             'Mechanical candidate/history does not match exact reviewed file')
+        need(all(rights[k] == decision[k] for k in
+                 ('source_id', 'locator', 'revision', 'license_id', 'reviewer')) and
+             rights['path'] == approved_file['path'] and
+             rights['sha256'] == approved_file['sha256'] and
+             rights['owner'] == decision['owner'] and
+             rights['subcategory'] == decision['subcategory'] and
+             rights['attribution'] == decision['attribution'] and
+             rights['obligations'] == decision['obligations'] and
+             rights['file_license_conflict'] is False and
+             rights['unresolved_copied_or_adapted'] is False and
+             rights['third_party'] is False and rights['generated'] is False and
+             rights['binary'] is False and rights['media'] is False and
+             rights['translation'] is False and
+             type(rights['basis']) is str and bool(rights['basis'].strip()) and
+             type(raw) is bytes and
+             hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
+             == git_object,
+             'Bounded project-publication rights or bytes unresolved')
+        text = raw.decode('utf-8-sig')
+        labels = [x.strip() for x in re.findall(
+            r'SPDX-License-Identifier\s*:\s*([^\r\n*#]+)', text, re.I)]
+        need(not labels or labels == [decision['license_id']],
+             'Conflicting exact-file license')
+        need(not PROVENANCE_SIGNAL.search(text) and
+             not re.search(r'\b(generated|auto.generated|do not edit)\b', text, re.I),
+             'Copied/adapted/generated file requires separate review')
+        if approved_file['path'].lower().endswith('.md'):
+            links = _local_links(raw, approved_file['path'])
+        elif approved_file['path'].lower().endswith('.rst'):
+            need(not re.search(r'^\s*\.\.\s*(?:include|literalinclude|image|figure)::|'
+                               r':(?:doc|download|ref):', text, re.I | re.M),
+                 'RST include/reference requires separate review')
+            links = []
+        else:
+            links = []
+        need(rights['linked_scope_exclusions'] == links,
+             'Linked/include material lacks exact scope exclusion')
+        refs = rights['evidence']
+        mandatory = [rights['source_scope_ref'], rights['candidate_ref'],
+                     rights['file_history_ref'], license_ref,
+                     scope_decision['publication_ref'],
+                     scope_decision['contribution_ref'],
+                     *scope_decision['notice_refs']]
+        need(type(refs) is list and refs == sorted(refs, key=lambda x: x['path']) and
+             len({r['path'] for r in refs}) == len(refs) and
+             all(r in refs for r in mandatory) and
+             rights['candidate_ref']['sha256'] is not None,
+             'Missing independently bound publication/history/notice evidence')
+        return refs
     if type(rights) is dict and rights.get('schema') == PROJECT_RIGHTS:
         need(set(rights) == {
             'schema', 'source_id', 'locator', 'revision', 'path', 'sha256',
@@ -336,11 +484,29 @@ def validate_rights_record(rights, decision, approved_file, *,
     return rights['evidence']
 
 
+def validate_candidate_batch(batch, decision, source, inventory_identity,
+                             dossiers):
+    """A human exact-file decision must bind one immutable <=64-file batch."""
+    verify_seal(batch)
+    need(batch['policy'] == BOUNDED_BATCH and
+         batch['source_id'] == source['source_id'] and
+         batch['inventory_identity'] == inventory_identity and
+         batch['authority'] == 'NONE' and batch['training_allowed'] is False and
+         0 < len(batch['paths']) <= 64 and
+         batch['paths'] == [f['path'] for f in decision['files']] and
+         batch['candidate_identities'] == [d['identity'] for d in dossiers] and
+         all(d['source_scope_candidate_identity'] ==
+             batch['source_scope_candidate_identity'] for d in dossiers),
+         'Candidate file moved or decision batch changed')
+
+
 def build(decision_path, output, *, expected_decision_sha256, cache,
           catalog, review, references, root=ROOT,
           base_registry=None, base_spec=None):
     root = Path(root).resolve()
-    resolve = lambda p: Path(p).resolve() if Path(p).is_absolute() else local_path(root, str(p))
+    def resolve(path):
+        return (Path(path).resolve() if Path(path).is_absolute()
+                else local_path(root, str(path)))
     decision_path, output, cache, catalog, review, references = map(
         resolve, (decision_path, output, cache, catalog, review, references))
     base_registry = resolve(base_registry or 'training/specifications/source_registry_v1.json')
@@ -437,7 +603,9 @@ def build(decision_path, output, *, expected_decision_sha256, cache,
     need(license_bytes == retained_license and
          resolve_license(source['license_id'], license_bytes) == source['license_id'],
          'Root license bytes/terms differ from pinned metadata')
-    output_files = []; prepared = []
+    output_files = []
+    prepared = []
+    bounded_candidates = []
     for f in approved:
         row = rows[f['path']]
         observed = review_rows[f['path']]
@@ -452,9 +620,28 @@ def build(decision_path, output, *, expected_decision_sha256, cache,
         need(screened != 'EXCLUDED', 'Excluded/third-party/generated file')
         ref = f['rights_ref']
         rights = _read(_ref(root, ref, output), maximum=16384)
+        bounded = {}
+        if rights.get('schema') == BOUNDED_RIGHTS:
+            bounded = dict(
+                scope_decision=_read(_ref(root, rights['source_scope_ref'], output)),
+                dossier=_read(_ref(root, rights['candidate_ref'], output)),
+                history=_read(_ref(root, rights['file_history_ref'], output)),
+                inventory_identity=done['inventory_sha256'])
+            actual = git(directory/'git', 'log', '--max-count=257', '--format=%H',
+                         source['revision'], '--', f['path']).stdout.decode(
+                             'ascii').splitlines()
+            shallow = git(directory/'git', 'rev-parse',
+                          '--is-shallow-repository').stdout.strip() == b'true'
+            if shallow:
+                boundary = set((directory/'git/shallow').read_text().splitlines())
+                actual = [oid for oid in actual if oid not in boundary]
+            need(bounded['history']['commits'] and
+                 all(oid in actual for oid in bounded['history']['commits']),
+                 'Bounded exact-path history does not match retained Git cache')
+            bounded_candidates.append(bounded['dossier'])
         for support in validate_rights_record(
                 rights, decision, f, raw=raw, git_object=row['git_object'],
-                source_license_ref=source['license_evidence']):
+                source_license_ref=source['license_evidence'], **bounded):
             _ref(root, support, output)
         evidence.append(ref)
         own = seal(dict(source_id=source['source_id'], revision=source['revision'],
@@ -464,6 +651,16 @@ def build(decision_path, output, *, expected_decision_sha256, cache,
                         reviewer=decision['reviewer']))
         own_path = output/'ownership'/(hashlib.sha256(f['path'].encode()).hexdigest()+'.json')
         prepared.append((f, row, own_path, own))
+    if bounded_candidates:
+        need(len(bounded_candidates) == len(approved) and
+             'candidate_batch_ref' in decision,
+             'Bounded files require one exact reviewed candidate batch')
+        batch = _read(_ref(root, decision['candidate_batch_ref'], output))
+        validate_candidate_batch(batch, decision, source, done['inventory_sha256'],
+                                 bounded_candidates)
+    else:
+        need('candidate_batch_ref' not in decision,
+             'Legacy decision cannot use a candidate batch as authority')
     evidence.extend([dict(path=p.relative_to(root).as_posix(), sha256=file_digest(p))
                      for p in (decision_path, inventory, review/'complete.json')])
     need(len({x['path'] for x in evidence}) == len(evidence),
@@ -480,7 +677,7 @@ def build(decision_path, output, *, expected_decision_sha256, cache,
 
     for _, _, path, own in prepared:
         publish(path, own)
-    for f, row, path, _ in prepared:
+    for f, _row, path, _ in prepared:
         output_files.append(dict(path=f['path'], sha256=f['sha256'],
             bytes=f['bytes'], owner=decision['owner'],
             subcategory=decision['subcategory'], content_type=f['content_type'],
@@ -519,7 +716,7 @@ def build(decision_path, output, *, expected_decision_sha256, cache,
     new_spec = seal(dict(new_spec, registry_identity=new_registry['identity']))
     validate(new_spec, new_registry, root)
     records = []
-    for (f, row, _, _), approved_file in zip(prepared, output_files):
+    for (f, row, _, _), approved_file in zip(prepared, output_files, strict=True):
         record = seal(dict(source_id=source['source_id'],
             revision=source['revision'], **approved_file, clearance_status='ACCEPT',
             split=s['split'], split_group=s['split_group'],

@@ -23,7 +23,7 @@ from training.corpus_gate import BUNDLE
 from training.cumulative_accounting import GENESIS, CorpusLedger
 from training.license_evidence import MIT_TERMS
 from training.production_corpus import PipelineError, atomic_json, canonical, file_digest
-from training.production_spec import TOKENIZER, seal
+from training.production_spec import TOKENIZER, SpecificationError, seal
 from training.source_prepare import POLICY as CACHE_POLICY
 from training.token_shards import TokenShardStream
 from yug.tokenizer.bpe import ByteLevelBpeTokenizer
@@ -232,11 +232,25 @@ def test_local_git_review_cache_verifies_without_grant(tmp_path, local_git_fixtu
         assert catalog["sources"][0]["license_id"] == "MIT"
     assert len(calls) == 1
     assert (output / "proposals/complete.json").is_file()
+    candidate_receipt = json.loads((output / "publication_candidates/complete.json").read_bytes())
+    assert candidate_receipt['authority'] == 'NONE'
+    assert candidate_receipt['training_allowed'] is False
+    assert candidate_receipt['total'] == report['sources'][0]['file_count']
+    assert 'publication_candidates/complete.json' in report['artifacts']
     assert workflow.verify(output, root=root) == report
     assert workflow.prepare(batch, output, root=root, resume=True) == report
     assert len(calls) == 1
     assert not (output / "admission").exists()
     assert not (output / "production").exists()
+    receipt_path = output / "publication_candidates/complete.json"
+    receipt = receipt_path.read_bytes()
+    receipt_path.unlink()
+    with pytest.raises((SpecificationError, PipelineError)):
+        workflow.verify(output, root=root)
+    receipt_path.write_bytes(receipt)
+    (output / "publication_candidates/dossiers.jsonl").write_bytes(b'tampered\n')
+    with pytest.raises(SpecificationError):
+        workflow.verify(output, root=root)
 
 
 def test_registered_source_is_not_prepared_or_admitted(tmp_path, monkeypatch):

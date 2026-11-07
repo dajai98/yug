@@ -28,6 +28,7 @@ from pathlib import Path
 from training import (
     clearance_evidence,
     production_build,
+    publication_clearance,
     source_admission,
     source_discovery,
     source_grant_proposals,
@@ -168,13 +169,21 @@ def prepare(batch_path, output, *, root=ROOT, resume=False, fetch=False):
         source_grant_proposals.compile_proposals(output / "cache",
             discovery_dir / "catalog.json", output / "clearance", paths["references"],
             output / "proposals", root=root)
+        # Candidate dossiers and decision batches are review material only.
+        # Existing exact-file grants and training-use decisions remain separate.
+        if (output / "proposals/complete.json").is_file():
+            publication_clearance.compile_candidates(output / "cache",
+                discovery_dir / "catalog.json", output / "clearance", paths["references"],
+                output / "proposals", output / "publication_candidates",
+                root=root, fetch_history=fetch)
     report = seal(dict(policy=POLICY, request_identity=request["identity"],
                        phase="HUMAN_REVIEW", training_allowed=False,
                        sources=_source_rows(_json(discovery_dir / "decisions.json"),
                                             prepared, clearance),
                        artifacts={name: file_digest(output / name) for name in
-                                  ("discovery/complete.json", "discovery/catalog.json",
-                                   "cache/status.json") if (output / name).is_file()}))
+                             ("discovery/complete.json", "discovery/catalog.json",
+                              "cache/status.json", "publication_candidates/complete.json")
+                             if (output / name).is_file()}))
     atomic_json(output / "report.json", report)
     return report
 
@@ -223,6 +232,9 @@ def verify(output, *, root=ROOT):
              "Proposal request mismatch")
         need(file_digest(output / "proposals/proposals.jsonl") == proposal["proposals_sha256"],
              "Proposal payload changed")
+        if (output / "publication_candidates/complete.json").is_file():
+            publication_clearance.verify_candidates(output / "publication_candidates",
+                                                     root=root)
     report = _json(output / "report.json")
     verify_seal(report)
     need(report["request_identity"] == request["identity"], "Workflow report mismatch")
