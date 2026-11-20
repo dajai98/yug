@@ -11,6 +11,7 @@ import os
 import re
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from training.production_corpus import canonical, file_digest
 from training.production_spec import need, seal, verify_seal
@@ -18,8 +19,12 @@ from training.production_spec import need, seal, verify_seal
 SCHEMA = 'yug-approval-governance-event-v1'
 POLICY = 'yug-approval-governance-v1'
 TYPES = frozenset(('production_plan', 'ownership_approval', 'source_clearance',
-                   'file_clearance', 'decision_receipt', 'conditional_approval',
-                   'historical_import'))
+                   'source_component', 'file_clearance', 'decision_receipt', 'conditional_approval',
+                   'historical_import', 'source_revision', 'rights_evidence_status'))
+REVISION_SCHEMA = 'yug-source-revision-activation-v1'
+REVISION_FIELDS = frozenset(('schema', 'decision', 'source_id', 'locator',
+    'prior_revision', 'revision', 'prior_clearance_identity', 'clearance_identity',
+    'rights_dependencies', 'reviewer', 'decided_at', 'identity'))
 STATUSES = frozenset(('ACTIVE', 'SUPERSEDED', 'REVOKED'))
 MAX_BYTES = 16 * 1024 * 1024
 SHA = re.compile(r'sha256:[0-9a-f]{64}\Z')
@@ -45,6 +50,81 @@ def _scope(scope):
     return canonical(scope)
 
 
+def revision_scope(source_id, locator):
+    """One governance scope across every revision of the same exact source."""
+    parsed = urlsplit(locator) if type(locator) is str else None
+    need(type(source_id) is str and re.fullmatch(r'[a-z0-9][a-z0-9-]*', source_id)
+         and parsed is not None and parsed.scheme == 'https' and parsed.netloc and parsed.path.strip('/')
+         and not parsed.username and not parsed.password and
+         not parsed.query and not parsed.fragment and
+         locator == locator.strip(),
+         'Invalid stable source revision scope')
+    return dict(source_id=source_id, locator=locator.casefold().rstrip('/'))
+
+
+def verify_revision_activation(path, expected_sha256, prior_source, new_source,
+                               prior_clearance_identity, clearance_identity, root):
+    """Check an external activation decision; this never clears R2 for production.
+
+    Rights entries are dependencies on existing evidence bytes and governance
+    status, not grants of rights. A later transition validator must establish
+    that the list is complete before an activated R2 can be used.
+    """
+    from training.production_spec import local_path
+    need(type(expected_sha256) is str and SHA.fullmatch(expected_sha256),
+         'External activation decision byte pin required')
+    path = Path(path).resolve()
+    root = Path(root).resolve()
+    need(path.is_relative_to(root) and path.is_file() and
+         file_digest(path) == expected_sha256,
+         'Missing or changed externally pinned activation decision')
+    raw = path.read_bytes()
+    need(len(raw) <= 65536, 'Oversized activation decision')
+    try:
+        decision = json.loads(raw, object_pairs_hook=_pairs)
+    except (ValueError, UnicodeError) as exc:
+        raise ValueError('Malformed activation decision') from exc
+    need(canonical(decision) == raw and set(decision) == REVISION_FIELDS,
+         'Noncanonical or incomplete activation decision')
+    verify_seal(decision)
+    scope = revision_scope(prior_source['source_id'], prior_source['locator'])
+    need(revision_scope(new_source['source_id'], new_source['locator']) == scope and
+         prior_source['locator'] == new_source['locator'] and
+         decision['schema'] == REVISION_SCHEMA and
+         decision['decision'] == 'ACTIVATE_REVISION' and
+         decision['source_id'] == scope['source_id'] and
+         decision['locator'] == prior_source['locator'] and
+         decision['prior_revision'] == prior_source['revision'] and
+         decision['revision'] == new_source['revision'] and
+         decision['prior_revision'] != decision['revision'] and
+         decision['prior_clearance_identity'] == prior_clearance_identity and
+         decision['clearance_identity'] == clearance_identity and
+         all(type(x) is str and SHA.fullmatch(x) for x in
+             (prior_clearance_identity, clearance_identity)) and
+         type(decision['reviewer']) is str and bool(decision['reviewer'].strip()) and
+         type(decision['decided_at']) is str and bool(decision['decided_at'].strip()),
+         'Activation decision has wrong source, revision, or clearance scope')
+    stable = ('repository_group', 'domain_group', 'split_group', 'split',
+              'target_cap_tokens', 'category_caps_tokens', 'allowed_categories',
+              'category', 'subcategory', 'license_id')
+    need(all(prior_source[k] == new_source[k] for k in stable),
+         'Revision activation changes source allocation or rights policy')
+    dependencies = decision['rights_dependencies']
+    need(type(dependencies) is list and bool(dependencies) and
+         dependencies == sorted(dependencies, key=lambda x: x['path']) and
+         all(type(x) is dict and set(x) == {'path', 'sha256'} and
+             type(x['path']) is str and type(x['sha256']) is str and
+             SHA.fullmatch(x['sha256']) for x in dependencies) and
+         len({x['path'] for x in dependencies}) == len(dependencies),
+         'Unknown or ambiguous activation rights dependencies')
+    for dependency in dependencies:
+        need(file_digest(local_path(root, dependency['path'])) == dependency['sha256'],
+             'Activation rights evidence missing or changed')
+    need(file_digest(path) == expected_sha256,
+         'Activation decision changed during verification')
+    return decision
+
+
 def event(*, approval_identity, approval_type, scope, previous_status,
           new_status, transition_at, reason_ref, previous_event_identity=None,
           replaced_by=None, replacement_scope=None):
@@ -67,6 +147,11 @@ def _validate_fields(value):
          value['approval_type'] in TYPES and type(value['approval_identity']) is str
          and SHA.fullmatch(value['approval_identity']), 'Unsupported governance approval')
     _scope(value['scope'])
+    if value['approval_type'] in ('source_revision', 'rights_evidence_status'):
+        scope = value['scope']
+        need(set(scope) == {'source_id', 'locator'} and
+             scope == revision_scope(scope['source_id'], scope['locator']),
+             'Wrong stable source governance scope')
     need(value['previous_status'] in ('NONE', 'ACTIVE') and
          value['new_status'] in STATUSES, 'Invalid governance transition status')
     need(type(value['reason_ref']) is str and bool(value['reason_ref'].strip()),
@@ -141,6 +226,15 @@ class Governance:
         kind = value['approval_type']
         scope = value['scope']
         key = (kind, _scope(scope))
+        if kind == 'source_revision':
+            for state in self.states.values():
+                if state['type'] != 'source_revision':
+                    continue
+                earlier = state['scope']
+                need(earlier['source_id'] != scope['source_id'] and
+                     earlier['locator'] != scope['locator'] or
+                     _scope(earlier) == key[1],
+                     'Conflicting source revision identity or locator alias')
         prior = self.states.get(aid)
         status = value['new_status']
         if value['previous_status'] == 'NONE':
@@ -175,6 +269,59 @@ class Governance:
              self.current.get(key) == approval_identity,
              'Approval revoked, superseded, unknown or wrong scope')
         return state
+
+    def revision_activation_identity(self, source_id, locator):
+        """Return current activation and whether this source ever entered the lifecycle."""
+        scope = revision_scope(source_id, locator)
+        key = ('source_revision', _scope(scope))
+        seen = any(state['type'] == 'source_revision' and
+                   _scope(state['scope']) == key[1] for state in self.states.values())
+        return seen, self.current.get(key)
+
+    def require_prospective_revision(self, source):
+        """Legacy sources continue; transitioned sources await R2 lineage validation.
+
+        A source-level event immediately retires old prospective plans. The
+        later transition stage must supply and verify R2 clearance lineage
+        before this gate can admit the newly active revision.
+        """
+        seen, _active = self.revision_activation_identity(
+            source['source_id'], source['locator'])
+        need(not seen and source.get('revision_activation') is None,
+             'Source revision activation lacks verified transition clearance')
+
+    def require_rights_dependencies(self, source_id, locator, dependencies, root):
+        """Check explicit evidence status; no evidence-status event grants rights."""
+        from training.production_spec import local_path
+        scope = revision_scope(source_id, locator)
+        need(type(dependencies) is list and bool(dependencies),
+             'Unknown activation rights dependencies')
+        seen = set()
+        for ref in dependencies:
+            need(type(ref) is dict and set(ref) == {'path', 'sha256'} and
+                 type(ref['sha256']) is str and SHA.fullmatch(ref['sha256']) and
+                 ref['sha256'] not in seen,
+                 'Ambiguous activation rights dependencies')
+            seen.add(ref['sha256'])
+            need(file_digest(local_path(root, ref['path'])) == ref['sha256'],
+                 'Activation rights evidence missing or changed')
+            self.require_current('rights_evidence_status', ref['sha256'], scope)
+
+    def require_activation_decision(self, path, expected_sha256, prior_source,
+                                    new_source, prior_clearance_identity,
+                                    clearance_identity, root):
+        """Bind current status to pinned decision and current rights dependencies.
+
+        This is a governance precondition, not a production clearance.
+        """
+        decision = verify_revision_activation(path, expected_sha256,
+            prior_source, new_source, prior_clearance_identity,
+            clearance_identity, root)
+        scope = revision_scope(decision['source_id'], decision['locator'])
+        self.require_current('source_revision', decision['identity'], scope)
+        self.require_rights_dependencies(decision['source_id'],
+            decision['locator'], decision['rights_dependencies'], root)
+        return decision
 
 
 def append_event(path, expected_sha256, value):

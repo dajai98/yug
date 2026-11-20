@@ -13,7 +13,8 @@ from pathlib import Path
 from training.conditional_license import validate_approval
 from training.production_corpus import canonical, file_digest, identity
 from training.production_spec import (local_path, need, seal, source_manifest,
-                                      verify_seal)
+                                       verify_seal,
+                                       require_activated_transition_clearance)
 
 SCHEMA = 'yug-notice-attribution-v1'
 FILENAME = 'notice_attribution.json'
@@ -24,11 +25,17 @@ def source_clearance(source, root):
     """Reopen the exact source grant; its self-seal alone is not an approval pin."""
     grant = json.loads(local_path(root, source['clearance_record']).read_bytes())
     verify_seal(grant)
+    require_activated_transition_clearance(grant)
     manifest = source_manifest(root, source)
     need(grant.get('source_id') == source['source_id'] and
          grant.get('revision') == source['revision'] and
          grant.get('file_manifest_identity') == manifest['identity'] and
          grant.get('decision') == 'ACCEPT', 'Source clearance scope changed')
+    if (source.get('approval_composition') or
+            grant.get('schema') == 'yug-composite-source-clearance-v1' or
+            'components' in grant):
+        from training.composite_lineage import verify
+        verify(root, source, manifest, grant)
     need(type(grant.get('attribution')) is str and bool(grant['attribution'].strip()),
          'Missing source attribution')
     references = grant.get('evidence')

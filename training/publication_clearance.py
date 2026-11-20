@@ -176,7 +176,7 @@ def _classify(row, observed, source, rows, data, history, publication, contribut
     kind = _type(row["path"])
     if kind is None:
         return "REVIEW", "outside bounded documentation/source-code formats and subtrees", None
-    if source["status"] != "ACCEPT" or source["license_id"] not in LICENSES:
+    if source["status"] not in ("ACCEPT", "REVIEW") or source["license_id"] not in LICENSES:
         return "REVIEW", "unsupported or conditional source license", kind
     if not data or history is None:
         return "REVIEW", "empty or unavailable bounded text payload", kind
@@ -259,14 +259,17 @@ def compile_candidates(
     root=ROOT,
     fetch_history=False,
     history_depth=32,
+    spec=None,
 ):
     """Generate deterministic dossiers, exception queue, and <=64-file batches."""
     root = Path(root).resolve()
+    spec_path = Path(spec).resolve() if spec is not None else root / "training/specifications/production_corpus_v1.json"
     cache, catalog, evidence, references, proposals, output = (
         Path(p).resolve() for p in (cache, catalog, evidence, references, proposals, output)
     )
     need(
         output.is_relative_to(root / "artifacts")
+        and spec_path.is_relative_to(root) and not spec_path.is_relative_to(output)
         and all(
             not output.is_relative_to(p) and not p.is_relative_to(output)
             for p in (cache, evidence, proposals)
@@ -303,6 +306,8 @@ def compile_candidates(
             cache / "status.json",
         )
     }
+    if spec_path != root / "training/specifications/production_corpus_v1.json":
+        inputs[spec_path.relative_to(root).as_posix()] = file_digest(spec_path)
     request = seal(
         dict(
             policy=POLICY,
@@ -328,7 +333,7 @@ def compile_candidates(
     for directory, source, inventory, done in cached_sources(
         cache,
         source_catalog,
-        json.loads((root / "training/specifications/production_corpus_v1.json").read_bytes()),
+        json.loads(spec_path.read_bytes()),
         root,
     ):
         rows_list = list(read_plan(inventory))

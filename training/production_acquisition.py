@@ -199,10 +199,14 @@ class ProductionBuild:
             self.expected_ownership_approval_sha256,plan_sha,self.directory)
         selected=tuple(records) if records is not None else None
         grants={}
+        components={}
         for record in read_plan(plan_path) if selected is None else selected:
             source=self.sources[record['source_id']]
             if source['source_id'] not in grants:
-                grants[source['source_id']]=source_clearance(source,self.root)['identity']
+                grant=source_clearance(source,self.root)
+                grants[source['source_id']]=grant['identity']
+                components[source['source_id']]=tuple(c['decision_identity']
+                    for c in grant.get('components',()))
         need(file_digest(plan_path)==plan_sha,'Plan changed during current approval check')
         # Perform slow artifact checks first, then evaluate every required status
         # from one freshly pinned governance byte snapshot.
@@ -213,8 +217,13 @@ class ProductionBuild:
                                    dict(plan_sha256=plan_sha))
         for record in read_plan(plan_path) if selected is None else selected:
             source=self.sources[record['source_id']]
+            governance.require_prospective_revision(source)
             governance.require_current('source_clearance',grants[source['source_id']],
                 dict(source_id=source['source_id'],revision=source['revision']))
+            for component in components[source['source_id']]:
+                governance.require_current('source_component',component,
+                    dict(source_id=source['source_id'],revision=source['revision'],
+                         component_decision_identity=component))
             governance.require_current('file_clearance',record['identity'],
                 dict(source_id=record['source_id'],revision=record['revision'],
                      path=record['path'],sha256=record['sha256']))

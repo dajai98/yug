@@ -214,7 +214,14 @@ def build(registry, spec, output, *, seeds=None, root=ROOT, resume=False, fetche
     for seed in seeds:
         url = seed['locator']
         need(re.fullmatch(r'https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', url), 'Invalid discovery locator')
-        need(re.fullmatch(r'[A-Za-z0-9_.-]+', seed.get('branch', '')), 'Explicit simple branch required')
+        registered = 'source_id' in seed or 'revision' in seed
+        if registered:
+            need(set(seed) == {'source_id','locator','revision','category','subcategory'}
+                 and re.fullmatch(r'[0-9a-f]{40}', seed['revision']),
+                 'Registered seed requires exact source and revision')
+        else:
+            need(re.fullmatch(r'[A-Za-z0-9_.-]+', seed.get('branch', '')),
+                 'Explicit simple branch required')
         need(url.lower() not in seen, 'Duplicate seed locator'); seen.add(url.lower())
         need(seed['subcategory'] in categories.get(seed['category'], []), 'Invalid category route')
     request = seal(dict(version=VERSION, registry_sha256=file_digest(registry), spec_sha256=file_digest(spec),
@@ -239,7 +246,22 @@ def build(registry, spec, output, *, seeds=None, root=ROOT, resume=False, fetche
     for index, seed in enumerate(seeds):
         directory = output/f'source-{index:02d}'; directory.mkdir(exist_ok=True)
         sid = 'gh-'+seed['locator'].removeprefix('https://github.com/').lower().replace('/', '-')
-        if seed['locator'].lower() in known or sid in ids:
+        if 'source_id' in seed:
+            matches = [s for s in catalog['sources'] if s['source_id'] == seed['source_id']
+                       or str(s.get('locator') or '').casefold().rstrip('/') == seed['locator'].casefold()]
+            need(len(matches) == 1 and matches[0]['source_id'] == sid == seed['source_id']
+                 and matches[0]['locator'] == seed['locator']
+                 and matches[0]['revision'] == seed['revision']
+                 and matches[0]['category'] == seed['category']
+                 and matches[0]['subcategory'] == seed['subcategory']
+                 and matches[0]['status'] == 'REVIEW'
+                 and matches[0].get('file_manifest') is None
+                 and matches[0].get('clearance_record') is None,
+                 'Registered REVIEW source identity/scope mismatch')
+            source = matches[0]
+            decision = dict(seed, status='REGISTERED_REVIEW',
+                            reason='Existing pinned source; exact file and rights review required')
+        elif seed['locator'].lower() in known or sid in ids:
             decision, source = dict(seed, status='REJECTED', reason='already registered source'), None
         else:
             decision, source = discover(seed, directory, root, policy, None if prior else fetcher)

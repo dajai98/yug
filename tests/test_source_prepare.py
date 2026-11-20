@@ -1,5 +1,6 @@
 """Offline source preparation tests using local, temporary Git repositories."""
 import copy
+import base64
 import hashlib
 import json
 from pathlib import Path
@@ -7,6 +8,8 @@ import subprocess
 import pytest
 from training import source_prepare as sp
 from training.production_spec import seal,SpecificationError
+from training.production_corpus import canonical, file_digest
+from training.protected_references import make_reference
 
 
 def command(*args,cwd=None):
@@ -126,3 +129,118 @@ def test_fetch_retries_are_bounded(tmp_path,fixture,monkeypatch):
     monkeypatch.setattr(sp.time,'sleep',lambda _:None)
     with pytest.raises(OSError):sp.prepare(source,spec,tmp_path/'out',retries=2,fetcher=fail)
     assert len(attempts)==3
+
+
+@pytest.fixture
+def registered_review(tmp_path,fixture):
+    source,spec,fetcher,_=fixture
+    repo=tmp_path/'upstream'
+    license_bytes=b'Unresolved synthetic license text\n'
+    (repo/'LICENSE').write_bytes(license_bytes)
+    command('add','LICENSE',cwd=repo)
+    command('-c','core.hooksPath='+str(tmp_path/'no-hooks'),'commit','-m','license',cwd=repo)
+    revision=command('rev-parse','HEAD',cwd=repo)
+    blob=hashlib.sha1(f'blob {len(license_bytes)}\0'.encode()+license_bytes).hexdigest()
+    evidence=tmp_path/'evidence'
+    evidence.mkdir()
+    license_path=evidence/'license.json'
+    license_path.write_bytes(canonical(seal(dict(
+        url=f'https://api.github.com/repos/example/fixture/license?ref={revision}',
+        body=dict(path='LICENSE',size=len(license_bytes),sha=blob,
+                  content=base64.b64encode(license_bytes).decode(),
+                  license=dict(spdx_id='NOASSERTION'))))))
+    source=dict(source,source_id='gh-example-fixture',name='example/fixture',
+                revision=revision,status='REVIEW',license_id='NOASSERTION',
+                license_evidence=dict(path='evidence/license.json',
+                    sha256=file_digest(license_path),upstream_path='LICENSE',
+                    text_sha256='sha256:'+hashlib.sha256(license_bytes).hexdigest()),
+                split_group='gh-example-fixture',allow_paths=[],
+                clearance_record=None,file_manifest=None)
+    registry=seal(dict(schema='yug-production-source-registry-v1',sources=[source]))
+    reference=make_reference(work_id='fixture',work_version='1',item_id='1',
+        reference_id='fixture-reference',role='reference',protected_split='test',
+        text='Unrelated protected text',content_type='prose',language='en',
+        provenance={'source_id':'gh-other'})
+    refs=tmp_path/'references.jsonl'
+    refs.write_bytes(canonical(reference)+b'\n')
+    output=tmp_path/'artifacts'/'registered-review'
+    kwargs=dict(expected_registry_identity=registry['identity'],
+                expected_spec_identity=spec['identity'],
+                expected_references_sha256=file_digest(refs),root=tmp_path,
+                fetcher=fetcher)
+    return source,registry,spec,refs,output,kwargs
+
+
+def test_registered_review_inventory_is_exact_and_zero_authority(registered_review):
+    source,registry,spec,refs,output,kwargs=registered_review
+    assert sp.classify(source)=='BLOCKED_LICENSE'
+    result=sp.prepare_registered_review(registry,source['source_id'],
+        source['revision'],spec,refs,output,**kwargs)
+    directory=output/source['source_id']
+    rows=[json.loads(line) for line in (directory/'inventory.jsonl').read_bytes().splitlines()]
+    license_row=next(row for row in rows if row['path']=='LICENSE')
+    assert license_row['revision']==source['revision']
+    assert license_row['source_license_id']=='NOASSERTION'
+    assert license_row['sha256']==source['license_evidence']['text_sha256']
+    assert all(row['training_allowed'] is False for row in rows)
+    assert all(row['screening']!='ACCEPT' for row in rows)
+    request=json.loads((directory/'request.json').read_bytes())
+    assert request['source']==source
+    assert request['review_context']['authority']=='NONE'
+    assert request['review_context']['training_allowed'] is False
+    assert result['training_allowed'] is False
+    again=sp.prepare_registered_review(registry,source['source_id'],
+        source['revision'],spec,refs,output,resume=True,**kwargs)
+    assert again['reused'] and again['inventory_sha256']==result['inventory_sha256']
+
+
+@pytest.mark.parametrize('damage',['revision','locator','registry_pin','license_evidence',
+                                    'source_id','protected'])
+def test_registered_review_rejects_missing_or_mismatched_inputs(
+        registered_review,damage):
+    source,registry,spec,refs,output,kwargs=registered_review
+    source_id=source['source_id']
+    revision=source['revision']
+    if damage=='revision':
+        revision='0'*40
+    elif damage=='locator':
+        registry=seal(dict(registry,sources=[dict(source,locator=None)]))
+        kwargs['expected_registry_identity']=registry['identity']
+    elif damage=='registry_pin':
+        kwargs['expected_registry_identity']='sha256:'+'0'*64
+    elif damage=='license_evidence':
+        registry=seal(dict(registry,sources=[dict(source,license_evidence=None)]))
+        kwargs['expected_registry_identity']=registry['identity']
+    elif damage=='source_id':
+        source_id='gh-other'
+    else:
+        reference=make_reference(work_id='fixture',work_version='1',item_id='1',
+            reference_id='fixture-reference',role='reference',protected_split='test',
+            text='Protected source text',content_type='prose',language='en',
+            provenance={'source_id':source['source_id']})
+        refs.write_bytes(canonical(reference)+b'\n')
+        kwargs['expected_references_sha256']=file_digest(refs)
+    with pytest.raises((SpecificationError,TypeError,KeyError)):
+        sp.prepare_registered_review(registry,source_id,revision,spec,refs,output,**kwargs)
+    assert not output.exists()
+
+
+def test_registered_review_rejects_license_bytes_not_in_git(registered_review):
+    source,registry,spec,refs,output,kwargs=registered_review
+    evidence=output.parents[1]/'evidence/license.json'
+    record=json.loads(evidence.read_bytes())
+    replacement=b'Unrelated license bytes\n'
+    record['body']['content']=base64.b64encode(replacement).decode()
+    record['body']['size']=len(replacement)
+    record['body']['sha']=hashlib.sha1(
+        f'blob {len(replacement)}\0'.encode()+replacement).hexdigest()
+    evidence.write_bytes(canonical(seal(record)))
+    source=dict(source,license_evidence=dict(source['license_evidence'],
+        sha256=file_digest(evidence),
+        text_sha256='sha256:'+hashlib.sha256(replacement).hexdigest()))
+    registry=seal(dict(registry,sources=[source]))
+    kwargs['expected_registry_identity']=registry['identity']
+    with pytest.raises(SpecificationError,match='Pinned license'):
+        sp.prepare_registered_review(registry,source['source_id'],
+            source['revision'],spec,refs,output,**kwargs)
+    assert not (output/source['source_id']/'complete.json').exists()

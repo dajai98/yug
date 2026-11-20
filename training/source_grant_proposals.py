@@ -52,7 +52,7 @@ def _source_evidence(source, root):
 
 
 def _file_scope(source, rows, directory, root):
-    if source['status'] != 'ACCEPT':
+    if source['status'] not in ('ACCEPT', 'REVIEW'):
         return None, 'conditional or unapproved source requires source-specific governance'
     if _source_evidence(source, root) is None:
         return None, 'source license metadata not verified'
@@ -62,14 +62,18 @@ def _file_scope(source, rows, directory, root):
     return scope, reason
 
 
-def compile_proposals(cache, catalog, evidence, references, output, *, root=ROOT):
+def compile_proposals(cache, catalog, evidence, references, output, *, root=ROOT,
+                      base_registry=None, base_spec=None):
     root = Path(root).resolve()
     cache, catalog, evidence, references, output = map(lambda p: Path(p).resolve(),
                                                        (cache, catalog, evidence, references, output))
     need(output.is_relative_to(root/'artifacts') and not output.is_relative_to(cache)
          and not output.is_relative_to(evidence), 'Unsafe proposal output')
-    base_reg_path = root/'training/specifications/source_registry_v1.json'
-    base_spec_path = root/'training/specifications/production_corpus_v1.json'
+    base_reg_path = Path(base_registry).resolve() if base_registry is not None else root/'training/specifications/source_registry_v1.json'
+    base_spec_path = Path(base_spec).resolve() if base_spec is not None else root/'training/specifications/production_corpus_v1.json'
+    need(base_reg_path.is_relative_to(root) and base_spec_path.is_relative_to(root)
+         and not base_reg_path.is_relative_to(output) and not base_spec_path.is_relative_to(output),
+         'Proposal policy inputs must be independent repository files')
     base_reg = json.loads(base_reg_path.read_bytes())
     spec = json.loads(base_spec_path.read_bytes())
     validate(spec, base_reg, root)
@@ -180,6 +184,8 @@ def main():
     parser.add_argument('--evidence', required=True, type=Path)
     parser.add_argument('--references', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--base-registry', type=Path)
+    parser.add_argument('--base-spec', type=Path)
     args = parser.parse_args()
     result = compile_proposals(**vars(args))
     print(json.dumps(result, sort_keys=True))

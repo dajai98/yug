@@ -103,6 +103,21 @@ def acquisition_blockers(source):
         reasons.append('unassigned_source_split')
     return reasons
 
+
+TRANSITION_CLEARANCE_SCHEMAS = frozenset({
+    'reviewed-revision-file-clearance-v1',
+    'verified-revision-final-file-clearance-v1',
+})
+
+
+def require_activated_transition_clearance(clearance):
+    """F1 evidence cannot be used as an active production source grant."""
+    need(clearance.get('schema') not in TRANSITION_CLEARANCE_SCHEMAS and
+         'old_revision' not in clearance and
+         'comparison_identity' not in clearance and
+         'provisional_clearance_identity' not in clearance,
+         'R2 transition clearance requires later verified activation')
+
 def validate(spec, registry, root):
     with closing(sqlite3.connect('')) as owners:
         owners.execute('CREATE TABLE files(repository TEXT,path TEXT,PRIMARY KEY(repository,path))')
@@ -183,8 +198,14 @@ def _validate(spec,registry,root,owners):
                 need(re.fullmatch(r'sha256:[0-9a-f]{64}', f['sha256']) is not None and positive(f['bytes']), 'Unbounded or unhashed acquisition')
             clearance = json.loads(local_path(root, s['clearance_record']).read_text(encoding='utf-8'))
             verify_seal(clearance)
+            require_activated_transition_clearance(clearance)
             need(clearance['source_id'] == sid and clearance['revision'] == s['revision'] and clearance['file_manifest_identity'] == manifest['identity'], 'Clearance does not cover manifest')
             need(clearance['decision'] == 'ACCEPT' and clearance['evidence'] and clearance['attribution'], 'Incomplete clearance')
+            if (s.get('approval_composition') or
+                    clearance.get('schema') == 'yug-composite-source-clearance-v1' or
+                    'components' in clearance):
+                from training.composite_lineage import verify
+                verify(root, s, manifest, clearance)
             for evidence in clearance['evidence']:
                 need(file_digest(local_path(root,evidence['path'])) == evidence['sha256'], 'Clearance evidence hash mismatch')
     for values in spec['group_caps'].values():

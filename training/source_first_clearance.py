@@ -94,14 +94,16 @@ def _already_registered(source, registry):
                for s in registry['sources'])
 
 
-def validate_decision_scope(decision, source, rows):
+def validate_decision_scope(decision, source, rows, *, policy=POLICY,
+                            extra_fields=frozenset()):
     """Pure exact-scope check; rights records and payloads are checked by build."""
     base_fields = {
         'schema', 'decision', 'reviewer', 'decided_at', 'source_id', 'locator',
         'revision', 'owner', 'subcategory', 'license_id', 'split', 'cap_tokens',
         'attribution', 'obligations', 'source_scope_evidence', 'files', 'identity'}
     need(type(decision) is dict and set(decision) in
-         (base_fields, base_fields | {'candidate_batch_ref'}),
+         (base_fields | extra_fields,
+          base_fields | extra_fields | {'candidate_batch_ref'}),
         'Incomplete first-time decision')
     if 'candidate_batch_ref' in decision:
         ref = decision['candidate_batch_ref']
@@ -109,7 +111,7 @@ def validate_decision_scope(decision, source, rows):
              type(ref['sha256']) is str and SHA.fullmatch(ref['sha256']),
              'Invalid bounded candidate batch reference')
     verify_seal(decision)
-    need(decision['schema'] == POLICY and decision['decision'] == 'APPROVE_EXACT_FILES'
+    need(decision['schema'] == policy and decision['decision'] == 'APPROVE_EXACT_FILES'
          and type(decision['reviewer']) is str and bool(decision['reviewer'].strip())
          and type(decision['decided_at']) is str and bool(decision['decided_at'].strip()),
          'Missing external first-time governance decision')
@@ -500,69 +502,8 @@ def validate_candidate_batch(batch, decision, source, inventory_identity,
          'Candidate file moved or decision batch changed')
 
 
-def build(decision_path, output, *, expected_decision_sha256, cache,
-          catalog, review, references, root=ROOT,
-          base_registry=None, base_spec=None):
-    root = Path(root).resolve()
-    def resolve(path):
-        return (Path(path).resolve() if Path(path).is_absolute()
-                else local_path(root, str(path)))
-    decision_path, output, cache, catalog, review, references = map(
-        resolve, (decision_path, output, cache, catalog, review, references))
-    base_registry = resolve(base_registry or 'training/specifications/source_registry_v1.json')
-    base_spec = resolve(base_spec or 'training/specifications/production_corpus_v1.json')
-    inputs = [decision_path, catalog, references, base_registry, base_spec,
-              review/'request.json', review/'complete.json', review/'evidence.jsonl',
-              cache/'status.json']
-    need(output.is_relative_to(root/'artifacts') and not output.is_relative_to(cache)
-         and all(not p.is_relative_to(output) for p in inputs),
-         'First-time output overlaps inputs or escapes artifacts')
-    need(type(expected_decision_sha256) is str and
-         SHA.fullmatch(expected_decision_sha256) and
-         file_digest(decision_path) == expected_decision_sha256,
-         'Externally pinned first-time decision missing or changed')
-    decision = _read(decision_path, maximum=65536)
-    registry, spec, catalog_value = (_read(p, maximum=16_777_216,
-                                           canonical_required=False)
-                                     for p in (base_registry, base_spec, catalog))
-    validate(spec, registry, root)
-    need(catalog_value['schema'] == registry['schema'], 'Wrong discovery catalog')
-    sources = [s for s in catalog_value['sources']
-               if s['source_id'] == decision['source_id']]
-    need(len(sources) == 1 and sources[0]['status'] == 'ACCEPT',
-         'Missing or unapproved discovery source')
-    source = sources[0]
-    need(not _already_registered(source, registry),
-         'Existing source/alias requires its existing approval route')
-    bundle = verify_bundle(review, root)
-    need(bundle['complete'] and bundle['training_allowed'] is False and
-         bundle['counts']['EVIDENCED'] == 0,
-         'Only complete review-only evidence is accepted')
-    review_request = _read(review/'request.json', canonical_required=False)
-    for p in (catalog, references, base_registry, base_spec, cache/'status.json'):
-        need(review_request['inputs'].get(p.relative_to(root).as_posix()) == file_digest(p),
-             'Review evidence does not bind current source/cache/policy')
-    caches = [x for x in cached_sources(cache, catalog_value, spec, root)
-              if x[1]['source_id'] == source['source_id']]
-    need(len(caches) == 1, 'Missing/ambiguous pinned source cache')
-    directory, _, inventory, done = caches[0]
-    need(review_request['inputs'].get(inventory.relative_to(root).as_posix()) ==
-         file_digest(inventory), 'Review evidence inventory changed')
-    inventory_rows = list(read_plan(inventory))
-    rows = {r['path']: r for r in inventory_rows}
-    need(len(rows) == len(inventory_rows) == sum(done['counts'].values()),
-         'Duplicate or incomplete pinned inventory')
-    approved = validate_decision_scope(decision, source, rows)
-    heldout = holdout_groups(references, registry) | holdout_groups(references, catalog_value)
-    need(source['split_group'] not in heldout, 'Retained protected source group')
-    review_rows = {r['path']: r for r in read_plan(review/'evidence.jsonl')
-                   if r['source_id'] == source['source_id']}
-    need(len(review_rows) == len(rows), 'Missing or duplicate review decisions')
-    evidence = []
-    for ref in decision['source_scope_evidence']:
-        _ref(root, ref, output)
-        need(ref not in evidence, 'Duplicate source scope evidence')
-        evidence.append(ref)
+def validate_source_license(root, output, source, rows, directory, evidence):
+    """Verify revision-bound license metadata and exact cached license bytes."""
     license_ref = source['license_evidence']
     need(type(license_ref) is dict and
          any(r['path'] == license_ref['path'] and
@@ -603,6 +544,104 @@ def build(decision_path, output, *, expected_decision_sha256, cache,
     need(license_bytes == retained_license and
          resolve_license(source['license_id'], license_bytes) == source['license_id'],
          'Root license bytes/terms differ from pinned metadata')
+
+
+def build(decision_path, output, *, expected_decision_sha256, cache,
+          catalog, review, references, root=ROOT,
+          base_registry=None, base_spec=None):
+    root = Path(root).resolve()
+    def resolve(path):
+        return (Path(path).resolve() if Path(path).is_absolute()
+                else local_path(root, str(path)))
+    decision_path, output, cache, catalog, review, references = map(
+        resolve, (decision_path, output, cache, catalog, review, references))
+    base_registry = resolve(base_registry or 'training/specifications/source_registry_v1.json')
+    base_spec = resolve(base_spec or 'training/specifications/production_corpus_v1.json')
+    inputs = [decision_path, catalog, references, base_registry, base_spec,
+              review/'request.json', review/'complete.json', review/'evidence.jsonl',
+              cache/'status.json']
+    need(output.is_relative_to(root/'artifacts') and not output.is_relative_to(cache)
+         and all(not p.is_relative_to(output) for p in inputs),
+         'First-time output overlaps inputs or escapes artifacts')
+    need(type(expected_decision_sha256) is str and
+         SHA.fullmatch(expected_decision_sha256) and
+         file_digest(decision_path) == expected_decision_sha256,
+         'Externally pinned first-time decision missing or changed')
+    decision = _read(decision_path, maximum=65536)
+    registry, spec, catalog_value = (_read(p, maximum=16_777_216,
+                                           canonical_required=False)
+                                     for p in (base_registry, base_spec, catalog))
+    validate(spec, registry, root)
+    need(catalog_value['schema'] == registry['schema'], 'Wrong discovery catalog')
+    sources = [s for s in catalog_value['sources']
+               if s['source_id'] == decision['source_id']]
+    need(len(sources) == 1 and sources[0]['status'] in ('ACCEPT', 'REVIEW'),
+         'Missing or unsupported review source')
+    source = sources[0]
+    registered = _already_registered(source, registry)
+    if registered:
+        matches = [s for s in registry['sources'] if
+                   s['source_id'] == source['source_id'] or
+                   (s.get('locator') or '').casefold().rstrip('/') ==
+                   source['locator'].casefold().rstrip('/')]
+        need(len(matches) == 1 and matches[0] == source and
+             source['status'] == 'REVIEW' and
+             source.get('file_manifest') is None and
+             source.get('clearance_record') is None and
+             source['allowed_categories'] == [source['category']] and
+             source['target_cap_tokens'] > 0 and
+             (source['split'] == 'unassigned' or source['split'] in ('train','validation')),
+             'Registered source must be one unchanged, uncleared REVIEW entry')
+    else:
+        need(source['status'] == 'ACCEPT',
+             'Unregistered REVIEW source needs its original registry')
+    bundle = verify_bundle(review, root)
+    need(bundle['complete'] and bundle['training_allowed'] is False and
+         bundle['counts']['EVIDENCED'] == 0,
+         'Only complete review-only evidence is accepted')
+    review_request = _read(review/'request.json', canonical_required=False)
+    for p in (catalog, references, base_registry, base_spec, cache/'status.json'):
+        need(review_request['inputs'].get(p.relative_to(root).as_posix()) == file_digest(p),
+             'Review evidence does not bind current source/cache/policy')
+    caches = [x for x in cached_sources(cache, catalog_value, spec, root)
+              if x[1]['source_id'] == source['source_id']]
+    need(len(caches) == 1, 'Missing/ambiguous pinned source cache')
+    directory, _, inventory, done = caches[0]
+    if registered:
+        cache_request = _read(directory/'request.json', canonical_required=False)
+        context = cache_request.get('review_context')
+        need(context == dict(review_only=True,authority='NONE',training_allowed=False,
+                             registry_identity=registry['identity'],
+                             references_sha256=file_digest(references)),
+             'Registered cache lacks original policy and protected-reference binding')
+    need(review_request['inputs'].get(inventory.relative_to(root).as_posix()) ==
+         file_digest(inventory), 'Review evidence inventory changed')
+    inventory_rows = list(read_plan(inventory))
+    rows = {r['path']: r for r in inventory_rows}
+    need(len(rows) == len(inventory_rows) == sum(done['counts'].values()),
+         'Duplicate or incomplete pinned inventory')
+    approved = validate_decision_scope(decision, source, rows)
+    if registered:
+        need((not source['allow_paths'] or
+              all(path_allowed(f['path'],source['allow_paths'],source['deny_paths'])
+                  for f in approved)) and
+             source['split'] in ('unassigned',decision['split']) and
+             decision['cap_tokens'] <= source['target_cap_tokens'] and
+             decision['cap_tokens'] <= source['category_caps_tokens'][decision['owner']] and
+             all(decision['cap_tokens'] <= spec['group_caps'][kind][source[kind]]
+                 for kind in ('repository_group','domain_group')),
+             'Registered split or established source/group cap cannot be changed')
+    heldout = holdout_groups(references, registry) | holdout_groups(references, catalog_value)
+    need(source['split_group'] not in heldout, 'Retained protected source group')
+    review_rows = {r['path']: r for r in read_plan(review/'evidence.jsonl')
+                   if r['source_id'] == source['source_id']}
+    need(len(review_rows) == len(rows), 'Missing or duplicate review decisions')
+    evidence = []
+    for ref in decision['source_scope_evidence']:
+        _ref(root, ref, output)
+        need(ref not in evidence, 'Duplicate source scope evidence')
+        evidence.append(ref)
+    validate_source_license(root, output, source, rows, directory, evidence)
     output_files = []
     prepared = []
     bounded_candidates = []
@@ -699,6 +738,9 @@ def build(decision_path, output, *, expected_decision_sha256, cache,
     publish(output/'clearance.json', clearance)
     cap = min(decision['cap_tokens'], sum(f['bytes']+1 for f in approved))
     s = copy.deepcopy(source)
+    if registered:
+        s.update(status='ACCEPT', status_authority=POLICY,
+                 status_reason='Externally reviewed exact-file first clearance')
     s.update(target_cap_tokens=cap, category_caps_tokens={decision['owner']:cap},
              cap_basis='Externally reviewed first-time exact-file ceiling',
              split=decision['split'], allow_paths=[f['path'] for f in approved],
@@ -706,13 +748,18 @@ def build(decision_path, output, *, expected_decision_sha256, cache,
              file_manifest=(output/'files.json').relative_to(root).as_posix(),
              clearance_record=(output/'clearance.json').relative_to(root).as_posix())
     new_registry = copy.deepcopy(registry)
-    new_registry['sources'].append(s)
+    if registered:
+        new_registry['sources'] = [s if old['source_id'] == s['source_id'] else old
+                                   for old in new_registry['sources']]
+    else:
+        new_registry['sources'].append(s)
     new_registry = seal(new_registry)
     new_spec = copy.deepcopy(spec)
     for kind in ('repository_group', 'domain_group'):
-        need(s[kind] not in new_spec['group_caps'][kind],
-             'Existing concentration cap cannot be raised')
-        new_spec['group_caps'][kind][s[kind]] = cap
+        if not registered:
+            need(s[kind] not in new_spec['group_caps'][kind],
+                 'Existing concentration cap cannot be raised')
+            new_spec['group_caps'][kind][s[kind]] = cap
     new_spec = seal(dict(new_spec, registry_identity=new_registry['identity']))
     validate(new_spec, new_registry, root)
     records = []
@@ -754,12 +801,15 @@ def main():
     parser.add_argument('--review', required=True, type=Path)
     parser.add_argument('--references', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--base-registry', type=Path)
+    parser.add_argument('--base-spec', type=Path)
     args = parser.parse_args()
     try:
         result = build(args.decision, args.output,
                        expected_decision_sha256=args.approved_decision_sha256,
                        cache=args.cache, catalog=args.catalog, review=args.review,
-                       references=args.references)
+                        references=args.references, base_registry=args.base_registry,
+                        base_spec=args.base_spec)
         print(json.dumps(result, sort_keys=True))
         return 0
     except Exception as exc:

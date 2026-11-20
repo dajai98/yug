@@ -1,6 +1,7 @@
 """Pinned GitHub review caches. Downloaded never means cleared for training."""
 from __future__ import annotations
 import argparse
+import base64
 from collections import Counter
 import hashlib
 import json
@@ -115,11 +116,91 @@ def inventory(repo,source,spec,directory):
     return dict(counts)
 
 
+def _verify_review_license(directory, source):
+    """Bind retained license metadata to the pinned Git bytes, without resolving rights."""
+    reference=source['license_evidence']
+    license_row=json.loads(Path(reference['path']).read_bytes())
+    body=license_row['body']
+    data=base64.b64decode(''.join(body['content'].split()),validate=True)
+    need(body['path']==reference['upstream_path'] and
+         len(data)==body['size'] and
+         file_digest(Path(reference['path']))==reference['sha256'] and
+         'sha256:'+hashlib.sha256(data).hexdigest()==reference['text_sha256'] and
+         hashlib.sha1(f'blob {len(data)}\0'.encode()+data).hexdigest()==body['sha'],
+         'Retained license bytes or Git identity changed')
+    with (directory/'inventory.jsonl').open('rb') as inventory_rows:
+        matches=[row for line in inventory_rows
+                 if (row:=json.loads(line))['path']==body['path']]
+    need(len(matches)==1 and matches[0]['sha256']==reference['text_sha256'] and
+         matches[0]['git_object']==body['sha'] and matches[0]['bytes']==len(data),
+         'Pinned license is absent or differs from the Git inventory')
+
+
+def prepare_registered_review(registry, source_id, revision, spec, references,
+                              output, *, expected_registry_identity,
+                              expected_spec_identity, expected_references_sha256,
+                              root=ROOT, resume=False, fetcher=None):
+    """Cache an already registered REVIEW source for inspection only."""
+    from training.source_admission import holdout_groups
+    from training.source_grant_proposals import _source_evidence
+
+    root=Path(root).resolve()
+    output=Path(output).resolve()
+    references=Path(references).resolve()
+    verify_seal(registry)
+    verify_seal(spec)
+    need(registry.get('schema')=='yug-production-source-registry-v1' and
+         registry['identity']==expected_registry_identity and
+         spec['identity']==expected_spec_identity and
+         references.is_file() and references.is_relative_to(root) and
+         file_digest(references)==expected_references_sha256 and
+         output.is_relative_to(root/'artifacts') and
+         not references.is_relative_to(output),
+         'Registered review inputs or isolated output mismatch')
+    matches=[s for s in registry['sources'] if s['source_id']==source_id]
+    need(len(matches)==1,'Exact registered source required')
+    source=matches[0]
+    locator=source.get('locator')
+    parsed=urlsplit(locator or '')
+    parts=parsed.path.strip('/').split('/')
+    need(source['status']=='REVIEW' and source.get('clearance_record') is None and
+         source.get('file_manifest') is None and source['revision']==revision and
+         re.fullmatch('[0-9a-f]{40}',revision) and
+         parsed.scheme=='https' and parsed.netloc=='github.com' and
+         not parsed.query and not parsed.fragment and len(parts)==2 and
+         all(re.fullmatch('[A-Za-z0-9_.-]+',part) for part in parts) and
+         source_id=='gh-'+'-'.join(parts).lower() and
+         source['split_group'] not in holdout_groups(references,registry) and
+         fetcher is not None,
+         'Registered REVIEW identity, revision, protection, or fetcher invalid')
+    need(_source_evidence(source,root) is not None,
+         'Pinned candidate license metadata required')
+    reference=source['license_evidence']
+    evidence_path=(root/reference['path']).resolve()
+    need(evidence_path.is_relative_to(root) and
+         not evidence_path.is_relative_to(output) and
+         all(key in reference for key in ('sha256','text_sha256','upstream_path')),
+         'Candidate license evidence incomplete or output-local')
+    context=dict(review_only=True,authority='NONE',training_allowed=False,
+                 registry_identity=registry['identity'],
+                 references_sha256=expected_references_sha256)
+    return _prepare(source,spec,output,resume=resume,fetcher=fetcher,
+                    review_context=context,review_license=evidence_path)
+
+
 def prepare(source,spec,output,*,resume=False,retries=2,fetcher=fetch):
     need(classify(source)=='CACHE_READY','Source is not cache eligible')
+    return _prepare(source,spec,output,resume=resume,retries=retries,fetcher=fetcher)
+
+
+def _prepare(source,spec,output,*,resume=False,retries=2,fetcher=fetch,
+             review_context=None,review_license=None):
     sid=source['source_id'];need(re.fullmatch('[A-Za-z0-9_.-]+',sid) and sid not in ('.','..'),'Unsafe source ID')
     directory=Path(output)/sid;directory.mkdir(parents=True,exist_ok=True)
-    request=seal(dict(policy=POLICY,source=source,filters=spec['filters'],max_bytes=MAX_ITEM_BYTES))
+    request_fields=dict(policy=POLICY,source=source,filters=spec['filters'],max_bytes=MAX_ITEM_BYTES)
+    if review_context is not None:
+        request_fields['review_context']=review_context
+    request=seal(request_fields)
     with _writer_lock(directory/'lock'):
         request_path=directory/'request.json';receipt=directory/'complete.json';repo=directory/'git'
         if request_path.exists():
@@ -154,26 +235,59 @@ def prepare(source,spec,output,*,resume=False,retries=2,fetcher=fetch):
                     if row['local_blob']:
                         blob=directory/row['local_blob']
                         need(blob.is_file() and blob.stat().st_size==row['bytes'] and file_digest(blob)==row['sha256'],'Corrupt/incomplete materialized cache')
+            if review_license is not None:
+                checked_source=dict(source,license_evidence=dict(
+                    source['license_evidence'],path=str(review_license)))
+                _verify_review_license(directory,checked_source)
             return seal(dict(old,reused=True))
         # Detached exact revision, not a branch. Files are raw content-addressed checkout blobs.
         git(repo,'update-ref','--no-deref','HEAD',source['revision'])
         counts=inventory(repo,source,spec,directory)
+        if review_license is not None:
+            checked_source=dict(source,license_evidence=dict(
+                source['license_evidence'],path=str(review_license)))
+            _verify_review_license(directory,checked_source)
         result=seal(dict(request_identity=request['identity'],revision=source['revision'],inventory_sha256=file_digest(directory/'inventory.jsonl'),counts=counts,training_allowed=False))
         atomic_json(receipt,result)
         return seal(dict(result,reused=False))
 
 
-def run(registry,spec,output,*,dry_run=False,resume=False,limit=None,retries=2,fetcher=fetch):
+def run(registry,spec,output,*,dry_run=False,resume=False,limit=None,retries=2,fetcher=fetch,
+        registered_registry=None,registered_source_ids=(),references=None,root=ROOT):
     verify_seal(registry);verify_seal(spec)
     need(limit is None or limit>0,'Source limit must be positive');need(0<=retries<=5,'Retries must be 0..5')
+    registered_source_ids=set(registered_source_ids)
+    if registered_source_ids:
+        need(registered_registry is not None and references is not None,
+             'Registered review requires original registry and protected references')
+        verify_seal(registered_registry)
+        original={s['source_id']:s for s in registered_registry['sources']}
+        need(len(original)==len(registered_registry['sources']) and
+             registered_source_ids <= set(original) and
+             all(s['source_id'] not in registered_source_ids or
+                 s==original[s['source_id']] for s in registry['sources']) and
+             {s['source_id'] for s in registry['sources'] if s['source_id'] in registered_source_ids}
+             == registered_source_ids,
+             'Registered cache source differs from original policy')
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     rows=[];processed=0
     for source in sorted(registry['sources'],key=lambda s:s['source_id']):
-        classification=classify(source)
+        registered=source['source_id'] in registered_source_ids
+        classification='REGISTERED_REVIEW' if registered else classify(source)
         row=dict(source_id=source['source_id'],classification=classification,status=classification)
-        if classification=='CACHE_READY' and not dry_run and (limit is None or processed<limit):
+        if classification in ('CACHE_READY','REGISTERED_REVIEW') and not dry_run and (limit is None or processed<limit):
             processed+=1
-            try:row.update(status='CACHED',result=prepare(source,spec,output,resume=resume,retries=retries,fetcher=fetcher))
+            try:
+                if registered:
+                    result=prepare_registered_review(registered_registry,source['source_id'],
+                        source['revision'],spec,references,output,
+                        expected_registry_identity=registered_registry['identity'],
+                        expected_spec_identity=spec['identity'],
+                        expected_references_sha256=file_digest(references),root=root,
+                        resume=resume,fetcher=fetcher)
+                else:
+                    result=prepare(source,spec,output,resume=resume,retries=retries,fetcher=fetcher)
+                row.update(status='CACHED',result=result)
             except Exception as exc:row.update(status='FAILED',error=type(exc).__name__+': '+str(exc))
         rows.append(row)
         atomic_json(output/'status.json',seal(dict(policy=POLICY,registry_identity=registry['identity'],spec_identity=spec['identity'],dry_run=dry_run,classification_counts=dict(Counter(r['classification'] for r in rows)),sources=rows,training_allowed=False)))

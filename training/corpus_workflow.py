@@ -35,7 +35,7 @@ from training import (
     source_prepare,
 )
 from training.production_corpus import atomic_json, file_digest
-from training.production_spec import need, seal, verify_seal
+from training.production_spec import need, seal, verify_seal, validate
 
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = "yug-corpus-workflow-v1"
@@ -148,12 +148,22 @@ def prepare(batch_path, output, *, root=ROOT, resume=False, fetch=False):
         atomic_json(output / "request.json", request)
 
     discovery_dir = output / "discovery"
+    registry = _json(paths["registry"])
+    spec = _json(paths["spec"])
+    if any("source_id" in seed for seed in batch["seeds"]):
+        validate(spec, registry, root)
     source_discovery.build(paths["registry"], paths["spec"], discovery_dir,
                            seeds=batch["seeds"], root=root, resume=resume,
                            fetcher=source_discovery.fetch_json if fetch else None)
     catalog = _json(discovery_dir / "catalog.json")
-    source_prepare.run(catalog, _json(paths["spec"]), output / "cache", resume=resume,
+    registered_ids = [row["source_id"] for row in _json(discovery_dir / "decisions.json")["sources"]
+                      if row["status"] == "REGISTERED_REVIEW"]
+    preparation = dict(resume=resume,
                        fetcher=source_prepare.fetch if fetch else _offline_fetch)
+    if registered_ids:
+        preparation.update(registered_registry=registry, registered_source_ids=registered_ids,
+                           references=paths["references"], root=root)
+    source_prepare.run(catalog, spec, output / "cache", **preparation)
     status_path = output / "cache/status.json"
     need(status_path.is_file() or not catalog["sources"],
          "Source preparation did not publish a batch status")
@@ -163,19 +173,21 @@ def prepare(batch_path, output, *, root=ROOT, resume=False, fetch=False):
     if cached:
         clearance = clearance_evidence.build(output / "cache", output / "clearance",
             root=root, resume=resume, review_only=True,
-            cache_registry=discovery_dir / "catalog.json", references=paths["references"])
+            cache_registry=discovery_dir / "catalog.json", references=paths["references"],
+            root_registry=paths["registry"], root_spec=paths["spec"])
         need(clearance["complete"] and clearance["counts"]["EVIDENCED"] == 0,
              "Review clearance incomplete or unexpectedly granted")
         source_grant_proposals.compile_proposals(output / "cache",
             discovery_dir / "catalog.json", output / "clearance", paths["references"],
-            output / "proposals", root=root)
+            output / "proposals", root=root, base_registry=paths["registry"],
+            base_spec=paths["spec"])
         # Candidate dossiers and decision batches are review material only.
         # Existing exact-file grants and training-use decisions remain separate.
         if (output / "proposals/complete.json").is_file():
             publication_clearance.compile_candidates(output / "cache",
                 discovery_dir / "catalog.json", output / "clearance", paths["references"],
                 output / "proposals", output / "publication_candidates",
-                root=root, fetch_history=fetch)
+                root=root, fetch_history=fetch, spec=paths["spec"])
     report = seal(dict(policy=POLICY, request_identity=request["identity"],
                        phase="HUMAN_REVIEW", training_allowed=False,
                        sources=_source_rows(_json(discovery_dir / "decisions.json"),
