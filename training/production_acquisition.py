@@ -9,6 +9,7 @@ is a bounded local file under the supplied repository root.
 from __future__ import annotations
 from array import array
 from collections import Counter
+from contextlib import nullcontext
 import hashlib
 import json
 import os
@@ -32,7 +33,7 @@ from training.cumulative_accounting import CorpusLedger, build_identity
 from training.notice_attribution import (FILENAME as NOTICE_FILENAME, build_notice,
     obligation as notice_obligation, reference as notice_reference,
     source_clearance, verify_file as verify_notice_file)
-from training.approval_governance import Governance
+from training.approval_governance import Governance, governance_lock
 
 MAX_ITEM_BYTES=POLICY['max_document_bytes']
 
@@ -672,7 +673,16 @@ class ProductionBuild:
         else:limits.append(('validation_category',record['owner'],2_000_000_000))
         return limits
 
-    def _claim_corpus(self):
+    def _corpus_authority(self, intended_use='production_preparation', decision_receipts=None):
+        return dict(build_directory=self.directory,
+            plan_path=Path(self.get('plan_path')),
+            expected_plan_sha256=self.expected_plan_sha256,
+            ownership_approval=self.ownership_approval,
+            expected_ownership_approval_sha256=self.expected_ownership_approval_sha256,
+            spec=self.spec, registry=self.registry,
+            intended_use=intended_use, decision_receipts=decision_receipts)
+
+    def _claim_corpus(self, intended_use='production_preparation', decision_receipts=None):
         if self.diagnostic:return None
         if self.corpus_ledger_path is None and self.expected_corpus_head is None:
             # Completed pre-ledger builds can be replayed without new admission.
@@ -686,7 +696,15 @@ class ProductionBuild:
         need(self.directory.is_relative_to(self.root),'Ledger-backed build must be inside repository root')
         if self.corpus_ledger is None:
             self.corpus_ledger=CorpusLedger(self.corpus_ledger_path,self.root,self.expected_corpus_head,
-                                            **self.historical_approval)
+                governance_log=self.governance_log,
+                expected_governance_sha256=self.expected_governance_sha256,
+                prospective_authority=self._corpus_authority(intended_use, decision_receipts),
+                **self.historical_approval)
+        else:
+            self.corpus_ledger.governance_log=self.governance_log
+            self.corpus_ledger.expected_governance_sha256=self.expected_governance_sha256
+            self.corpus_ledger.prospective_authority=self._corpus_authority(
+                intended_use, decision_receipts)
         self.corpus_build_id=build_identity(self.get('request'),self.get('plan_identity'))
         old=self.get('corpus_build_id')
         need(old is None or old==self.corpus_build_id,'Local corpus build identity changed')
@@ -774,7 +792,14 @@ class ProductionBuild:
              self.expected_corpus_head is not None,'Corpus reservation authority required')
         if self.corpus_ledger is None:
             self.corpus_ledger=CorpusLedger(self.corpus_ledger_path,self.root,self.expected_corpus_head,
-                                            **self.historical_approval)
+                governance_log=self.governance_log,
+                expected_governance_sha256=self.expected_governance_sha256,
+                prospective_authority=self._corpus_authority(),
+                **self.historical_approval)
+        else:
+            self.corpus_ledger.governance_log=self.governance_log
+            self.corpus_ledger.expected_governance_sha256=self.expected_governance_sha256
+            self.corpus_ledger.prospective_authority=self._corpus_authority()
         bid=self.get('corpus_build_id')
         need(bid is not None,'No corpus reservation to abort')
         self.corpus_ledger.abort(bid)
@@ -830,7 +855,7 @@ class ProductionBuild:
         Content/near-duplicate clearance evidence must precede this preflight;
         actual admission re-verifies downloaded bytes and runs global dedup.
         """
-        with _writer_lock(self.directory/'coordinator'):
+        with (governance_lock(self.governance_log) if self.governance_log is not None and not self.diagnostic else nullcontext()), _writer_lock(self.directory/'coordinator'):
             try:
                 self.register_references();self.register(plan);self.verify()
                 need(self.db.execute("SELECT count(*) FROM items WHERE stage!='PENDING'").fetchone()[0]==0,'Dry run requires an unacquired scope')
@@ -904,7 +929,7 @@ class ProductionBuild:
         need(target_tokens is None or (type(target_tokens) is int and 0<target_tokens<=sum(QUOTAS.values())),'Invalid target token ceiling')
         need(max_items is None or (type(max_items) is int and max_items>0),'max_items must be a positive integer or None')
         need(tokenizer.identity==TOKENIZER and tokenizer.vocab_size==4096,'Frozen tokenizer mismatch')
-        with _writer_lock(self.directory/'coordinator'):
+        with (governance_lock(self.governance_log) if self.governance_log is not None and not self.diagnostic else nullcontext()), _writer_lock(self.directory/'coordinator'):
             try:
                 self.register_prior_production()
                 self.register_references();self.register(plan);self.verify();done=0
@@ -915,7 +940,7 @@ class ProductionBuild:
                     bundle,receipts=load_receipts(decision_receipts)
                     need(bundle==authorization['decision_bundle'],'Decision bundle changed during authorization')
                     self.put('use_authorization',authorization);self.db.commit()
-                corpus_state=self._claim_corpus()
+                corpus_state=self._claim_corpus(intended_use, decision_receipts)
                 if corpus_state=='COMMITTED':
                     terminal=self._verify_corpus_commit()
                     if terminal=='COMPLETE':
@@ -1012,7 +1037,7 @@ class ProductionBuild:
         need(destination.is_relative_to(self.directory),'Export must stay inside build directory')
         destination.mkdir(parents=True,exist_ok=True)
         need(self.get('state') in ('COMPLETE','TARGET_REACHED','TARGET_BOUNDARY') and self.get('dedup_settled'),'Build not complete')
-        with _writer_lock(self.directory/'coordinator'):
+        with (governance_lock(self.governance_log) if self.governance_log is not None and not self.diagnostic else nullcontext()), _writer_lock(self.directory/'coordinator'):
             self.verify_references()
             self.verify()
             self.require_current_approvals()
@@ -1095,7 +1120,7 @@ class ProductionBuild:
         need(destination.is_relative_to(self.directory),'Replay must stay inside build directory')
         need(intended_use in ('commercial_training','evaluation'),'Explicit consumer use required')
         need(split=='validation' or intended_use=='commercial_training','Evaluation cannot consume training split')
-        with _writer_lock(self.directory/'coordinator'):
+        with (governance_lock(self.governance_log) if self.governance_log is not None and not self.diagnostic else nullcontext()), _writer_lock(self.directory/'coordinator'):
             self.verify_references()
             self.verify()
             self.require_current_approvals()
@@ -1132,9 +1157,11 @@ class _AuthorizedReplay:
         self.expected_governance_sha256=expected_governance_sha256
 
     def __iter__(self):
-        for token in self.stream:
+        with governance_lock(self.governance_log):
             Governance(self.governance_log,self.expected_governance_sha256)
-            yield token
+            for token in self.stream:
+                Governance(self.governance_log,self.expected_governance_sha256)
+                yield token
 
     def sequences(self,sequence_length):
         from training.token_shards import _ShardSequences

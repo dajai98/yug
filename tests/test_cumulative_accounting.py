@@ -142,7 +142,7 @@ def test_source_and_repository_group_cumulative(tmp_path, cap, accepted):
     assert totals['repository_group:gh-psf-requests'] == totals['source:gh-psf-requests']
 
 
-def test_three_d_topic_and_form_cumulative(tmp_path, monkeypatch):
+def test_three_d_topic_and_form_caps_cannot_be_overridden(tmp_path, monkeypatch):
     data = same_owner(tmp_path, [ORBIT, PLANET])
     plans = data[3]
     for path in plans:
@@ -154,9 +154,8 @@ def test_three_d_topic_and_form_cumulative(tmp_path, monkeypatch):
         return [(kind, key, 1000 if kind in ('three_d_topic', 'three_d_form') else cap)
                 for kind, key, cap in original(self, record)]
     monkeypatch.setattr(acquisition.ProductionBuild, '_limits', bounded)
-    first, second = pair(tmp_path, data)
-    assert first['stages'] == {'ACCEPTED': 1}
-    assert second['stages'] == {'QUOTA_REJECTED': 1}
+    with pytest.raises(SpecificationError, match='reservation caps'):
+        pair(tmp_path, data)
 
 
 def test_second_genesis_stale_parent_and_omitted_history_fail(tmp_path):
@@ -206,16 +205,17 @@ def _direct_limits(cap):
 
 
 def test_atomic_competing_reservations_abort_and_commit_idempotency(tmp_path):
-    path=tmp_path/'ledger.sqlite'
-    inventory=seal(dict(schema='yug-prior-production-v1',complete=True,genesis=True,builds=[]))
+    from tests.test_prospective_ledger_authority import governed_ledger_case
+    path, _, authority, evidence, limits, inventory=governed_ledger_case(tmp_path)
+    plan=authority['prospective_authority']['expected_plan_sha256']
     with CorpusLedger(path,tmp_path,GENESIS):pass
     def compete(name):
-        with CorpusLedger(path,tmp_path,GENESIS) as ledger:
-            bid=identity(dict(build=name));item=_direct_item(name,80)
+        with CorpusLedger(path,tmp_path,GENESIS,**authority) as ledger:
+            bid=identity(dict(build=name))
             try:
-                ledger.claim(bid,identity(dict(plan=name)),name,inventory)
-                return name,ledger.reserve(bid,item,_direct_limits(100))
-            except SpecificationError:
+                ledger.claim(bid,plan,name,inventory)
+                return name,ledger.reserve(bid,evidence,limits)
+            except (SpecificationError, ValueError):
                 return name,'BLOCKED'
     with ThreadPoolExecutor(max_workers=2) as pool:
         results=list(pool.map(compete,('a','b')))
@@ -223,16 +223,16 @@ def test_atomic_competing_reservations_abort_and_commit_idempotency(tmp_path):
     assert sum(value == 'BLOCKED' for _, value in results) == 1
     winner=next(name for name,value in results if value is None)
     bid=identity(dict(build=winner))
-    with CorpusLedger(path,tmp_path,GENESIS) as ledger:
+    with CorpusLedger(path,tmp_path,GENESIS,**authority) as ledger:
         ledger.abort(bid)
         with pytest.raises(SpecificationError,match='reservation'):
-            ledger.commit(bid,identity(dict(plan=winner)),[_direct_item(winner,80)])
+            ledger.commit(bid,plan,[evidence])
         other='b' if winner=='a' else 'a'
-        obid=identity(dict(build=other));evidence=_direct_item(other,80)
-        ledger.claim(obid,identity(dict(plan=other)),other,inventory)
-        assert ledger.reserve(obid,evidence,_direct_limits(100)) is None
-        committed=ledger.commit(obid,identity(dict(plan=other)),[evidence])
-        assert ledger.commit(obid,identity(dict(plan=other)),[evidence])==committed
+        obid=identity(dict(build=other))
+        ledger.claim(obid,plan,other,inventory)
+        assert ledger.reserve(obid,evidence,limits) is None
+        committed=ledger.commit(obid,plan,[evidence])
+        assert ledger.commit(obid,plan,[evidence])==committed
         with pytest.raises(SpecificationError,match='Only an active'):
             ledger.abort(obid)
     with CorpusLedger(path,tmp_path,committed) as ledger:
@@ -240,19 +240,18 @@ def test_atomic_competing_reservations_abort_and_commit_idempotency(tmp_path):
 
 
 def test_freshness_failure_inside_reservation_and_commit_rolls_back(tmp_path):
-    path=tmp_path/'ledger.sqlite'
-    inventory=seal(dict(schema='yug-prior-production-v1',complete=True,genesis=True,builds=[]))
-    bid=identity(dict(build='freshness'));plan=identity(dict(plan='freshness'))
-    evidence=_direct_item('freshness',80)
+    from tests.test_prospective_ledger_authority import governed_ledger_case
+    path, _, authority, evidence, limits, inventory=governed_ledger_case(tmp_path)
+    bid=identity(dict(build='freshness'));plan=authority['prospective_authority']['expected_plan_sha256']
     def revoked():
         raise SpecificationError('Approval revoked before effect')
-    with CorpusLedger(path,tmp_path,GENESIS) as ledger:
+    with CorpusLedger(path,tmp_path,GENESIS,**authority) as ledger:
         ledger.claim(bid,plan,'freshness',inventory)
         with pytest.raises(SpecificationError,match='revoked'):
-            ledger.reserve(bid,evidence,_direct_limits(100),before_commit=revoked)
+            ledger.reserve(bid,evidence,limits,before_commit=revoked)
         assert ledger.db.execute('SELECT count(*) FROM usage').fetchone()[0]==0
         assert ledger.db.execute('SELECT count(*) FROM item_evidence').fetchone()[0]==0
-        assert ledger.reserve(bid,evidence,_direct_limits(100)) is None
+        assert ledger.reserve(bid,evidence,limits) is None
         with pytest.raises(SpecificationError,match='revoked'):
             ledger.commit(bid,plan,[evidence],before_commit=revoked)
         assert ledger.db.execute('SELECT count(*) FROM commits').fetchone()[0]==0
@@ -262,12 +261,12 @@ def test_freshness_failure_inside_reservation_and_commit_rolls_back(tmp_path):
 
 
 def test_ledger_entry_tamper_and_deletion_detected(tmp_path):
-    path=tmp_path/'ledger.sqlite'
-    inventory=seal(dict(schema='yug-prior-production-v1',complete=True,genesis=True,builds=[]))
-    bid=identity(dict(build='a'));plan=identity(dict(plan='a'));evidence=_direct_item('a',80)
-    with CorpusLedger(path,tmp_path,GENESIS) as ledger:
+    from tests.test_prospective_ledger_authority import governed_ledger_case
+    path, _, authority, evidence, limits, inventory=governed_ledger_case(tmp_path)
+    bid=identity(dict(build='a'));plan=authority['prospective_authority']['expected_plan_sha256']
+    with CorpusLedger(path,tmp_path,GENESIS,**authority) as ledger:
         ledger.claim(bid,plan,'a',inventory)
-        ledger.reserve(bid,evidence,_direct_limits(100))
+        ledger.reserve(bid,evidence,limits)
         trusted=ledger.commit(bid,plan,[evidence])
     with sqlite3.connect(path) as db:
         db.execute('UPDATE usage SET tokens=1 WHERE build_id=?',(bid,))
@@ -279,14 +278,14 @@ def test_ledger_entry_tamper_and_deletion_detected(tmp_path):
 
 
 def test_committed_reuse_requires_current_external_head(tmp_path):
-    path=tmp_path/'ledger.sqlite'
-    inventory=seal(dict(schema='yug-prior-production-v1',complete=True,genesis=True,builds=[]))
-    bid=identity(dict(build='a'));plan=identity(dict(plan='a'));evidence=_direct_item('a',80)
-    with CorpusLedger(path,tmp_path,GENESIS) as ledger:
+    from tests.test_prospective_ledger_authority import governed_ledger_case
+    path, _, authority, evidence, limits, inventory=governed_ledger_case(tmp_path)
+    bid=identity(dict(build='a'));plan=authority['prospective_authority']['expected_plan_sha256']
+    with CorpusLedger(path,tmp_path,GENESIS,**authority) as ledger:
         ledger.claim(bid,plan,'a',inventory)
-        ledger.reserve(bid,evidence,_direct_limits(100))
+        ledger.reserve(bid,evidence,limits)
         ledger.commit(bid,plan,[evidence])
-    with CorpusLedger(path,tmp_path,GENESIS) as ledger:
+    with CorpusLedger(path,tmp_path,GENESIS,**authority) as ledger:
         with pytest.raises(SpecificationError,match='Stale'):
             ledger.claim(bid,plan,'a',inventory)
         with pytest.raises(SpecificationError,match='Stale'):

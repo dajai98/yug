@@ -9,6 +9,10 @@ import json
 import hashlib
 import os
 import re
+import sys
+import threading
+import time
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -25,6 +29,11 @@ REVISION_SCHEMA = 'yug-source-revision-activation-v1'
 REVISION_FIELDS = frozenset(('schema', 'decision', 'source_id', 'locator',
     'prior_revision', 'revision', 'prior_clearance_identity', 'clearance_identity',
     'rights_dependencies', 'reviewer', 'decided_at', 'identity'))
+REVISION_SCHEMA_V2 = 'yug-source-revision-activation-v2'
+REVISION_FIELDS_V2 = REVISION_FIELDS | frozenset((
+    'candidate_complete_identity', 'candidate_complete_sha256',
+    'candidate_plan_sha256', 'expected_governance_sha256',
+    'expected_governance_head'))
 STATUSES = frozenset(('ACTIVE', 'SUPERSEDED', 'REVOKED'))
 MAX_BYTES = 16 * 1024 * 1024
 SHA = re.compile(r'sha256:[0-9a-f]{64}\Z')
@@ -48,6 +57,13 @@ def _scope(scope):
          type(v) is str and v for k, v in scope.items()),
          'Invalid approval governance scope')
     return canonical(scope)
+
+
+def _current_key(kind, scope, approval_identity):
+    # Rights evidence is independently revocable. Other approval types retain
+    # their existing exclusive scope semantics.
+    key = (kind, _scope(scope))
+    return (*key, approval_identity) if kind == 'rights_evidence_status' else key
 
 
 def revision_scope(source_id, locator):
@@ -84,13 +100,14 @@ def verify_revision_activation(path, expected_sha256, prior_source, new_source,
         decision = json.loads(raw, object_pairs_hook=_pairs)
     except (ValueError, UnicodeError) as exc:
         raise ValueError('Malformed activation decision') from exc
-    need(canonical(decision) == raw and set(decision) == REVISION_FIELDS,
+    need(canonical(decision) == raw and set(decision) in (REVISION_FIELDS, REVISION_FIELDS_V2),
          'Noncanonical or incomplete activation decision')
     verify_seal(decision)
     scope = revision_scope(prior_source['source_id'], prior_source['locator'])
     need(revision_scope(new_source['source_id'], new_source['locator']) == scope and
          prior_source['locator'] == new_source['locator'] and
-         decision['schema'] == REVISION_SCHEMA and
+         decision['schema'] == (REVISION_SCHEMA_V2 if set(decision) == REVISION_FIELDS_V2
+                                else REVISION_SCHEMA) and
          decision['decision'] == 'ACTIVATE_REVISION' and
          decision['source_id'] == scope['source_id'] and
          decision['locator'] == prior_source['locator'] and
@@ -123,6 +140,98 @@ def verify_revision_activation(path, expected_sha256, prior_source, new_source,
     need(file_digest(path) == expected_sha256,
          'Activation decision changed during verification')
     return decision
+
+
+_lock_state = threading.local()
+
+
+@contextmanager
+def governance_lock(path, *, timeout_seconds=0, writer=False):
+    """One stable OS lock for governance writers and prospective consumers.
+
+    A lock file is coordination metadata, never a second authority record. It
+    must not be removed: removing it would permit two distinct lock inodes.
+    Nested use in the same thread supports ledger calls inside a build lease.
+    """
+    path = Path(path).resolve()
+    lock_path = path.with_name('.' + path.name + '.lock')
+    held = getattr(_lock_state, 'held', None)
+    if held is None:
+        held = _lock_state.held = {}
+    key = str(lock_path)
+    if key in held:
+        need(not writer, 'Governance writer cannot overtake an active consumer')
+        held[key] += 1
+        try:
+            yield
+        finally:
+            held[key] -= 1
+        return
+    need(type(timeout_seconds) in (int, float) and 0 <= timeout_seconds <= 30,
+         'Invalid governance drain timeout')
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open('a+b') as handle:
+        if handle.seek(0, os.SEEK_END) == 0:
+            handle.write(b'0')
+            handle.flush()
+            os.fsync(handle.fileno())
+        deadline = time.monotonic() + timeout_seconds
+        while True:
+            try:
+                handle.seek(0)
+                if sys.platform == 'win32':
+                    import msvcrt
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError as exc:
+                if time.monotonic() >= deadline:
+                    raise ValueError('Governance consumer or writer has not drained') from exc
+                time.sleep(0.025)
+        held[key] = 1
+        try:
+            yield
+        finally:
+            del held[key]
+            handle.seek(0)
+            if sys.platform == 'win32':
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def _replace_governance(path, data):
+    """Replace one same-directory log after flushing the complete next image."""
+    temporary = path.with_name(path.name + '.stage')
+    if temporary.exists():
+        need(temporary.read_bytes() == data,
+             'Indeterminate interrupted governance staging')
+    try:
+        if not temporary.exists():
+            with temporary.open('xb') as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+        if sys.platform == 'win32':
+            import ctypes
+            move = ctypes.WinDLL('kernel32', use_last_error=True).MoveFileExW
+            move.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
+            move.restype = ctypes.c_int
+            moved = move(str(temporary), str(path), 0x1 | 0x8)
+            if not moved:
+                raise OSError(ctypes.get_last_error(), 'Governance log replacement failed')
+        else:
+            os.replace(temporary, path)
+            descriptor = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+    finally:
+        # Preserve a staged file after an uncertain failure for explicit audit.
+        pass
 
 
 def event(*, approval_identity, approval_type, scope, previous_status,
@@ -225,7 +334,7 @@ class Governance:
         aid = value['approval_identity']
         kind = value['approval_type']
         scope = value['scope']
-        key = (kind, _scope(scope))
+        key = _current_key(kind, scope, aid)
         if kind == 'source_revision':
             for state in self.states.values():
                 if state['type'] != 'source_revision':
@@ -259,13 +368,13 @@ class Governance:
                  'Duplicate or conflicting superseding approval')
             self.states[replacement] = dict(type=kind, scope=scope,
                                             status='ACTIVE', replaced_by=None)
-            self.current[key] = replacement
+            self.current[_current_key(kind, scope, replacement)] = replacement
 
     def require_current(self, approval_type, approval_identity, scope):
-        key = (approval_type, _scope(scope))
+        key = _current_key(approval_type, scope, approval_identity)
         state = self.states.get(approval_identity)
         need(state is not None and state['type'] == approval_type and
-             _scope(state['scope']) == key[1] and state['status'] == 'ACTIVE' and
+              _scope(state['scope']) == key[1] and state['status'] == 'ACTIVE' and
              self.current.get(key) == approval_identity,
              'Approval revoked, superseded, unknown or wrong scope')
         return state
@@ -325,12 +434,20 @@ class Governance:
 
 
 def append_event(path, expected_sha256, value):
-    """Append one externally reviewed event; return the new byte pin.
+    """Replace the complete log with one more reviewed event; return its pin.
 
     The caller must publish/trust the returned pin outside mutable build state.
-    An interrupted append leaves an incomplete log that cannot authorize use.
+    An interrupted replacement leaves either the old or new complete log image.
     """
-    path = Path(path)
+    path = Path(path).resolve()
+    # A same-thread revocation can invalidate an active consumer and is caught
+    # by its next current-pin check. An activation may never reenter a lease.
+    with governance_lock(path, writer=value.get('approval_type') == 'source_revision'):
+        return _append_event_locked(path, expected_sha256, value)
+
+
+def _append_event_locked(path, expected_sha256, value, *, expected_new_sha256=None):
+    """Caller holds governance_lock; compare-and-swap a complete log image."""
     if path.exists():
         history = Governance(path, expected_sha256)
         need(value.get('previous_event_identity') == history.head,
@@ -349,12 +466,16 @@ def append_event(path, expected_sha256, value):
          value['transition_at'] >= history.events[-1]['transition_at'],
          'Governance transition time moved backwards')
     history._apply(value)
-    data = canonical(value) + b'\n'
-    need((path.stat().st_size if path.exists() else 0) + len(data) <= MAX_BYTES,
+    old = path.read_bytes() if path.exists() else b''
+    data = old + canonical(value) + b'\n'
+    need(len(data) <= MAX_BYTES,
          'Governance history exceeds bounded metadata limit')
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open('ab') as output:
-        output.write(data)
-        output.flush()
-        os.fsync(output.fileno())
-    return file_digest(path)
+    proposed = 'sha256:' + hashlib.sha256(data).hexdigest()
+    need(expected_new_sha256 is None or proposed == expected_new_sha256,
+         'Proposed governance log differs from independent expected digest')
+    need((not path.exists() and expected_sha256 is None) or
+         (path.exists() and file_digest(path) == expected_sha256),
+         'Stale governance head before replacement')
+    _replace_governance(path, data)
+    need(file_digest(path) == proposed, 'Governance replacement identity changed')
+    return proposed

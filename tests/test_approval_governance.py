@@ -414,7 +414,7 @@ def test_commit_time_revocation_cleans_provisional_state_and_allows_one_retry(tm
             _revoke(build,'production_plan',plan_pin,dict(plan_sha256=plan_pin))
             return original_commit(ledger,*args,**kwargs)
         monkeypatch.setattr(CorpusLedger,'commit',revoke_after_reservation)
-        with pytest.raises(SpecificationError,match='revoked'):
+        with pytest.raises(SpecificationError,match='stale or changed'):
             build.run(plan,Tokenizer())
         monkeypatch.setattr(CorpusLedger,'commit',original_commit)
         assert calls==[True]

@@ -8,16 +8,114 @@ from __future__ import annotations
 
 from collections import Counter
 import argparse
+import copy
 import json
 from pathlib import Path
 import sqlite3
+from functools import wraps
 
+from training.approval_governance import Governance, governance_lock
 from training.production_corpus import canonical, file_digest, identity
 from training.production_spec import need, verify_seal
 
 
 POLICY = 'yug-cumulative-accounting-v1'
 GENESIS = identity(dict(policy=POLICY, genesis=True))
+
+
+def _prospective_governance_lease(method):
+    """Verify prospective authority while holding the activation drain lock."""
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        need(self.prospective_authority is not None,
+             'Prospective corpus mutation requires complete external authority')
+        with governance_lock(self.governance_log):
+            records, sources = self._verify_prospective_authority()
+            if method.__name__ in ('claim', 'commit'):
+                need(args[1] == self.prospective_authority['expected_plan_sha256'],
+                     'Corpus mutation differs from approved production plan')
+            if method.__name__ in ('reserve', 'commit'):
+                if method.__name__ == 'reserve':
+                    claimed = self.db.execute(
+                        'SELECT plan FROM builds WHERE build_id=?', (args[0],)).fetchone()
+                    need(claimed is not None and
+                         claimed[0] == self.prospective_authority['expected_plan_sha256'],
+                         'Corpus reservation has a different approved plan')
+                items = [args[1]] if method.__name__ == 'reserve' else args[2]
+                for item in items:
+                    record = records.get(item.get('item'))
+                    need(record is not None and item.get('record') == record,
+                         'Corpus item absent or changed in approved production plan')
+                    source = sources[record['source_id']]
+                    need(item.get('source_id') == source['source_id'] and
+                         item.get('source_locator') == source['locator'] and
+                         item.get('repository_group') == source['repository_group'] and
+                         item.get('domain_group') == source['domain_group'] and
+                         item.get('split_group') == source['split_group'] and
+                         item.get('owner') == record['owner'] and
+                         item.get('split') == record['split'] and
+                         item.get('three_d_topic') == record.get('three_d_topic') and
+                         item.get('three_d_form') == record.get('three_d_form'),
+                         'Corpus evidence differs from approved source')
+                    if method.__name__ == 'reserve':
+                        from training.production_acquisition import QUOTAS
+                        spec = self.prospective_authority['spec']
+                        expected = [('source', source['source_id'], source['target_cap_tokens']),
+                            ('source_owner', source['source_id']+':'+record['owner'],
+                             source['category_caps_tokens'][record['owner']])]
+                        for field in ('repository_group', 'domain_group'):
+                            expected.append((field, source[field], spec['group_caps'][field][source[field]]))
+                        if record['split'] == 'train':
+                            expected.append(('category', record['owner'], QUOTAS[record['owner']]))
+                            if record.get('three_d_topic'):
+                                topics = {t['id']:t['target_tokens'] for t in spec['three_d']['topics']}
+                                expected.extend([
+                                    ('three_d_topic', record['three_d_topic'], topics[record['three_d_topic']]),
+                                    ('three_d_form', record['three_d_form'],
+                                     spec['three_d']['form_targets'][record['three_d_form']])])
+                        else:
+                            expected.append(('validation_category', record['owner'], 2_000_000_000))
+                        need(sorted(args[2]) == sorted(expected),
+                             'Corpus reservation caps differ from approved specification')
+            return method(self, *args, **kwargs)
+    return guarded
+
+
+def _ledger_cleanup_lease(method):
+    """Serialize quota release with activation; never admit or commit content."""
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        need(self.prospective_authority is not None and self.governance_log is not None,
+             'Unbound corpus cleanup is not an authorized ledger mutation')
+        with governance_lock(self.governance_log):
+            authority = self.prospective_authority
+            need(file_digest(authority['plan_path']) ==
+                 authority['expected_plan_sha256'],
+                 'Corpus cleanup plan changed')
+            current = Governance(self.governance_log, file_digest(self.governance_log))
+            sources = {source['source_id']: source for source in authority['registry']['sources']}
+            from training.production_acquisition import read_plan
+            for record in read_plan(authority['plan_path']):
+                source = sources.get(record.get('source_id'))
+                need(source is not None, 'Unknown corpus cleanup source')
+                current.require_prospective_revision(source)
+            claimed = self.db.execute(
+                'SELECT plan FROM builds WHERE build_id=?', (args[0],)).fetchone()
+            need(claimed is None or claimed[0] == authority['expected_plan_sha256'],
+                 'Corpus cleanup has a different approved plan')
+            return method(self, *args, **kwargs)
+    return guarded
+
+
+def _historical_import_lease(method):
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        need(self.governance_log is not None and
+             self.expected_governance_sha256 is not None,
+             'Historical import governance pin required')
+        with governance_lock(self.governance_log):
+            return method(self, *args, **kwargs)
+    return guarded
 
 
 def build_identity(request, plan_identity):
@@ -73,7 +171,8 @@ class CorpusLedger:
                  approved_historical_import_identity=None,
                  approved_historical_manifest_identity=None,
                  approved_historical_manifest_sha256=None,
-                 governance_log=None, expected_governance_sha256=None):
+                 governance_log=None, expected_governance_sha256=None,
+                 prospective_authority=None):
         self.root = Path(root).resolve()
         self.path = Path(path).resolve()
         need(self.path.is_relative_to(self.root), 'Corpus ledger must be inside the repository root')
@@ -88,8 +187,13 @@ class CorpusLedger:
         self.approved_historical_import_identity = approved_historical_import_identity
         self.approved_historical_manifest_identity = approved_historical_manifest_identity
         self.approved_historical_manifest_sha256 = approved_historical_manifest_sha256
-        self.governance_log = governance_log
+        self.governance_log = Path(governance_log).resolve() if governance_log is not None else None
         self.expected_governance_sha256 = expected_governance_sha256
+        self.prospective_authority = copy.deepcopy(prospective_authority)
+        need(self.prospective_authority is None or
+             (self.governance_log is not None and
+              type(self.expected_governance_sha256) is str),
+             'Incomplete prospective governance authority')
         if not self.path.exists():
             need(expected_head == GENESIS, 'Missing corpus ledger for trusted non-genesis head')
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -140,6 +244,96 @@ class CorpusLedger:
 
     def __exit__(self, *_):
         self.close()
+
+    def _verify_prospective_authority(self):
+        """Recheck the existing plan, clearance and use gates inside one lease."""
+        from training.category_ownership import verify_approval
+        from training.corpus_gate import load_receipts, verify_receipt
+        from training.notice_attribution import source_clearance
+        from training.production_acquisition import item_key, read_plan, validate_clearance
+        from training.production_spec import validate
+
+        authority = self.prospective_authority
+        need(type(authority) is dict and set(authority) == {
+            'build_directory', 'plan_path', 'expected_plan_sha256',
+            'ownership_approval', 'expected_ownership_approval_sha256',
+            'spec', 'registry', 'intended_use', 'decision_receipts'},
+            'Incomplete prospective corpus authority')
+        root = self.root
+        directory = Path(authority['build_directory']).resolve()
+        plan = Path(authority['plan_path']).resolve()
+        approval = Path(authority['ownership_approval']).resolve()
+        need(directory.is_relative_to(root) and plan.is_relative_to(root) and
+             approval.is_relative_to(root) and
+             self.governance_log.is_relative_to(root) and
+             not self.governance_log.is_relative_to(directory),
+             'Prospective authority escapes or overlaps mutable build state')
+        spec, registry = authority['spec'], authority['registry']
+        validate(spec, registry, root)
+        plan_sha = file_digest(plan)
+        need(plan_sha == authority['expected_plan_sha256'],
+             'Corpus plan differs from external approved identity')
+        ownership = verify_approval(approval,
+            authority['expected_ownership_approval_sha256'], plan_sha, directory)
+        governance = Governance(self.governance_log, self.expected_governance_sha256)
+        governance.require_current('production_plan', plan_sha,
+                                   dict(plan_sha256=plan_sha))
+        governance.require_current('ownership_approval', ownership,
+                                   dict(plan_sha256=plan_sha))
+        intended_use = authority['intended_use']
+        need(intended_use in ('production_preparation', 'evaluation',
+                              'commercial_training'),
+             'Unsupported prospective corpus intended use')
+        receipt_path = authority['decision_receipts']
+        receipts = None
+        if receipt_path is not None:
+            receipt_path = Path(receipt_path).resolve()
+            need(receipt_path.is_relative_to(root) and
+                 not receipt_path.is_relative_to(directory),
+                 'Corpus use decision must be external to mutable build state')
+            _, receipts = load_receipts(receipt_path)
+        else:
+            need(intended_use == 'production_preparation',
+                 'Explicit intended-use receipts required')
+        sources = {s['source_id']: s for s in registry['sources']}
+        rows = {}
+        grants = {}
+        for record in read_plan(plan):
+            source = sources.get(record.get('source_id'))
+            need(source is not None, 'Unknown corpus-plan source')
+            key = validate_clearance(record, source, spec, root)
+            need(key not in rows, 'Duplicate approved corpus-plan item')
+            rows[key] = record
+            grant = grants.setdefault(source['source_id'],
+                                      source_clearance(source, root))
+            governance.require_prospective_revision(source)
+            governance.require_current('source_clearance', grant['identity'],
+                dict(source_id=source['source_id'], revision=source['revision']))
+            for component in grant.get('components', ()):
+                component_id = component['decision_identity']
+                governance.require_current('source_component', component_id,
+                    dict(source_id=source['source_id'], revision=source['revision'],
+                         component_decision_identity=component_id))
+            governance.require_current('file_clearance', record['identity'],
+                dict(source_id=record['source_id'], revision=record['revision'],
+                     path=record['path'], sha256=record['sha256']))
+            conditional = record.get('conditional_approval_identity')
+            if conditional is not None:
+                governance.require_current('conditional_approval', conditional,
+                    dict(source_id=record['source_id'], revision=record['revision'],
+                         license_id=record['license_id']))
+            if receipts is not None:
+                use = ('evaluation' if intended_use == 'commercial_training' and
+                       record['split'] == 'validation' else intended_use)
+                receipt = receipts.get(record['identity'])
+                verify_receipt(receipt, record, source, spec, root, use)
+                governance.require_current('decision_receipt', receipt['identity'],
+                    dict(clearance_identity=record['identity']))
+        need(bool(rows) and file_digest(plan) == plan_sha and
+             Governance(self.governance_log,
+                        self.expected_governance_sha256).head == governance.head,
+             'Prospective corpus authority changed during verification')
+        return rows, sources
 
     def _meta(self, key):
         row = self.db.execute('SELECT value FROM meta WHERE key=?', (key,)).fetchone()
@@ -295,6 +489,7 @@ class CorpusLedger:
         need(len(ids) == len(set(ids)), 'Copied prior build counted twice')
         return set(ids)
 
+    @_historical_import_lease
     def import_historical(self, manifest_path, approved_import_identity):
         """Commit the complete retained pre-ledger corpus once, with an external pin."""
         from training.historical_corpus_import import reconstruct
@@ -365,6 +560,7 @@ class CorpusLedger:
             self.db.rollback()
             raise
 
+    @_prospective_governance_lease
     def claim(self, build_id, plan, path_hint, inventory):
         """Atomically bind a build to the trusted head and complete prior lineage."""
         self.db.execute('BEGIN IMMEDIATE')
@@ -395,6 +591,7 @@ class CorpusLedger:
             self.db.rollback()
             raise
 
+    @_prospective_governance_lease
     def reserve(self, build_id, evidence, limits, *, before_commit=None):
         """One serialized item reservation; retry of identical evidence is free."""
         item = evidence['item']
@@ -455,6 +652,7 @@ class CorpusLedger:
             self.db.rollback()
             raise
 
+    @_prospective_governance_lease
     def commit(self, build_id, plan, evidence, terminal_state='COMPLETE', *, before_commit=None):
         """Seal a completed build into the append-only lineage, exactly once."""
         self.db.execute('BEGIN IMMEDIATE')
@@ -506,6 +704,7 @@ class CorpusLedger:
             (build_id,)).fetchone()[0])
         return entry['terminal_state']
 
+    @_ledger_cleanup_lease
     def abort(self, build_id):
         """Explicitly release an uncommitted build; never subtract committed usage."""
         self.db.execute('BEGIN IMMEDIATE')
@@ -527,6 +726,7 @@ class CorpusLedger:
             self.db.rollback()
             raise
 
+    @_ledger_cleanup_lease
     def rollback_failed_governance(self, build_id):
         """Discard only an uncommitted claim rejected by current governance.
 

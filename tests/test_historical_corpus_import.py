@@ -215,20 +215,19 @@ def test_historical_manifest_substitution_rejected(tmp_path,monkeypatch,change):
 @pytest.mark.parametrize('change',('bytes','resealed','identity','wrong_sha','missing_pin',
                                    'wrong_import','omitted_build','added_build'))
 def test_post_claim_manifest_change_cannot_reserve(tmp_path,monkeypatch,change):
+    from tests.test_prospective_ledger_authority import governed_ledger_case
     manifest,path,head,pins=small_approved_history(tmp_path,monkeypatch)
+    _,_,authority,evidence,limits,_=governed_ledger_case(tmp_path)
     state=tmp_path/'historical'/'build'/'state.sqlite'
     candidate=reconstruct(tmp_path,manifest,
         approved_manifest_identity=pins['approved_historical_manifest_identity'],
         approved_manifest_sha256=pins['approved_historical_manifest_sha256'])
     inventory=seal(dict(schema='yug-prior-production-v1',complete=True,genesis=False,
         builds=[dict(path=state.relative_to(tmp_path).as_posix(),sha256=file_digest(state))]))
-    bid=identity(dict(build='post-claim'));plan=identity(dict(plan='post-claim'))
-    evidence=dict(candidate['items'][0],item=identity(dict(item='new')),tokens=1)
-    limits=[('source','source-train',180),('source_owner','source-train:code',180),
-            ('repository_group','source-train',180),('domain_group','source-train',180),
-            ('category','code',440000000)]
+    bid=identity(dict(build='post-claim'))
+    plan=authority['prospective_authority']['expected_plan_sha256']
     original=manifest.read_bytes()
-    with CorpusLedger(path,tmp_path,head,**pins) as ledger:
+    with CorpusLedger(path,tmp_path,head,**pins,**authority) as ledger:
         assert ledger.claim(bid,plan,'new',inventory)=='ACTIVE'
         before_usage=list(ledger.db.execute('SELECT * FROM usage'))
         before_totals=list(ledger.db.execute('SELECT * FROM totals'))
@@ -261,19 +260,18 @@ def test_post_claim_manifest_change_cannot_reserve(tmp_path,monkeypatch,change):
 
 
 def test_manifest_change_during_reservation_rolls_back(tmp_path,monkeypatch):
+    from tests.test_prospective_ledger_authority import governed_ledger_case
     manifest,path,head,pins=small_approved_history(tmp_path,monkeypatch)
+    _,_,authority,evidence,limits,_=governed_ledger_case(tmp_path)
     state=tmp_path/'historical'/'build'/'state.sqlite'
     candidate=reconstruct(tmp_path,manifest,
         approved_manifest_identity=pins['approved_historical_manifest_identity'],
         approved_manifest_sha256=pins['approved_historical_manifest_sha256'])
     inventory=seal(dict(schema='yug-prior-production-v1',complete=True,genesis=False,
         builds=[dict(path=state.relative_to(tmp_path).as_posix(),sha256=file_digest(state))]))
-    bid=identity(dict(build='during-reserve'));plan=identity(dict(plan='during-reserve'))
-    evidence=dict(candidate['items'][0],item=identity(dict(item='new')),tokens=1)
-    limits=[('source','source-train',180),('source_owner','source-train:code',180),
-            ('repository_group','source-train',180),('domain_group','source-train',180),
-            ('category','code',440000000)]
-    with CorpusLedger(path,tmp_path,head,**pins) as ledger:
+    bid=identity(dict(build='during-reserve'))
+    plan=authority['prospective_authority']['expected_plan_sha256']
+    with CorpusLedger(path,tmp_path,head,**pins,**authority) as ledger:
         assert ledger.claim(bid,plan,'new',inventory)=='ACTIVE'
         before_usage=list(ledger.db.execute('SELECT * FROM usage'))
         original_check=ledger._verify_historical_manifest_binding
@@ -303,14 +301,15 @@ def test_wrong_manifest_approval_cannot_create_genesis(tmp_path,monkeypatch):
     pins=approval_pins(manifest,candidate)
     pins['approved_historical_manifest_sha256']=GENESIS
     path=tmp_path/'ledger.sqlite'
-    with CorpusLedger(path,tmp_path,GENESIS,**pins) as ledger:
+    with CorpusLedger(path,tmp_path,GENESIS,**pins,
+                      **governance_pins(manifest,candidate)) as ledger:
         with pytest.raises(SpecificationError,match='manifest'):
             ledger.import_historical(manifest,candidate['identity'])
         assert ledger.head==GENESIS
         assert ledger.db.execute('SELECT count(*) FROM commits').fetchone()[0]==0
 
 
-def test_complete_174_reconstruction_import_and_continuation(tmp_path):
+def test_complete_174_import_preserves_history_and_rejects_unapproved_continuation(tmp_path):
     manifest,state,records=history(tmp_path)
     candidate=reconstruct(tmp_path,manifest,preview=True)
     assert len(candidate['items'])==174
@@ -333,16 +332,8 @@ def test_complete_174_reconstruction_import_and_continuation(tmp_path):
         from training.production_spec import seal as sealed
         inventory=sealed(dict(schema='yug-prior-production-v1',complete=True,genesis=False,
                               builds=[dict(path=state.relative_to(tmp_path).as_posix(),sha256=file_digest(state))]))
-        assert ledger.claim(bid,plan,'new',inventory)=='ACTIVE'
-        for n in (40,60):
-            item=identity(dict(item=n))
-            evidence=dict(candidate['items'][0],item=item,tokens=n)
-            limits=[('source','source-train',417505),('source_owner','source-train:code',417505),
-                ('repository_group','source-train',417505),('domain_group','source-train',417505),
-                ('category','code',440000000)]
-            assert ledger.reserve(bid,evidence,limits) is None
-        overflow=dict(candidate['items'][0],item=identity(dict(item='overflow')),tokens=1)
-        assert ledger.reserve(bid,overflow,limits)=='source_cap'
+        with pytest.raises(SpecificationError, match='external authority'):
+            ledger.claim(bid,plan,'new',inventory)
         assert ledger.head==approved_head
 
 

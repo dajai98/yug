@@ -15,7 +15,7 @@ from training import (clearance_evidence, source_prepare,
                       source_revision_inventory)
 from training.notice_attribution import source_clearance
 from training.production_acquisition import read_plan
-from training.production_corpus import file_digest
+from training.production_corpus import canonical, file_digest
 from training.production_spec import SpecificationError, seal
 
 
@@ -37,7 +37,7 @@ def _rights(case, row, revision, name):
 
 
 @pytest.fixture
-def r2_case(registered):
+def r2_case(registered, request):
     r = registered
     prepare(r)
     root = r['root']
@@ -53,6 +53,44 @@ def r2_case(registered):
     first_path = write(first_path, seal(first))
     grant(r, first_path)
     active = root/'artifacts/grant'
+    if getattr(request, 'param', False) in ('source_c', 'source_c_and_d'):
+        # Build C through the existing validator-backed synthetic fixture, then
+        # make a separate R1 snapshot. Original first-clearance bytes stay put.
+        from tests.test_source_approval_composition import unrelated_cleared_source
+        from training.production_acquisition import item_key
+        original_registry = r['registry_path'].read_bytes()
+        original_spec = r['spec_path'].read_bytes()
+        original_r = (r['registry'], r['spec'])
+        unrelated = [unrelated_cleared_source(r)]
+        if request.param == 'source_c_and_d':
+            unrelated.append(unrelated_cleared_source(r, suffix='d',
+                sid='gh-unrelated-cleared-d', project='unrelated/cleared-d'))
+        r['registry_path'].write_bytes(original_registry)
+        r['spec_path'].write_bytes(original_spec)
+        r['registry'], r['spec'] = original_r
+        prior = active
+        active = root/'artifacts/r1-with-c'
+        active.mkdir()
+        for name in ('files.json', 'clearance.json'):
+            (active/name).write_bytes((prior/name).read_bytes())
+        registry_with_c = json.loads((prior/'registry.json').read_bytes())
+        r1_entry = dict(registry_with_c['sources'][0],
+            file_manifest=(active/'files.json').relative_to(root).as_posix(),
+            clearance_record=(active/'clearance.json').relative_to(root).as_posix())
+        registry_with_c = seal(dict(registry_with_c,
+            sources=[r1_entry, *(source for source, _ in unrelated)]))
+        spec_with_c = json.loads((prior/'spec.json').read_bytes())
+        for source, _ in unrelated:
+            for kind in ('repository_group', 'domain_group'):
+                spec_with_c['group_caps'][kind][source[kind]] = 1000
+        spec_with_c = seal(dict(spec_with_c,
+                                registry_identity=registry_with_c['identity']))
+        (active/'registry.json').write_bytes(canonical(registry_with_c))
+        (active/'spec.json').write_bytes(canonical(spec_with_c))
+        prior_rows = [*read_plan(prior/'plan.jsonl'),
+                      *(record for _, record in unrelated)]
+        (active/'plan.jsonl').write_bytes(b''.join(canonical(row)+b'\n'
+            for row in sorted(prior_rows, key=item_key)))
     active_registry = json.loads((active/'registry.json').read_bytes())
     active_source = next(s for s in active_registry['sources'] if s['source_id']==sid)
     spec = json.loads((active/'spec.json').read_bytes())
@@ -63,6 +101,8 @@ def r2_case(registered):
     (upstream/'README.md').write_bytes(b'# Changed fixture readme\n')
     (upstream/'src/main.py').unlink()
     (upstream/'docs/added.md').write_bytes(b'# Added fixture guide\n')
+    if getattr(request, 'param', False) == 'notice':
+        (upstream/'NOTICE').write_bytes(b'Synthetic R2 copyright and MIT notice\n')
     command('add', '-A', cwd=upstream)
     command('-c', 'core.hooksPath='+str(root/'no-hooks'),
             'commit', '-m', 'r2 fixture', cwd=upstream)
@@ -106,7 +146,25 @@ def r2_case(registered):
         sha256=file_digest(license_path), upstream_path='LICENSE',
         text_sha256='sha256:'+hashlib.sha256(license_bytes).hexdigest())
     new_rows = {row['path']:row for row in read_plan(new_cache/'inventory.jsonl')}
-    selected = ('LICENSE', 'README.md', 'docs/added.md', 'docs/guide.md')
+    if getattr(request, 'param', False) == 'notice':
+        canonical_files = []
+        for name in ('LICENSE', 'NOTICE'):
+            row = new_rows[name]
+            canonical_files.append(dict(path=name, sha256=row['sha256'],
+                git_blob=row['git_object'], text=(upstream/name).read_text(),
+                role='LICENSE' if name == 'LICENSE' else 'COMPANION',
+                resolver_method='pinned-root-git-blob-v1'))
+        canonical_record = seal(dict(policy='pinned-canonical-license-evidence-v1',
+            source_id=sid, locator=active_source['locator'], revision=r2,
+            tree_sha=command('rev-parse', r2+'^{tree}', cwd=upstream),
+            files=canonical_files, resolved_license='MIT', authority='NONE'))
+        canonical_path = write(root/'evidence/canonical-r2.json', canonical_record)
+        license_ref['canonical_evidence'] = dict(
+            path=canonical_path.relative_to(root).as_posix(),
+            sha256=file_digest(canonical_path), identity=canonical_record['identity'])
+    selected = ('LICENSE', 'NOTICE', 'README.md', 'docs/added.md', 'docs/guide.md') \
+        if getattr(request, 'param', False) == 'notice' else \
+        ('LICENSE', 'README.md', 'docs/added.md', 'docs/guide.md')
     files = [_rights(r, new_rows[p], r2, 'r2-'+p.replace('/', '-'))
              for p in selected]
     decision_value = seal(dict(schema=revision_clearance.POLICY,
@@ -116,10 +174,15 @@ def r2_case(registered):
         subcategory=active_source['subcategory'], license_id='MIT', split='train',
         cap_tokens=active_source['target_cap_tokens'],
         attribution='Fixture copyright and MIT license',
-        obligations=['preserve MIT attribution'],
+        obligations=['preserve MIT attribution'] +
+                    (['preserve R2 NOTICE'] if getattr(request, 'param', False) == 'notice'
+                     else []),
         source_scope_evidence=sorted([
             dict(path=license_ref['path'], sha256=license_ref['sha256']),
-            dict(path='evidence/support.json', sha256=file_digest(r['supporting']))],
+            dict(path='evidence/support.json', sha256=file_digest(r['supporting'])),
+            *([dict(path=license_ref['canonical_evidence']['path'],
+                    sha256=license_ref['canonical_evidence']['sha256'])]
+              if getattr(request, 'param', False) == 'notice' else [])],
             key=lambda ref:ref['path']),
         revision_license_evidence=license_ref,
         comparison_sha256=file_digest(comparison_dir/'comparison.json'),

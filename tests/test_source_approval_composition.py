@@ -128,40 +128,41 @@ def pins(path):
             json.loads(path.read_bytes())['components']]
 
 
-def unrelated_cleared_source(r):
+def unrelated_cleared_source(r, *, suffix='c', sid='gh-unrelated-cleared',
+                             project='unrelated/cleared'):
     """Add a separate synthetic, validator-backed prior clearance for source C."""
     root = r['root']
-    upstream = root/'upstream-c'
+    upstream = root/f'upstream-{suffix}'
     upstream.mkdir()
     command('init', str(upstream))
     command('config', 'user.name', 'Fixture C', cwd=upstream)
     command('config', 'user.email', 'fixture-c@example.invalid', cwd=upstream)
-    data = ('# Prior source\n\n' + ' '.join(f'legacy{i}' for i in range(90)) + '\n').encode()
+    data = (f'# Prior source{(" " + suffix) if suffix != "c" else ""}\n\n' +
+            ' '.join(f'legacy{i}' for i in range(90)) + '\n').encode()
     (upstream/'docs').mkdir()
     (upstream/'docs/legacy.md').write_bytes(data)
     command('add', '.', cwd=upstream)
     command('-c', 'core.hooksPath='+str(root/'no-hooks'), 'commit',
             '-m', 'fixture C', cwd=upstream)
     revision = command('rev-parse', 'HEAD', cwd=upstream)
-    sid = 'gh-unrelated-cleared'
     path = 'docs/legacy.md'
     sha = 'sha256:'+hashlib.sha256(data).hexdigest()
     license_value = json.loads(r['license_path'].read_bytes())
-    license_value['url'] = f'https://api.github.com/repos/unrelated/cleared/license?ref={revision}'
-    license_path = write(root/'evidence/c-license.json', seal(license_value))
+    license_value['url'] = f'https://api.github.com/repos/{project}/license?ref={revision}'
+    license_path = write(root/f'evidence/{suffix}-license.json', seal(license_value))
     license_ref = dict(path=license_path.relative_to(root).as_posix(),
                        sha256=file_digest(license_path))
-    support = write(root/'evidence/c-support.json', seal(dict(
+    support = write(root/f'evidence/{suffix}-support.json', seal(dict(
         statement='Independent synthetic fixture C rights review only')))
     support_ref = dict(path=support.relative_to(root).as_posix(),
                        sha256=file_digest(support))
-    rights = write(root/'decisions/c-rights.json', seal(dict(
+    rights = write(root/f'decisions/{suffix}-rights.json', seal(dict(
         source_id=sid, revision=revision, path=path, sha256=sha,
         decision='APPROVE_EXACT_FILE', reviewer='synthetic fixture C reviewer',
         evidence=[license_ref, support_ref])))
     rights_ref = dict(path=rights.relative_to(root).as_posix(),
                       sha256=file_digest(rights))
-    own = write(root/'artifacts/c-clearance/ownership.json', seal(dict(
+    own = write(root/f'artifacts/{suffix}-clearance/ownership.json', seal(dict(
         source_id=sid, revision=revision, path=path, sha256=sha,
         owner=r['source']['category'], subcategory=r['source']['subcategory'],
         decision_type='manual_review', rationale_ref=json.loads(rights.read_bytes())['identity'],
@@ -174,10 +175,10 @@ def unrelated_cleared_source(r):
             owner=r['source']['category'], subcategory=r['source']['subcategory'],
             decision_type='manual_review', rationale_ref=json.loads(rights.read_bytes())['identity'],
             evidence_ref=own_ref))
-    manifest_path = write(root/'artifacts/c-clearance/files.json', seal(dict(
+    manifest_path = write(root/f'artifacts/{suffix}-clearance/files.json', seal(dict(
         source_id=sid, revision=revision, files=[file])))
     evidence = [license_ref, support_ref, rights_ref, own_ref]
-    clearance_path = write(root/'artifacts/c-clearance/clearance.json', seal(dict(
+    clearance_path = write(root/f'artifacts/{suffix}-clearance/clearance.json', seal(dict(
         source_id=sid, revision=revision,
         file_manifest_identity=json.loads(manifest_path.read_bytes())['identity'],
         decision='ACCEPT', evidence=evidence,
@@ -185,8 +186,8 @@ def unrelated_cleared_source(r):
         obligations=['preserve MIT attribution'],
         governance_decision_identity=json.loads(rights.read_bytes())['identity'])))
     c = copy.deepcopy(r['source'])
-    c.update(source_id=sid, name='unrelated/cleared',
-        locator='https://github.com/unrelated/cleared', revision=revision,
+    c.update(source_id=sid, name=project,
+        locator='https://github.com/'+project, revision=revision,
         status='ACCEPT', status_authority='synthetic fixture C review',
         license_evidence=dict(c['license_evidence'], path=license_ref['path'],
                               sha256=license_ref['sha256']),
@@ -202,7 +203,7 @@ def unrelated_cleared_source(r):
     r['spec'] = seal(dict(r['spec'],registry_identity=r['registry']['identity']))
     write(r['registry_path'],r['registry'])
     write(r['spec_path'],r['spec'])
-    blob = root/'artifacts/c-cached/files/docs/legacy.md'
+    blob = root/f'artifacts/{suffix}-cached/files/docs/legacy.md'
     blob.parent.mkdir(parents=True,exist_ok=True)
     blob.write_bytes(data)
     record = seal(dict(source_id=sid, revision=revision, **file,
